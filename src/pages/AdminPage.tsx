@@ -570,6 +570,10 @@ export default function AdminPage() {
             </div>
           </TabsContent>
 
+          <TabsContent value="services" className="mt-4">
+            <ServiceManagement />
+          </TabsContent>
+
           <TabsContent value="stats" className="mt-4 space-y-4">
             <div className="bg-card rounded-xl shadow p-4">
               <h2 className="font-semibold mb-4 text-foreground">月營收統計</h2>
