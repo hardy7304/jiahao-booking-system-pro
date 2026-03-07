@@ -1,0 +1,402 @@
+import { useMemo } from "react";
+import { format, subDays, parseISO, startOfMonth, endOfMonth, isWithinInterval, getDay } from "date-fns";
+import { zhTW } from "date-fns/locale";
+import { DollarSign, CalendarDays, Users, RotateCcw, Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  LineChart, Line, PieChart, Pie, Cell, Legend,
+} from "recharts";
+
+interface Booking {
+  id: string;
+  order_time: string;
+  date: string;
+  start_hour: number;
+  start_time_str: string;
+  name: string;
+  phone: string;
+  service: string;
+  addons: string[];
+  duration: number;
+  total_price: number;
+  cancelled_at: string | null;
+  status: string | null;
+}
+
+const WEEKDAYS = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
+const HOURS_LABELS: string[] = [];
+for (let h = 14; h < 26; h += 0.5) {
+  const dh = h >= 24 ? h - 24 : h;
+  HOURS_LABELS.push(`${Math.floor(dh).toString().padStart(2, "0")}:${h % 1 === 0 ? "00" : "30"}`);
+}
+
+export default function StatsDashboard({
+  bookings,
+  loading,
+}: {
+  bookings: Booking[];
+  loading: boolean;
+}) {
+  const active = bookings.filter((b) => !b.cancelled_at && b.status !== "cancelled");
+
+  const now = new Date();
+  const monthStart = startOfMonth(now);
+  const monthEnd = endOfMonth(now);
+  const monthBookings = active.filter((b) => {
+    const d = parseISO(b.date);
+    return isWithinInterval(d, { start: monthStart, end: monthEnd });
+  });
+
+  // SECTION A: Monthly summary
+  const monthRevenue = monthBookings.reduce((s, b) => s + b.total_price, 0);
+  const monthCount = monthBookings.length;
+
+  const phoneCountAll = useMemo(() => {
+    const map: Record<string, number> = {};
+    active.forEach((b) => {
+      map[b.phone] = (map[b.phone] || 0) + 1;
+    });
+    return map;
+  }, [active]);
+
+  const monthPhones = useMemo(() => {
+    const set = new Set<string>();
+    monthBookings.forEach((b) => set.add(b.phone));
+    return set;
+  }, [monthBookings]);
+
+  const newCustomers = useMemo(() => {
+    let count = 0;
+    monthPhones.forEach((phone) => {
+      const allBookingsForPhone = active.filter((b) => b.phone === phone);
+      const earliest = allBookingsForPhone.reduce((min, b) => (b.date < min ? b.date : min), "9999");
+      if (earliest >= format(monthStart, "yyyy-MM-dd")) count++;
+    });
+    return count;
+  }, [monthPhones, active, monthStart]);
+
+  const returnRate = useMemo(() => {
+    if (monthPhones.size === 0) return 0;
+    let returning = 0;
+    monthPhones.forEach((phone) => {
+      if ((phoneCountAll[phone] || 0) >= 2) returning++;
+    });
+    return Math.round((returning / monthPhones.size) * 100);
+  }, [monthPhones, phoneCountAll]);
+
+  // SECTION B: Revenue trend (last 30 days)
+  const revenueTrend = useMemo(() => {
+    const data: { date: string; revenue: number; count: number; avg7?: number }[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = format(subDays(now, i), "yyyy-MM-dd");
+      const dayBookings = active.filter((b) => b.date === d);
+      data.push({
+        date: format(subDays(now, i), "M/d"),
+        revenue: dayBookings.reduce((s, b) => s + b.total_price, 0),
+        count: dayBookings.length,
+      });
+    }
+    // 7-day moving average
+    for (let i = 0; i < data.length; i++) {
+      const start = Math.max(0, i - 6);
+      const slice = data.slice(start, i + 1);
+      data[i].avg7 = Math.round(slice.reduce((s, d) => s + d.revenue, 0) / slice.length);
+    }
+    return data;
+  }, [active]);
+
+  // SECTION C: Popular services
+  const serviceStats = useMemo(() => {
+    const map: Record<string, { count: number; revenue: number }> = {};
+    active.forEach((b) => {
+      const name = b.service.split(" (")[0].split("（")[0];
+      if (!map[name]) map[name] = { count: 0, revenue: 0 };
+      map[name].count++;
+      map[name].revenue += b.total_price;
+    });
+    return Object.entries(map)
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 8)
+      .map(([name, stats]) => ({ name, ...stats }));
+  }, [active]);
+
+  // SECTION D: Heatmap
+  const heatmapData = useMemo(() => {
+    const grid: Record<string, number> = {};
+    active.forEach((b) => {
+      const d = parseISO(b.date);
+      const dayOfWeek = getDay(d); // 0=Sun
+      const hourIdx = Math.round((b.start_hour - 14) * 2);
+      if (hourIdx >= 0 && hourIdx < HOURS_LABELS.length) {
+        const key = `${dayOfWeek}-${hourIdx}`;
+        grid[key] = (grid[key] || 0) + 1;
+      }
+    });
+    return grid;
+  }, [active]);
+
+  const maxHeat = Math.max(1, ...Object.values(heatmapData));
+
+  // SECTION E: Customer analysis
+  const customerStats = useMemo(() => {
+    const map: Record<string, { name: string; phone: string; count: number; lastDate: string; total: number }> = {};
+    active.forEach((b) => {
+      if (!map[b.phone]) map[b.phone] = { name: b.name, phone: b.phone, count: 0, lastDate: "", total: 0 };
+      map[b.phone].count++;
+      map[b.phone].total += b.total_price;
+      if (b.date > map[b.phone].lastDate) {
+        map[b.phone].lastDate = b.date;
+        map[b.phone].name = b.name;
+      }
+    });
+    return Object.values(map).sort((a, b) => b.count - a.count);
+  }, [active]);
+
+  const top10 = customerStats.slice(0, 10);
+  const newCount = customerStats.filter((c) => c.count === 1).length;
+  const returningCount = customerStats.filter((c) => c.count >= 2).length;
+  const pieData = [
+    { name: "新客", value: newCount },
+    { name: "回流客", value: returningCount },
+  ];
+
+  // CSV export
+  const exportBookingsCSV = () => {
+    const headers = ["下單時間", "日期", "時段", "姓名", "電話", "服務", "加購", "時長", "金額"];
+    const rows = monthBookings.map((b) => [
+      new Date(b.order_time).toLocaleString("zh-TW"),
+      b.date,
+      b.start_time_str,
+      b.name,
+      b.phone,
+      b.service,
+      b.addons?.join("; ") || "",
+      `${b.duration}分`,
+      b.total_price,
+    ]);
+    downloadCSV(headers, rows, `預約報表_${format(now, "yyyyMM")}.csv`);
+  };
+
+  const exportCustomersCSV = () => {
+    const headers = ["姓名", "電話", "預約次數", "最後預約日", "累計消費"];
+    const rows = customerStats.map((c) => [c.name, c.phone, c.count, c.lastDate, c.total]);
+    downloadCSV(headers, rows, `客戶名單_${format(now, "yyyyMM")}.csv`);
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <Skeleton key={i} className="h-40 rounded-xl" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* SECTION A: Summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <SummaryCard icon={<DollarSign className="w-4 h-4" />} label="本月營業額" value={`NT$${monthRevenue.toLocaleString()}`} valueClass="text-primary" />
+        <SummaryCard icon={<CalendarDays className="w-4 h-4" />} label="本月預約數" value={`${monthCount} 筆`} />
+        <SummaryCard icon={<Users className="w-4 h-4" />} label="新客數" value={`${newCustomers} 人`} />
+        <SummaryCard icon={<RotateCcw className="w-4 h-4" />} label="回流率" value={`${returnRate}%`} valueClass="text-primary" />
+      </div>
+
+      {/* SECTION B: Revenue trend */}
+      <div className="bg-card rounded-xl shadow p-4">
+        <h2 className="font-semibold text-foreground mb-3">📈 營收趨勢（近30天）</h2>
+        {revenueTrend.some((d) => d.revenue > 0) ? (
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={revenueTrend}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} interval={4} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip
+                formatter={(val: number, name: string) =>
+                  name === "revenue" ? [`NT$${val.toLocaleString()}`, "營收"] : [`NT$${val.toLocaleString()}`, "7日均值"]
+                }
+                labelFormatter={(label) => label}
+              />
+              <Line type="monotone" dataKey="revenue" stroke="hsl(145, 63%, 42%)" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="avg7" stroke="hsl(145, 40%, 60%)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-muted-foreground text-center py-8">尚無資料</p>
+        )}
+      </div>
+
+      {/* SECTION C: Popular services */}
+      <div className="bg-card rounded-xl shadow p-4">
+        <h2 className="font-semibold text-foreground mb-3">🏆 熱門服務</h2>
+        {serviceStats.length > 0 ? (
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={serviceStats} layout="vertical" margin={{ left: 80 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis type="number" tick={{ fontSize: 11 }} />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={80} />
+              <Tooltip
+                formatter={(val: number, name: string) =>
+                  name === "count" ? [`${val} 筆`, "預約數"] : [`NT$${val.toLocaleString()}`, "營收"]
+                }
+              />
+              <Bar dataKey="count" fill="hsl(145, 63%, 42%)" radius={[0, 4, 4, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <p className="text-muted-foreground text-center py-8">尚無資料</p>
+        )}
+      </div>
+
+      {/* SECTION D: Heatmap */}
+      <div className="bg-card rounded-xl shadow p-4">
+        <h2 className="font-semibold text-foreground mb-3">🔥 熱門時段</h2>
+        <div className="overflow-x-auto">
+          <div className="min-w-[600px]">
+            {/* Hour headers */}
+            <div className="flex">
+              <div className="w-12 shrink-0" />
+              {HOURS_LABELS.filter((_, i) => i % 2 === 0).map((h) => (
+                <div key={h} className="flex-1 text-[10px] text-muted-foreground text-center">
+                  {h}
+                </div>
+              ))}
+            </div>
+            {/* Rows for each day */}
+            {[1, 2, 3, 4, 5, 6, 0].map((dayIdx) => (
+              <div key={dayIdx} className="flex items-center gap-0.5 mb-0.5">
+                <div className="w-12 shrink-0 text-xs text-muted-foreground text-right pr-1">
+                  {WEEKDAYS[dayIdx]}
+                </div>
+                {HOURS_LABELS.map((_, hourIdx) => {
+                  const val = heatmapData[`${dayIdx}-${hourIdx}`] || 0;
+                  const intensity = val / maxHeat;
+                  return (
+                    <div
+                      key={hourIdx}
+                      className="flex-1 aspect-square rounded-sm min-w-[16px] max-w-[24px]"
+                      style={{
+                        backgroundColor:
+                          val === 0
+                            ? "hsl(140, 10%, 94%)"
+                            : `hsla(145, 63%, 42%, ${0.15 + intensity * 0.85})`,
+                      }}
+                      title={`${WEEKDAYS[dayIdx]} ${HOURS_LABELS[hourIdx]}: ${val} 筆`}
+                    />
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION E: Customer analysis */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="bg-card rounded-xl shadow p-4">
+          <h2 className="font-semibold text-foreground mb-3">👥 新客 vs 回流客</h2>
+          {pieData.some((d) => d.value > 0) ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <PieChart>
+                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={({ name, value }) => `${name}: ${value}`}>
+                  <Cell fill="hsl(200, 60%, 55%)" />
+                  <Cell fill="hsl(145, 63%, 42%)" />
+                </Pie>
+                <Legend />
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <p className="text-muted-foreground text-center py-8">尚無資料</p>
+          )}
+        </div>
+
+        <div className="bg-card rounded-xl shadow p-4">
+          <h2 className="font-semibold text-foreground mb-3">🏅 常客排行（Top 10）</h2>
+          {top10.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="text-left p-1.5">姓名</th>
+                    <th className="text-left p-1.5">電話</th>
+                    <th className="text-center p-1.5">次數</th>
+                    <th className="text-left p-1.5">最後預約</th>
+                    <th className="text-right p-1.5">累計消費</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {top10.map((c, i) => (
+                    <tr key={c.phone} className="border-b border-border/50">
+                      <td className="p-1.5 font-medium">{c.name}</td>
+                      <td className="p-1.5 text-muted-foreground">{c.phone}</td>
+                      <td className="p-1.5 text-center">
+                        <Badge variant="secondary" className="text-xs">{c.count}</Badge>
+                      </td>
+                      <td className="p-1.5 text-muted-foreground text-xs">{c.lastDate}</td>
+                      <td className="p-1.5 text-right font-medium text-primary">NT${c.total.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-8">尚無資料</p>
+          )}
+        </div>
+      </div>
+
+      {/* SECTION F: Export */}
+      <div className="bg-card rounded-xl shadow p-4 flex flex-wrap gap-3">
+        <Button variant="outline" onClick={exportBookingsCSV}>
+          <Download className="w-4 h-4 mr-1" /> 匯出本月報表 CSV
+        </Button>
+        <Button variant="outline" onClick={exportCustomersCSV}>
+          <Download className="w-4 h-4 mr-1" /> 匯出客戶名單 CSV
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function SummaryCard({
+  icon,
+  label,
+  value,
+  valueClass = "",
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  valueClass?: string;
+}) {
+  return (
+    <div className="bg-card rounded-xl shadow p-4">
+      <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+        {icon}
+        {label}
+      </div>
+      <div className={`text-2xl font-bold text-foreground ${valueClass}`}>{value}</div>
+    </div>
+  );
+}
+
+function downloadCSV(headers: string[], rows: any[][], filename: string) {
+  const BOM = "\uFEFF";
+  const csv =
+    BOM +
+    headers.join(",") +
+    "\n" +
+    rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}

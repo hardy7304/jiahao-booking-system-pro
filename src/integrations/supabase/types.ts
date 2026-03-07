@@ -53,7 +53,10 @@ export type Database = {
       bookings: {
         Row: {
           addons: string[] | null
+          admin_note: string | null
+          cancel_reason: string | null
           cancelled_at: string | null
+          completed_at: string | null
           created_at: string
           date: string
           duration: number
@@ -64,11 +67,15 @@ export type Database = {
           service: string
           start_hour: number
           start_time_str: string
+          status: string | null
           total_price: number
         }
         Insert: {
           addons?: string[] | null
+          admin_note?: string | null
+          cancel_reason?: string | null
           cancelled_at?: string | null
+          completed_at?: string | null
           created_at?: string
           date: string
           duration: number
@@ -79,11 +86,15 @@ export type Database = {
           service: string
           start_hour: number
           start_time_str: string
+          status?: string | null
           total_price: number
         }
         Update: {
           addons?: string[] | null
+          admin_note?: string | null
+          cancel_reason?: string | null
           cancelled_at?: string | null
+          completed_at?: string | null
           created_at?: string
           date?: string
           duration?: number
@@ -94,6 +105,7 @@ export type Database = {
           service?: string
           start_hour?: number
           start_time_str?: string
+          status?: string | null
           total_price?: number
         }
         Relationships: []
