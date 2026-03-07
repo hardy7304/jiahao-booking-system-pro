@@ -17,6 +17,7 @@ export type Database = {
       bookings: {
         Row: {
           addons: string[] | null
+          cancelled_at: string | null
           created_at: string
           date: string
           duration: number
@@ -31,6 +32,7 @@ export type Database = {
         }
         Insert: {
           addons?: string[] | null
+          cancelled_at?: string | null
           created_at?: string
           date: string
           duration: number
@@ -45,6 +47,7 @@ export type Database = {
         }
         Update: {
           addons?: string[] | null
+          cancelled_at?: string | null
           created_at?: string
           date?: string
           duration?: number
