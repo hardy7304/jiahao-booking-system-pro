@@ -47,21 +47,21 @@ export const aromas: AddOn[] = [
 export function getAvailableAddons(service: Service | null): AddOn[] {
   if (!service) return [];
   
-  // 套餐: hide all add-ons
-  if (service.category === 'package') return [];
+  // 服務名稱包含「套餐」或「深層雙拼」: 完全隱藏所有加購
+  if (service.name.includes('套餐') || service.name.includes('深層雙拼')) return [];
   
   return addons.filter(addon => {
-    // 非腳底按摩: hide 筋膜刀肩頸
+    // 非腳底按摩類服務: 隱藏「筋膜刀肩頸」
     if (service.category !== 'foot' && service.category !== 'fascia-foot' && addon.name.includes('筋膜刀肩頸')) {
       return false;
     }
     
-    // 全身指壓 / 深層雙拼 / 筋膜刀【身體】: hide 精油升級 and 足湯肩頸
-    if (['body', 'combo', 'fascia-body'].includes(service.category)) {
+    // 全身指壓 / 筋膜刀【身體】: 隱藏「精油升級」和「足湯肩頸」
+    if (['body', 'fascia-body'].includes(service.category)) {
       if (addon.type === 'upgrade' || addon.name.includes('足湯肩頸')) return false;
     }
     
-    // 筋膜刀【身體】: also hide 刮痧
+    // 筋膜刀【身體】: 額外隱藏「刮痧」
     if (service.category === 'fascia-body' && addon.name.includes('刮痧')) {
       return false;
     }
