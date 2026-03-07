@@ -47,8 +47,8 @@ export const aromas: AddOn[] = [
 export function getAvailableAddons(service: Service | null): AddOn[] {
   if (!service) return [];
   
-  // 服務名稱包含「套餐」、「深層雙拼」或「筋膜刀」: 完全隱藏所有加購
-  if (service.name.includes('套餐') || service.name.includes('深層雙拼') || service.name.includes('筋膜刀')) return [];
+  // 服務名稱包含「套餐」或「深層雙拼」: 完全隱藏所有加購
+  if (service.name.includes('套餐') || service.name.includes('深層雙拼')) return [];
   
   return addons.filter(addon => {
     // 非腳底按摩類服務: 隱藏「筋膜刀肩頸」
