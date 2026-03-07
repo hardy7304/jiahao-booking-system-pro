@@ -119,6 +119,7 @@ export default function ServiceManagement() {
   const updateDeduction = async (s: ServiceRow, val: number) => {
     await supabase.from("services").update({ deduction: val } as any).eq("id", s.id);
     setServices(prev => prev.map(x => x.id === s.id ? { ...x, deduction: val } : x));
+    toast.success(`已更新「${s.name}」差價為 NT$${val}`);
   };
 
   const moveService = async (index: number, direction: -1 | 1) => {
