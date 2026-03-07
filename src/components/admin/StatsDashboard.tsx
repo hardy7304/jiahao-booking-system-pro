@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { format, subDays, parseISO, startOfMonth, endOfMonth, isWithinInterval, getDay } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { DollarSign, CalendarDays, Users, RotateCcw, Download } from "lucide-react";
+import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,6 +26,14 @@ interface Booking {
   status: string | null;
 }
 
+interface CommissionHelpers {
+  calcBase: (totalPrice: number, serviceName: string) => number;
+  calcTherapist: (totalPrice: number, serviceName: string) => number;
+  calcShop: (totalPrice: number, serviceName: string) => number;
+  commissionRate: number;
+  getDeduction: (serviceName: string) => number;
+}
+
 const WEEKDAYS = ["週日", "週一", "週二", "週三", "週四", "週五", "週六"];
 const HOURS_LABELS: string[] = [];
 for (let h = 14; h < 26; h += 0.5) {
@@ -36,9 +44,11 @@ for (let h = 14; h < 26; h += 0.5) {
 export default function StatsDashboard({
   bookings,
   loading,
+  commission,
 }: {
   bookings: Booking[];
   loading: boolean;
+  commission?: CommissionHelpers;
 }) {
   const active = bookings.filter((b) => !b.cancelled_at && b.status !== "cancelled");
 
@@ -56,9 +66,7 @@ export default function StatsDashboard({
 
   const phoneCountAll = useMemo(() => {
     const map: Record<string, number> = {};
-    active.forEach((b) => {
-      map[b.phone] = (map[b.phone] || 0) + 1;
-    });
+    active.forEach((b) => { map[b.phone] = (map[b.phone] || 0) + 1; });
     return map;
   }, [active]);
 
@@ -81,32 +89,33 @@ export default function StatsDashboard({
   const returnRate = useMemo(() => {
     if (monthPhones.size === 0) return 0;
     let returning = 0;
-    monthPhones.forEach((phone) => {
-      if ((phoneCountAll[phone] || 0) >= 2) returning++;
-    });
+    monthPhones.forEach((phone) => { if ((phoneCountAll[phone] || 0) >= 2) returning++; });
     return Math.round((returning / monthPhones.size) * 100);
   }, [monthPhones, phoneCountAll]);
 
+  // Commission monthly totals
+  const monthBaseTotal = commission ? monthBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service), 0) : 0;
+  const monthTherapist = commission ? monthBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
+  const monthShopTotal = commission ? monthBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
+
   // SECTION B: Revenue trend (last 30 days)
   const revenueTrend = useMemo(() => {
-    const data: { date: string; revenue: number; count: number; avg7?: number }[] = [];
+    const data: { date: string; revenue: number; count: number; avg7?: number; therapist?: number; shop?: number }[] = [];
     for (let i = 29; i >= 0; i--) {
       const d = format(subDays(now, i), "yyyy-MM-dd");
       const dayBookings = active.filter((b) => b.date === d);
-      data.push({
-        date: format(subDays(now, i), "M/d"),
-        revenue: dayBookings.reduce((s, b) => s + b.total_price, 0),
-        count: dayBookings.length,
-      });
+      const rev = dayBookings.reduce((s, b) => s + b.total_price, 0);
+      const ther = commission ? dayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
+      const shop = commission ? dayBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
+      data.push({ date: format(subDays(now, i), "M/d"), revenue: rev, count: dayBookings.length, therapist: ther, shop: shop });
     }
-    // 7-day moving average
     for (let i = 0; i < data.length; i++) {
       const start = Math.max(0, i - 6);
       const slice = data.slice(start, i + 1);
       data[i].avg7 = Math.round(slice.reduce((s, d) => s + d.revenue, 0) / slice.length);
     }
     return data;
-  }, [active]);
+  }, [active, commission]);
 
   // SECTION C: Popular services
   const serviceStats = useMemo(() => {
@@ -117,10 +126,7 @@ export default function StatsDashboard({
       map[name].count++;
       map[name].revenue += b.total_price;
     });
-    return Object.entries(map)
-      .sort((a, b) => b[1].count - a[1].count)
-      .slice(0, 8)
-      .map(([name, stats]) => ({ name, ...stats }));
+    return Object.entries(map).sort((a, b) => b[1].count - a[1].count).slice(0, 8).map(([name, stats]) => ({ name, ...stats }));
   }, [active]);
 
   // SECTION D: Heatmap
@@ -128,11 +134,10 @@ export default function StatsDashboard({
     const grid: Record<string, number> = {};
     active.forEach((b) => {
       const d = parseISO(b.date);
-      const dayOfWeek = getDay(d); // 0=Sun
+      const dayOfWeek = getDay(d);
       const hourIdx = Math.round((b.start_hour - 14) * 2);
       if (hourIdx >= 0 && hourIdx < HOURS_LABELS.length) {
-        const key = `${dayOfWeek}-${hourIdx}`;
-        grid[key] = (grid[key] || 0) + 1;
+        grid[`${dayOfWeek}-${hourIdx}`] = (grid[`${dayOfWeek}-${hourIdx}`] || 0) + 1;
       }
     });
     return grid;
@@ -147,10 +152,7 @@ export default function StatsDashboard({
       if (!map[b.phone]) map[b.phone] = { name: b.name, phone: b.phone, count: 0, lastDate: "", total: 0 };
       map[b.phone].count++;
       map[b.phone].total += b.total_price;
-      if (b.date > map[b.phone].lastDate) {
-        map[b.phone].lastDate = b.date;
-        map[b.phone].name = b.name;
-      }
+      if (b.date > map[b.phone].lastDate) { map[b.phone].lastDate = b.date; map[b.phone].name = b.name; }
     });
     return Object.values(map).sort((a, b) => b.count - a.count);
   }, [active]);
@@ -165,18 +167,17 @@ export default function StatsDashboard({
 
   // CSV export
   const exportBookingsCSV = () => {
-    const headers = ["下單時間", "日期", "時段", "姓名", "電話", "服務", "加購", "時長", "金額"];
-    const rows = monthBookings.map((b) => [
-      new Date(b.order_time).toLocaleString("zh-TW"),
-      b.date,
-      b.start_time_str,
-      b.name,
-      b.phone,
-      b.service,
-      b.addons?.join("; ") || "",
-      `${b.duration}分`,
-      b.total_price,
-    ]);
+    const headers = ["下單時間", "日期", "時段", "姓名", "電話", "服務", "加購", "時長", "金額", "差價", "計算基底", "師傅收入", "店家抽成"];
+    const rows = monthBookings.map((b) => {
+      const ded = commission ? commission.getDeduction(b.service) : 0;
+      const base = commission ? commission.calcBase(b.total_price, b.service) : b.total_price;
+      const ther = commission ? commission.calcTherapist(b.total_price, b.service) : 0;
+      const shop = commission ? commission.calcShop(b.total_price, b.service) : 0;
+      return [
+        new Date(b.order_time).toLocaleString("zh-TW"), b.date, b.start_time_str, b.name, b.phone,
+        b.service, b.addons?.join("; ") || "", `${b.duration}分`, b.total_price, ded, base, ther, shop,
+      ];
+    });
     downloadCSV(headers, rows, `預約報表_${format(now, "yyyyMM")}.csv`);
   };
 
@@ -189,9 +190,7 @@ export default function StatsDashboard({
   if (loading) {
     return (
       <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
-          <Skeleton key={i} className="h-40 rounded-xl" />
-        ))}
+        {[1, 2, 3].map((i) => (<Skeleton key={i} className="h-40 rounded-xl" />))}
       </div>
     );
   }
@@ -206,6 +205,35 @@ export default function StatsDashboard({
         <SummaryCard icon={<RotateCcw className="w-4 h-4" />} label="回流率" value={`${returnRate}%`} valueClass="text-primary" />
       </div>
 
+      {/* Commission summary */}
+      {commission && (
+        <div className="grid grid-cols-3 gap-3">
+          <SummaryCard icon={<Briefcase className="w-4 h-4" />} label="本月業績基底" value={`NT$${monthBaseTotal.toLocaleString()}`} valueClass="text-muted-foreground" />
+          <SummaryCard icon={<Wallet className="w-4 h-4" />} label="本月師傅累計收入" value={`NT$${monthTherapist.toLocaleString()}`} valueClass="text-blue-600" />
+          <SummaryCard icon={<Building2 className="w-4 h-4" />} label="本月店家抽成" value={`NT$${monthShopTotal.toLocaleString()}`} valueClass="text-orange-600" />
+        </div>
+      )}
+
+      {/* Commission daily stacked bar chart */}
+      {commission && revenueTrend.some((d) => d.therapist! > 0) && (
+        <div className="bg-card rounded-xl shadow p-4">
+          <h2 className="font-semibold text-foreground mb-3">💼 收入分析（近30天）</h2>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={revenueTrend}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} interval={4} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(val: number, name: string) => {
+                const labels: Record<string, string> = { therapist: "師傅收入", shop: "店家抽成" };
+                return [`NT$${val.toLocaleString()}`, labels[name] || name];
+              }} />
+              <Bar dataKey="therapist" stackId="a" fill="hsl(210, 70%, 55%)" name="therapist" />
+              <Bar dataKey="shop" stackId="a" fill="hsl(30, 70%, 55%)" name="shop" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
       {/* SECTION B: Revenue trend */}
       <div className="bg-card rounded-xl shadow p-4">
         <h2 className="font-semibold text-foreground mb-3">📈 營收趨勢（近30天）</h2>
@@ -219,7 +247,6 @@ export default function StatsDashboard({
                 formatter={(val: number, name: string) =>
                   name === "revenue" ? [`NT$${val.toLocaleString()}`, "營收"] : [`NT$${val.toLocaleString()}`, "7日均值"]
                 }
-                labelFormatter={(label) => label}
               />
               <Line type="monotone" dataKey="revenue" stroke="hsl(145, 63%, 42%)" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="avg7" stroke="hsl(145, 40%, 60%)" strokeWidth={1.5} strokeDasharray="4 4" dot={false} />
@@ -239,11 +266,7 @@ export default function StatsDashboard({
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" tick={{ fontSize: 11 }} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={80} />
-              <Tooltip
-                formatter={(val: number, name: string) =>
-                  name === "count" ? [`${val} 筆`, "預約數"] : [`NT$${val.toLocaleString()}`, "營收"]
-                }
-              />
+              <Tooltip formatter={(val: number, name: string) => name === "count" ? [`${val} 筆`, "預約數"] : [`NT$${val.toLocaleString()}`, "營收"]} />
               <Bar dataKey="count" fill="hsl(145, 63%, 42%)" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
@@ -257,36 +280,22 @@ export default function StatsDashboard({
         <h2 className="font-semibold text-foreground mb-3">🔥 熱門時段</h2>
         <div className="overflow-x-auto">
           <div className="min-w-[600px]">
-            {/* Hour headers */}
             <div className="flex">
               <div className="w-12 shrink-0" />
               {HOURS_LABELS.filter((_, i) => i % 2 === 0).map((h) => (
-                <div key={h} className="flex-1 text-[10px] text-muted-foreground text-center">
-                  {h}
-                </div>
+                <div key={h} className="flex-1 text-[10px] text-muted-foreground text-center">{h}</div>
               ))}
             </div>
-            {/* Rows for each day */}
             {[1, 2, 3, 4, 5, 6, 0].map((dayIdx) => (
               <div key={dayIdx} className="flex items-center gap-0.5 mb-0.5">
-                <div className="w-12 shrink-0 text-xs text-muted-foreground text-right pr-1">
-                  {WEEKDAYS[dayIdx]}
-                </div>
+                <div className="w-12 shrink-0 text-xs text-muted-foreground text-right pr-1">{WEEKDAYS[dayIdx]}</div>
                 {HOURS_LABELS.map((_, hourIdx) => {
                   const val = heatmapData[`${dayIdx}-${hourIdx}`] || 0;
                   const intensity = val / maxHeat;
                   return (
-                    <div
-                      key={hourIdx}
-                      className="flex-1 aspect-square rounded-sm min-w-[16px] max-w-[24px]"
-                      style={{
-                        backgroundColor:
-                          val === 0
-                            ? "hsl(140, 10%, 94%)"
-                            : `hsla(145, 63%, 42%, ${0.15 + intensity * 0.85})`,
-                      }}
-                      title={`${WEEKDAYS[dayIdx]} ${HOURS_LABELS[hourIdx]}: ${val} 筆`}
-                    />
+                    <div key={hourIdx} className="flex-1 aspect-square rounded-sm min-w-[16px] max-w-[24px]"
+                      style={{ backgroundColor: val === 0 ? "hsl(140, 10%, 94%)" : `hsla(145, 63%, 42%, ${0.15 + intensity * 0.85})` }}
+                      title={`${WEEKDAYS[dayIdx]} ${HOURS_LABELS[hourIdx]}: ${val} 筆`} />
                   );
                 })}
               </div>
@@ -330,13 +339,11 @@ export default function StatsDashboard({
                   </tr>
                 </thead>
                 <tbody>
-                  {top10.map((c, i) => (
+                  {top10.map((c) => (
                     <tr key={c.phone} className="border-b border-border/50">
                       <td className="p-1.5 font-medium">{c.name}</td>
                       <td className="p-1.5 text-muted-foreground">{c.phone}</td>
-                      <td className="p-1.5 text-center">
-                        <Badge variant="secondary" className="text-xs">{c.count}</Badge>
-                      </td>
+                      <td className="p-1.5 text-center"><Badge variant="secondary" className="text-xs">{c.count}</Badge></td>
                       <td className="p-1.5 text-muted-foreground text-xs">{c.lastDate}</td>
                       <td className="p-1.5 text-right font-medium text-primary">NT${c.total.toLocaleString()}</td>
                     </tr>
@@ -363,23 +370,10 @@ export default function StatsDashboard({
   );
 }
 
-function SummaryCard({
-  icon,
-  label,
-  value,
-  valueClass = "",
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  valueClass?: string;
-}) {
+function SummaryCard({ icon, label, value, valueClass = "" }: { icon: React.ReactNode; label: string; value: string; valueClass?: string }) {
   return (
     <div className="bg-card rounded-xl shadow p-4">
-      <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
-        {icon}
-        {label}
-      </div>
+      <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">{icon}{label}</div>
       <div className={`text-2xl font-bold text-foreground ${valueClass}`}>{value}</div>
     </div>
   );
@@ -387,11 +381,7 @@ function SummaryCard({
 
 function downloadCSV(headers: string[], rows: any[][], filename: string) {
   const BOM = "\uFEFF";
-  const csv =
-    BOM +
-    headers.join(",") +
-    "\n" +
-    rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const csv = BOM + headers.join(",") + "\n" + rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");

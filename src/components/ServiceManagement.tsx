@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Pencil, Trash2, Save, X, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Pencil, Trash2, Save, X, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -25,6 +25,7 @@ interface ServiceRow {
   category: string;
   is_active: boolean;
   sort_order: number;
+  deduction: number;
 }
 
 interface AddonRow {
@@ -67,7 +68,7 @@ export default function ServiceManagement() {
   const [editingAddon, setEditingAddon] = useState<AddonRow | null>(null);
   const [showServiceDialog, setShowServiceDialog] = useState(false);
   const [showAddonDialog, setShowAddonDialog] = useState(false);
-  const [newService, setNewService] = useState({ name: "", duration: 60, price: 1000, category: "foot", is_active: true });
+  const [newService, setNewService] = useState({ name: "", duration: 60, price: 1000, category: "foot", is_active: true, deduction: 0 });
   const [newAddon, setNewAddon] = useState({ name: "", extra_duration: 0, extra_price: 0, applicable_categories: [] as string[], addon_type: "加購", is_active: true });
 
   const fetchAll = async () => {
@@ -110,9 +111,14 @@ export default function ServiceManagement() {
     const maxOrder = services.length > 0 ? Math.max(...services.map(s => s.sort_order)) + 1 : 0;
     await supabase.from("services").insert({ ...newService, sort_order: maxOrder } as any);
     setShowServiceDialog(false);
-    setNewService({ name: "", duration: 60, price: 1000, category: "foot", is_active: true });
+    setNewService({ name: "", duration: 60, price: 1000, category: "foot", is_active: true, deduction: 0 });
     fetchAll();
     toast.success("已新增服務");
+  };
+
+  const updateDeduction = async (s: ServiceRow, val: number) => {
+    await supabase.from("services").update({ deduction: val } as any).eq("id", s.id);
+    setServices(prev => prev.map(x => x.id === s.id ? { ...x, deduction: val } : x));
   };
 
   const moveService = async (index: number, direction: -1 | 1) => {
@@ -193,6 +199,7 @@ export default function ServiceManagement() {
                 <th className="text-left p-2">服務名稱</th>
                 <th className="text-left p-2">時長</th>
                 <th className="text-left p-2">價格</th>
+                <th className="text-left p-2">差價</th>
                 <th className="text-left p-2">分類</th>
                 <th className="text-center p-2">狀態</th>
                 <th className="text-center p-2">操作</th>
@@ -216,6 +223,19 @@ export default function ServiceManagement() {
                   </td>
                   <td className="p-2 whitespace-nowrap">{s.duration} 分</td>
                   <td className="p-2 whitespace-nowrap font-medium text-primary">NT${s.price.toLocaleString()}</td>
+                  <td className="p-2 whitespace-nowrap">
+                    <Input
+                      type="number"
+                      className="w-20 h-7 text-xs"
+                      value={s.deduction}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value) || 0;
+                        setServices(prev => prev.map(x => x.id === s.id ? { ...x, deduction: val } : x));
+                      }}
+                      onBlur={(e) => updateDeduction(s, parseInt(e.target.value) || 0)}
+                      placeholder="0"
+                    />
+                  </td>
                   <td className="p-2">
                     <Badge variant="outline" className="text-xs">{CATEGORY_LABELS[s.category] || s.category}</Badge>
                   </td>
@@ -247,11 +267,12 @@ export default function ServiceManagement() {
                 </tr>
               ))}
               {services.length === 0 && (
-                <tr><td colSpan={7} className="text-center text-muted-foreground p-8">尚無服務項目</td></tr>
+                <tr><td colSpan={8} className="text-center text-muted-foreground p-8">尚無服務項目</td></tr>
               )}
             </tbody>
           </table>
         </div>
+        <p className="text-xs text-muted-foreground">差價 = 從售價扣除後才計算業績的金額（公司規定）</p>
       </div>
 
       {/* === Section 2: Addons === */}
@@ -350,7 +371,7 @@ export default function ServiceManagement() {
                 <Label className="text-sm">服務名稱</Label>
                 <Input value={editingService.name} onChange={e => setEditingService({ ...editingService, name: e.target.value })} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label className="text-sm">時長（分鐘）</Label>
                   <Input type="number" value={editingService.duration} onChange={e => setEditingService({ ...editingService, duration: parseInt(e.target.value) || 0 })} />
@@ -358,6 +379,10 @@ export default function ServiceManagement() {
                 <div className="space-y-1">
                   <Label className="text-sm">價格（NT$）</Label>
                   <Input type="number" value={editingService.price} onChange={e => setEditingService({ ...editingService, price: parseInt(e.target.value) || 0 })} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-sm">差價（NT$）</Label>
+                  <Input type="number" value={editingService.deduction} onChange={e => setEditingService({ ...editingService, deduction: parseInt(e.target.value) || 0 })} placeholder="0" />
                 </div>
               </div>
               <div className="space-y-1">
@@ -393,7 +418,7 @@ export default function ServiceManagement() {
               <Label className="text-sm">服務名稱</Label>
               <Input value={newService.name} onChange={e => setNewService({ ...newService, name: e.target.value })} placeholder="例：腳底按摩 (60分)" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label className="text-sm">時長（分鐘）</Label>
                 <Input type="number" value={newService.duration} onChange={e => setNewService({ ...newService, duration: parseInt(e.target.value) || 0 })} />
@@ -401,6 +426,10 @@ export default function ServiceManagement() {
               <div className="space-y-1">
                 <Label className="text-sm">價格（NT$）</Label>
                 <Input type="number" value={newService.price} onChange={e => setNewService({ ...newService, price: parseInt(e.target.value) || 0 })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm">差價（NT$）</Label>
+                <Input type="number" value={newService.deduction} onChange={e => setNewService({ ...newService, deduction: parseInt(e.target.value) || 0 })} placeholder="0" />
               </div>
             </div>
             <div className="space-y-1">

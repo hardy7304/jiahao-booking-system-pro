@@ -9,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings } from "lucide-react";
 import ServiceManagement from "@/components/ServiceManagement";
 import TodayDashboard from "@/components/admin/TodayDashboard";
 import BookingCalendarView from "@/components/admin/BookingCalendarView";
 import StatsDashboard from "@/components/admin/StatsDashboard";
 import BookingFiltersBar, { type BookingFilters } from "@/components/admin/BookingFilters";
+import { useCommission } from "@/hooks/useCommission";
 import { format, parseISO } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -67,6 +69,9 @@ export default function AdminPage() {
   const [tab, setTab] = useState("today");
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [loading, setLoading] = useState(true);
+  const [showCommissionCols, setShowCommissionCols] = useState(false);
+
+  const commission = useCommission();
 
   // Filters
   const [filters, setFilters] = useState<BookingFilters>({
@@ -93,6 +98,10 @@ export default function AdminPage() {
   const [hStart, setHStart] = useState("");
   const [hEnd, setHEnd] = useState("");
   const [hNote, setHNote] = useState("");
+
+  // Settings dialog
+  const [showSettings, setShowSettings] = useState(false);
+  const [rateInput, setRateInput] = useState("60");
 
   // Services list for manual booking
   const [servicesList, setServicesList] = useState<any[]>([]);
@@ -138,9 +147,7 @@ export default function AdminPage() {
   // CRUD actions
   const softDeleteBooking = async (id: string, reason: string) => {
     await supabase.from("bookings").update({
-      cancelled_at: new Date().toISOString(),
-      status: "cancelled",
-      cancel_reason: reason,
+      cancelled_at: new Date().toISOString(), status: "cancelled", cancel_reason: reason,
     } as any).eq("id", id);
     setCancellingId(null);
     fetchBookings();
@@ -149,9 +156,7 @@ export default function AdminPage() {
 
   const restoreBooking = async (id: string) => {
     await supabase.from("bookings").update({
-      cancelled_at: null,
-      status: "confirmed",
-      cancel_reason: null,
+      cancelled_at: null, status: "confirmed", cancel_reason: null,
     } as any).eq("id", id);
     fetchBookings();
     toast.success("已復原預約");
@@ -159,8 +164,7 @@ export default function AdminPage() {
 
   const completeBooking = async (id: string) => {
     await supabase.from("bookings").update({
-      status: "completed",
-      completed_at: new Date().toISOString(),
+      status: "completed", completed_at: new Date().toISOString(),
     } as any).eq("id", id);
     fetchBookings();
     toast.success("已標記完成");
@@ -208,16 +212,11 @@ export default function AdminPage() {
       return;
     }
     await supabase.from("bookings").insert({
-      name: manualForm.name,
-      phone: manualForm.phone,
-      service: manualForm.service,
-      date: manualForm.date,
-      start_hour: manualForm.start_hour,
+      name: manualForm.name, phone: manualForm.phone, service: manualForm.service,
+      date: manualForm.date, start_hour: manualForm.start_hour,
       start_time_str: formatHourToTime(manualForm.start_hour),
-      duration: manualForm.duration,
-      total_price: manualForm.total_price,
-      addons: manualForm.addons,
-      status: "confirmed",
+      duration: manualForm.duration, total_price: manualForm.total_price,
+      addons: manualForm.addons, status: "confirmed",
     } as any);
     setShowManualBooking(false);
     setManualForm({ name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] });
@@ -225,10 +224,17 @@ export default function AdminPage() {
     toast.success("已新增預約");
   };
 
+  const saveCommissionRate = async () => {
+    const rate = parseInt(rateInput) / 100;
+    if (rate <= 0 || rate >= 1) { toast.error("請輸入 1~99 的數值"); return; }
+    await commission.updateRate(rate);
+    setShowSettings(false);
+    toast.success("已更新抽成比例");
+  };
+
   // Filtered bookings
   const filteredBookings = useMemo(() => {
     let result = [...bookings];
-
     if (filters.status === "active") result = result.filter((b) => !b.cancelled_at && b.status !== "cancelled");
     else if (filters.status === "cancelled") result = result.filter((b) => !!b.cancelled_at || b.status === "cancelled");
     else if (filters.status === "completed") result = result.filter((b) => b.status === "completed");
@@ -237,7 +243,6 @@ export default function AdminPage() {
       const q = filters.search.toLowerCase();
       result = result.filter((b) => b.name.toLowerCase().includes(q) || b.phone.includes(q));
     }
-
     if (filters.dateFrom) {
       const from = format(filters.dateFrom, "yyyy-MM-dd");
       result = result.filter((b) => b.date >= from);
@@ -246,7 +251,6 @@ export default function AdminPage() {
       const to = format(filters.dateTo, "yyyy-MM-dd");
       result = result.filter((b) => b.date <= to);
     }
-
     if (filters.category !== "all") {
       result = result.filter((b) => {
         const s = b.service;
@@ -258,7 +262,6 @@ export default function AdminPage() {
         return true;
       });
     }
-
     return result;
   }, [bookings, filters]);
 
@@ -270,13 +273,8 @@ export default function AdminPage() {
         <div className="bg-card rounded-xl shadow-lg p-6 max-w-sm w-full">
           <h1 className="text-xl font-bold text-center mb-4 text-foreground">管理後台登入</h1>
           <div className="space-y-3">
-            <Input
-              type="password"
-              placeholder="請輸入管理員密碼"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-            />
+            <Input type="password" placeholder="請輸入管理員密碼" value={password}
+              onChange={(e) => setPassword(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleLogin()} />
             <Button className="w-full" onClick={handleLogin}>登入</Button>
           </div>
         </div>
@@ -289,9 +287,14 @@ export default function AdminPage() {
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold text-foreground">不老松足湯 · 管理後台</h1>
-          <Button variant="outline" size="sm" onClick={() => { setAuthenticated(false); sessionStorage.removeItem("admin_auth"); }}>
-            <LogOut className="w-4 h-4 mr-1" /> 登出
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setShowSettings(true); }}>
+              <Settings className="w-4 h-4 mr-1" /> 設定
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { setAuthenticated(false); sessionStorage.removeItem("admin_auth"); }}>
+              <LogOut className="w-4 h-4 mr-1" /> 登出
+            </Button>
+          </div>
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
@@ -305,12 +308,11 @@ export default function AdminPage() {
 
           {/* TODAY */}
           <TabsContent value="today" className="mt-4">
-            <TodayDashboard bookings={bookings} holidays={holidays} loading={loading} />
+            <TodayDashboard bookings={bookings} holidays={holidays} loading={loading} commission={commission} />
           </TabsContent>
 
           {/* BOOKINGS */}
           <TabsContent value="bookings" className="mt-4 space-y-4">
-            {/* View toggle + manual booking */}
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <Button variant={viewMode === "list" ? "default" : "outline"} size="sm" onClick={() => setViewMode("list")}>
@@ -320,9 +322,15 @@ export default function AdminPage() {
                   <CalendarDays className="w-4 h-4 mr-1" /> 月曆
                 </Button>
               </div>
-              <Button size="sm" onClick={() => setShowManualBooking(true)}>
-                <Plus className="w-4 h-4 mr-1" /> 新增預約
-              </Button>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Switch checked={showCommissionCols} onCheckedChange={setShowCommissionCols} />
+                  <span className="text-xs text-muted-foreground">顯示拆帳資訊</span>
+                </div>
+                <Button size="sm" onClick={() => setShowManualBooking(true)}>
+                  <Plus className="w-4 h-4 mr-1" /> 新增預約
+                </Button>
+              </div>
             </div>
 
             {viewMode === "list" ? (
@@ -341,6 +349,12 @@ export default function AdminPage() {
                         <th className="text-left p-2">加購</th>
                         <th className="text-left p-2">時長</th>
                         <th className="text-left p-2">金額</th>
+                        {showCommissionCols && (
+                          <>
+                            <th className="text-left p-2">計算基底</th>
+                            <th className="text-left p-2">師傅收入</th>
+                          </>
+                        )}
                         <th className="text-left p-2">狀態</th>
                         <th className="p-2">操作</th>
                       </tr>
@@ -357,16 +371,20 @@ export default function AdminPage() {
                           <td className="p-2 max-w-[100px] truncate">{b.addons?.join(", ") || "-"}</td>
                           <td className="p-2">{b.duration}分</td>
                           <td className="p-2 font-medium text-primary">NT${b.total_price.toLocaleString()}</td>
+                          {showCommissionCols && (
+                            <>
+                              <td className="p-2 text-muted-foreground">NT${commission.calcBase(b.total_price, b.service).toLocaleString()}</td>
+                              <td className="p-2 font-bold text-blue-600">NT${commission.calcTherapist(b.total_price, b.service).toLocaleString()}</td>
+                            </>
+                          )}
                           <td className="p-2">
                             <StatusBadge status={b.status} cancelledAt={b.cancelled_at} />
                           </td>
                           <td className="p-2">
                             <div className="flex items-center gap-0.5 flex-wrap">
-                              {/* Call */}
                               <a href={`tel:${b.phone}`}>
                                 <Button variant="ghost" size="sm" title="撥打電話"><Phone className="w-3.5 h-3.5 text-blue-600" /></Button>
                               </a>
-                              {/* Note */}
                               <Button variant="ghost" size="sm" title="備註" onClick={() => { setNoteBookingId(b.id); setNoteText(b.admin_note || ""); }}>
                                 <StickyNote className={cn("w-3.5 h-3.5", b.admin_note ? "text-amber-600" : "text-muted-foreground")} />
                               </Button>
@@ -408,7 +426,7 @@ export default function AdminPage() {
                         </tr>
                       ))}
                       {filteredBookings.length === 0 && (
-                        <tr><td colSpan={11} className="text-center text-muted-foreground p-8">沒有符合條件的預約</td></tr>
+                        <tr><td colSpan={showCommissionCols ? 13 : 11} className="text-center text-muted-foreground p-8">沒有符合條件的預約</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -522,7 +540,7 @@ export default function AdminPage() {
 
           {/* STATS */}
           <TabsContent value="stats" className="mt-4">
-            <StatsDashboard bookings={bookings} loading={loading} />
+            <StatsDashboard bookings={bookings} loading={loading} commission={commission} />
           </TabsContent>
         </Tabs>
       </div>
@@ -580,12 +598,7 @@ export default function AdminPage() {
               <Label className="text-sm">服務 *</Label>
               <Select value={manualForm.service} onValueChange={(v) => {
                 const svc = servicesList.find((s) => s.name === v);
-                setManualForm({
-                  ...manualForm,
-                  service: v,
-                  duration: svc?.duration || 60,
-                  total_price: svc?.price || 0,
-                });
+                setManualForm({ ...manualForm, service: v, duration: svc?.duration || 60, total_price: svc?.price || 0 });
               }}>
                 <SelectTrigger><SelectValue placeholder="選擇服務" /></SelectTrigger>
                 <SelectContent>
@@ -629,16 +642,38 @@ export default function AdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Settings dialog */}
+      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>⚙️ 系統設定</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">師傅抽成比例</Label>
+              <div className="flex items-center gap-2">
+                <Input type="number" className="w-24" value={rateInput} onChange={(e) => setRateInput(e.target.value)} min={1} max={99} />
+                <span className="text-sm text-muted-foreground">%</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                目前設定：師傅 {rateInput}% / 店家 {100 - (parseInt(rateInput) || 0)}%
+              </p>
+              <p className="text-xs text-muted-foreground">
+                修改後會立即套用到所有計算
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSettings(false)}>取消</Button>
+            <Button onClick={saveCommissionRate}>儲存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
 function StatusBadge({ status, cancelledAt }: { status: string | null; cancelledAt: string | null }) {
-  if (cancelledAt || status === "cancelled") {
-    return <Badge variant="destructive" className="text-xs">已取消</Badge>;
-  }
-  if (status === "completed") {
-    return <Badge className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200">已完成</Badge>;
-  }
+  if (cancelledAt || status === "cancelled") return <Badge variant="destructive" className="text-xs">已取消</Badge>;
+  if (status === "completed") return <Badge className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200">已完成</Badge>;
   return <Badge variant="secondary" className="text-xs">已確認</Badge>;
 }

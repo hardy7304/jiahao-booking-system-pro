@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { format, isToday } from "date-fns";
+import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { Clock, CalendarDays, DollarSign, AlertTriangle, Users } from "lucide-react";
+import { Clock, CalendarDays, DollarSign, AlertTriangle, Briefcase, Building2, Wallet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatHourToTime } from "@/lib/services";
@@ -28,6 +28,13 @@ interface Holiday {
   end_hour: number | null;
 }
 
+interface CommissionHelpers {
+  calcBase: (totalPrice: number, serviceName: string) => number;
+  calcTherapist: (totalPrice: number, serviceName: string) => number;
+  calcShop: (totalPrice: number, serviceName: string) => number;
+  commissionRate: number;
+}
+
 const SERVICE_COLORS: Record<string, string> = {
   foot: "bg-emerald-100 text-emerald-800 border-emerald-200",
   body: "bg-blue-100 text-blue-800 border-blue-200",
@@ -50,10 +57,12 @@ export default function TodayDashboard({
   bookings,
   holidays,
   loading,
+  commission,
 }: {
   bookings: Booking[];
   holidays: Holiday[];
   loading: boolean;
+  commission?: CommissionHelpers;
 }) {
   const [now, setNow] = useState(new Date());
 
@@ -77,18 +86,20 @@ export default function TodayDashboard({
   const adjustedCurrentHour = currentHour < 6 ? currentHour + 24 : currentHour;
 
   const nextBooking = todayBookings.find((b) => b.start_hour > adjustedCurrentHour);
-
   const minutesUntilNext = nextBooking
     ? Math.round((nextBooking.start_hour - adjustedCurrentHour) * 60)
     : null;
 
-  // Available slots (simplified count)
   const isHolidayToday = holidays.some((h) => h.date === todayStr && h.type === "整天公休");
-  const totalSlots = 24; // 14:00-26:00 every 30min
+  const totalSlots = 24;
   const bookedSlots = todayBookings.length;
   const availableSlots = isHolidayToday ? 0 : Math.max(0, totalSlots - bookedSlots);
-
   const completedCount = todayBookings.filter((b) => b.status === "completed").length;
+
+  // Commission calculations
+  const todayBaseTotal = commission ? todayBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service), 0) : 0;
+  const todayTherapist = commission ? todayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
+  const todayShop = commission ? todayBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
 
   if (loading) {
     return (
@@ -171,6 +182,35 @@ export default function TodayDashboard({
         </div>
       </div>
 
+      {/* Commission cards */}
+      {commission && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="bg-card rounded-xl shadow p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+              <Briefcase className="w-4 h-4" />
+              今日業績基底
+            </div>
+            <div className="text-xl font-bold text-muted-foreground">NT${todayBaseTotal.toLocaleString()}</div>
+          </div>
+          <div className="bg-card rounded-xl shadow p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+              <Wallet className="w-4 h-4" />
+              今日師傅收入
+            </div>
+            <div className="text-xl font-bold text-blue-600">NT${todayTherapist.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">×{commission.commissionRate} 計算</div>
+          </div>
+          <div className="bg-card rounded-xl shadow p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+              <Building2 className="w-4 h-4" />
+              店家抽成
+            </div>
+            <div className="text-xl font-bold text-orange-600">NT${todayShop.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">×{(1 - commission.commissionRate).toFixed(1)} 店家</div>
+          </div>
+        </div>
+      )}
+
       {/* Today's bookings list */}
       <div className="bg-card rounded-xl shadow p-4">
         <h2 className="font-semibold text-foreground mb-3">📋 今日預約時程</h2>
@@ -188,10 +228,13 @@ export default function TodayDashboard({
                 b.start_hour <= adjustedCurrentHour &&
                 b.start_hour + b.duration / 60 > adjustedCurrentHour;
 
+              const base = commission ? commission.calcBase(b.total_price, b.service) : null;
+              const therapist = commission ? commission.calcTherapist(b.total_price, b.service) : null;
+
               return (
                 <div
                   key={b.id}
-                  className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                  className={`p-3 rounded-lg border transition-colors ${
                     isCurrent
                       ? "border-primary bg-primary/5 ring-2 ring-primary/20"
                       : isPast
@@ -199,28 +242,35 @@ export default function TodayDashboard({
                       : "border-border hover:bg-secondary/30"
                   }`}
                 >
-                  <div className="text-sm font-mono font-medium text-foreground w-14 shrink-0">
-                    {b.start_time_str}
+                  <div className="flex items-center gap-3">
+                    <div className="text-sm font-mono font-medium text-foreground w-14 shrink-0">
+                      {b.start_time_str}
+                    </div>
+                    <div className={`px-2 py-0.5 rounded text-xs border ${colorClass}`}>
+                      {b.duration}分
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-foreground truncate">{b.name}</div>
+                      <div className="text-xs text-muted-foreground truncate">{b.service}</div>
+                    </div>
+                    <div className="text-sm font-medium text-primary shrink-0">
+                      NT${b.total_price.toLocaleString()}
+                    </div>
+                    {b.status === "completed" && (
+                      <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 shrink-0">
+                        ✅ 完成
+                      </Badge>
+                    )}
+                    {isCurrent && (
+                      <Badge className="bg-primary text-primary-foreground text-xs shrink-0 animate-pulse">
+                        進行中
+                      </Badge>
+                    )}
                   </div>
-                  <div className={`px-2 py-0.5 rounded text-xs border ${colorClass}`}>
-                    {b.duration}分
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-foreground truncate">{b.name}</div>
-                    <div className="text-xs text-muted-foreground truncate">{b.service}</div>
-                  </div>
-                  <div className="text-sm font-medium text-primary shrink-0">
-                    NT${b.total_price.toLocaleString()}
-                  </div>
-                  {b.status === "completed" && (
-                    <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 shrink-0">
-                      ✅ 完成
-                    </Badge>
-                  )}
-                  {isCurrent && (
-                    <Badge className="bg-primary text-primary-foreground text-xs shrink-0 animate-pulse">
-                      進行中
-                    </Badge>
+                  {commission && base !== null && (
+                    <div className="mt-1 ml-[68px] text-xs text-muted-foreground">
+                      售價 NT${b.total_price.toLocaleString()} → 基底 NT${base.toLocaleString()} → <span className="text-blue-600 font-medium">師傅 NT${therapist!.toLocaleString()}</span>
+                    </div>
                   )}
                 </div>
               );
