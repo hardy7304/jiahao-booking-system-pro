@@ -1,0 +1,1 @@
+ALTER TABLE public.bookings ADD COLUMN cancelled_at timestamp with time zone DEFAULT NULL;
