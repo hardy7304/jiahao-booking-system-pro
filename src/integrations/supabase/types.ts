@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      addons: {
+        Row: {
+          addon_type: string | null
+          applicable_categories: string[] | null
+          created_at: string | null
+          extra_duration: number | null
+          extra_price: number | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number | null
+        }
+        Insert: {
+          addon_type?: string | null
+          applicable_categories?: string[] | null
+          created_at?: string | null
+          extra_duration?: number | null
+          extra_price?: number | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order?: number | null
+        }
+        Update: {
+          addon_type?: string | null
+          applicable_categories?: string[] | null
+          created_at?: string | null
+          extra_duration?: number | null
+          extra_price?: number | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           addons: string[] | null
@@ -89,6 +125,39 @@ export type Database = {
           note?: string | null
           start_hour?: number | null
           type?: string
+        }
+        Relationships: []
+      }
+      services: {
+        Row: {
+          category: string
+          created_at: string | null
+          duration: number
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number
+          sort_order: number | null
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          duration: number
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price: number
+          sort_order?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          duration?: number
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number
+          sort_order?: number | null
         }
         Relationships: []
       }

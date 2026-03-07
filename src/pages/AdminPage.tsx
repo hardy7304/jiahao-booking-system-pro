@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Trash2, LogOut, RotateCcw, ChevronLeft, ChevronRight, List, CalendarDays } from "lucide-react";
+import { CalendarIcon, Trash2, LogOut, RotateCcw, ChevronLeft, ChevronRight, List, CalendarDays, Settings } from "lucide-react";
+import ServiceManagement from "@/components/ServiceManagement";
 import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, addDays, addWeeks, addMonths, subDays, subWeeks, subMonths, isSameDay, isWithinInterval, parseISO } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -239,6 +240,7 @@ export default function AdminPage() {
           <TabsList className="w-full">
             <TabsTrigger value="bookings" className="flex-1">預約列表</TabsTrigger>
             <TabsTrigger value="holidays" className="flex-1">公休設定</TabsTrigger>
+            <TabsTrigger value="services" className="flex-1">服務管理</TabsTrigger>
             <TabsTrigger value="stats" className="flex-1">統計</TabsTrigger>
           </TabsList>
 
@@ -566,6 +568,10 @@ export default function AdminPage() {
                 </tbody>
               </table>
             </div>
+          </TabsContent>
+
+          <TabsContent value="services" className="mt-4">
+            <ServiceManagement />
           </TabsContent>
 
           <TabsContent value="stats" className="mt-4 space-y-4">
