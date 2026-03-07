@@ -15,11 +15,12 @@ interface Holiday {
 }
 
 export async function getAvailableSlots(dateStr: string, totalDuration: number): Promise<number[]> {
-  // Fetch bookings for this date
+  // Fetch active bookings for this date (exclude cancelled)
   const { data: bookings } = await supabase
     .from('bookings')
-    .select('start_hour, duration')
-    .eq('date', dateStr);
+    .select('start_hour, duration, cancelled_at')
+    .eq('date', dateStr)
+    .is('cancelled_at', null);
 
   // Also check previous day bookings that might cross midnight
   const prevDate = new Date(dateStr);
@@ -28,8 +29,9 @@ export async function getAvailableSlots(dateStr: string, totalDuration: number):
   
   const { data: prevBookings } = await supabase
     .from('bookings')
-    .select('start_hour, duration')
-    .eq('date', prevDateStr);
+    .select('start_hour, duration, cancelled_at')
+    .eq('date', prevDateStr)
+    .is('cancelled_at', null);
 
   // Fetch holidays
   const { data: holidays } = await supabase
