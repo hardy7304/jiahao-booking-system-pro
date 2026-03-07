@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { services, addons, aromas, getAvailableAddons, formatHourToTime, type Service, type AddOn } from "@/lib/services";
+import { formatHourToTime } from "@/lib/services";
 import { getAvailableSlots, generateGoogleCalendarLink } from "@/lib/timeUtils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +16,31 @@ import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+interface DbService {
+  id: string;
+  name: string;
+  duration: number;
+  price: number;
+  category: string;
+  is_active: boolean;
+  sort_order: number;
+}
+
+interface DbAddon {
+  id: string;
+  name: string;
+  extra_duration: number;
+  extra_price: number;
+  applicable_categories: string[];
+  addon_type: string;
+  is_active: boolean;
+  sort_order: number;
+}
+
 export default function BookingPage() {
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [dbServices, setDbServices] = useState<DbService[]>([]);
+  const [dbAddons, setDbAddons] = useState<DbAddon[]>([]);
+  const [selectedService, setSelectedService] = useState<DbService | null>(null);
   const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [selectedAroma, setSelectedAroma] = useState<string>("");
   const [date, setDate] = useState<Date>();
@@ -29,37 +52,67 @@ export default function BookingPage() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [success, setSuccess] = useState<any>(null);
 
-  const availableAddons = useMemo(() => getAvailableAddons(selectedService), [selectedService]);
-  const hasOilUpgrade = selectedAddons.includes('升級：腳底精油 (含乳液/油)');
+  // Load services and addons from DB
+  useEffect(() => {
+    const load = async () => {
+      const [{ data: s }, { data: a }] = await Promise.all([
+        supabase.from("services").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("addons").select("*").eq("is_active", true).order("sort_order"),
+      ]);
+      if (s) setDbServices(s as DbService[]);
+      if (a) setDbAddons(a as DbAddon[]);
+    };
+    load();
+  }, []);
+
+  // Filter addons based on selected service category
+  const availableAddons = useMemo(() => {
+    if (!selectedService) return [];
+    // 套餐: hide all addons
+    if (selectedService.category === "package") return [];
+
+    return dbAddons.filter(addon => {
+      // Only show addons applicable to this category
+      if (addon.applicable_categories.length > 0 && !addon.applicable_categories.includes(selectedService.category)) {
+        return false;
+      }
+      // Hide aroma type from checkbox list (shown separately)
+      if (addon.addon_type === "精油香味") return false;
+      return true;
+    });
+  }, [selectedService, dbAddons]);
+
+  const aromaOptions = useMemo(() => {
+    return dbAddons.filter(a => a.addon_type === "精油香味" && a.is_active);
+  }, [dbAddons]);
+
+  const hasOilUpgrade = selectedAddons.some(name => name.includes("精油"));
 
   const totalDuration = useMemo(() => {
     if (!selectedService) return 0;
-    const addonDur = addons
+    const addonDur = dbAddons
       .filter(a => selectedAddons.includes(a.name))
-      .reduce((sum, a) => sum + a.duration, 0);
+      .reduce((sum, a) => sum + a.extra_duration, 0);
     return selectedService.duration + addonDur;
-  }, [selectedService, selectedAddons]);
+  }, [selectedService, selectedAddons, dbAddons]);
 
   const totalPrice = useMemo(() => {
     if (!selectedService) return 0;
-    const addonPrice = addons
+    const addonPrice = dbAddons
       .filter(a => selectedAddons.includes(a.name))
-      .reduce((sum, a) => sum + a.price, 0);
+      .reduce((sum, a) => sum + a.extra_price, 0);
     return selectedService.price + addonPrice;
-  }, [selectedService, selectedAddons]);
+  }, [selectedService, selectedAddons, dbAddons]);
 
-  // Reset addons when service changes
   useEffect(() => {
     setSelectedAddons([]);
     setSelectedAroma("");
   }, [selectedService]);
 
-  // Reset slot when date or duration changes
   useEffect(() => {
     setSelectedSlot(null);
   }, [date, totalDuration]);
 
-  // Fetch available slots
   useEffect(() => {
     if (!date || !selectedService) return;
     const dateStr = format(date, "yyyy-MM-dd");
@@ -76,7 +129,7 @@ export default function BookingPage() {
         ? prev.filter(a => a !== addonName)
         : [...prev, addonName]
     );
-    if (addonName === '升級：腳底精油 (含乳液/油)') {
+    if (addonName.includes("精油")) {
       setSelectedAroma("");
     }
   };
@@ -177,7 +230,6 @@ export default function BookingPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto px-4 py-6">
-        {/* Header */}
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-foreground">不老松足湯安平店</h1>
           <p className="text-muted-foreground mt-1">嘉豪師傅 · 線上預約</p>
@@ -187,13 +239,13 @@ export default function BookingPage() {
           {/* Service Selection */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold">選擇服務 *</Label>
-            <Select onValueChange={(val) => setSelectedService(services.find(s => s.name === val) || null)}>
+            <Select onValueChange={(val) => setSelectedService(dbServices.find(s => s.name === val) || null)}>
               <SelectTrigger>
                 <SelectValue placeholder="請選擇服務項目" />
               </SelectTrigger>
               <SelectContent>
-                {services.map(s => (
-                  <SelectItem key={s.name} value={s.name}>
+                {dbServices.map(s => (
+                  <SelectItem key={s.id} value={s.name}>
                     {s.name} — NT${s.price.toLocaleString()}
                   </SelectItem>
                 ))}
@@ -206,7 +258,7 @@ export default function BookingPage() {
             <div className="space-y-3 animate-fade-in">
               <Label className="text-sm font-semibold">加購項目</Label>
               {availableAddons.map(addon => (
-                <div key={addon.name} className="flex items-center space-x-3">
+                <div key={addon.id} className="flex items-center space-x-3">
                   <Checkbox
                     id={addon.name}
                     checked={selectedAddons.includes(addon.name)}
@@ -214,18 +266,18 @@ export default function BookingPage() {
                   />
                   <label htmlFor={addon.name} className="text-sm cursor-pointer flex-1">
                     {addon.name}
-                    {addon.price > 0 && <span className="text-primary font-medium ml-1">+NT${addon.price}</span>}
+                    {addon.extra_price > 0 && <span className="text-primary font-medium ml-1">+NT${addon.extra_price}</span>}
                   </label>
                 </div>
               ))}
 
               {/* Aroma selection */}
-              {hasOilUpgrade && (
+              {hasOilUpgrade && aromaOptions.length > 0 && (
                 <div className="ml-6 p-3 bg-accent rounded-lg animate-fade-in">
                   <Label className="text-sm font-semibold text-accent-foreground mb-2 block">選擇精油香味 *</Label>
                   <RadioGroup value={selectedAroma} onValueChange={setSelectedAroma}>
-                    {aromas.map(a => (
-                      <div key={a.name} className="flex items-center space-x-2">
+                    {aromaOptions.map(a => (
+                      <div key={a.id} className="flex items-center space-x-2">
                         <RadioGroupItem value={a.name} id={a.name} />
                         <label htmlFor={a.name} className="text-sm cursor-pointer">{a.name}</label>
                       </div>
@@ -328,9 +380,7 @@ export default function BookingPage() {
 
         <div className="text-center mt-6 space-y-1">
           <p className="text-xs text-muted-foreground">營業時間：14:00 ~ 02:00（隔日）</p>
-          <p className="text-xs text-muted-foreground">
-            台南市安平區 · 不老松足湯安平店
-          </p>
+          <p className="text-xs text-muted-foreground">台南市安平區 · 不老松足湯安平店</p>
         </div>
       </div>
     </div>
