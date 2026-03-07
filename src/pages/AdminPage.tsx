@@ -297,7 +297,7 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <Tabs value={tab} onValueChange={setTab}>
+        <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === "today" || v === "stats") commission.refetch(); }}>
           <TabsList className="w-full flex-wrap h-auto">
             <TabsTrigger value="today" className="flex-1">今日總覽</TabsTrigger>
             <TabsTrigger value="bookings" className="flex-1">預約列表</TabsTrigger>
