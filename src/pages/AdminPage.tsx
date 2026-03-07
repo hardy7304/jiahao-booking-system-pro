@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatHourToTime, generateTimeSlots } from "@/lib/services";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Trash2, LogOut } from "lucide-react";
-import { format } from "date-fns";
+import { CalendarIcon, Trash2, LogOut, RotateCcw, ChevronLeft, ChevronRight, List, CalendarDays } from "lucide-react";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth, eachDayOfInterval, addDays, addWeeks, addMonths, subDays, subWeeks, subMonths, isSameDay, isWithinInterval, parseISO } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 
 const ADMIN_PASSWORD = "bulaosong2024";
 
@@ -29,6 +41,7 @@ interface Booking {
   addons: string[];
   duration: number;
   total_price: number;
+  cancelled_at: string | null;
 }
 
 interface Holiday {
@@ -40,12 +53,18 @@ interface Holiday {
   note: string | null;
 }
 
+type CalendarViewMode = "day" | "week" | "month";
+
 export default function AdminPage() {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [tab, setTab] = useState("bookings");
+  const [showCancelled, setShowCancelled] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [calendarMode, setCalendarMode] = useState<CalendarViewMode>("week");
+  const [calendarDate, setCalendarDate] = useState(new Date());
 
   // Holiday form
   const [hDate, setHDate] = useState<Date>();
@@ -86,10 +105,22 @@ export default function AdminPage() {
     }
   }, [authenticated]);
 
-  const deleteBooking = async (id: string) => {
+  const softDeleteBooking = async (id: string) => {
+    await supabase.from('bookings').update({ cancelled_at: new Date().toISOString() } as any).eq('id', id);
+    fetchBookings();
+    toast.success("已取消預約（可復原）");
+  };
+
+  const restoreBooking = async (id: string) => {
+    await supabase.from('bookings').update({ cancelled_at: null } as any).eq('id', id);
+    fetchBookings();
+    toast.success("已復原預約");
+  };
+
+  const permanentDeleteBooking = async (id: string) => {
     await supabase.from('bookings').delete().eq('id', id);
     fetchBookings();
-    toast.success("已刪除預約");
+    toast.success("已永久刪除預約");
   };
 
   const deleteHoliday = async (id: string) => {
@@ -117,14 +148,52 @@ export default function AdminPage() {
     toast.success("已新增公休");
   };
 
+  const activeBookings = bookings.filter(b => !b.cancelled_at);
+  const cancelledBookings = bookings.filter(b => !!b.cancelled_at);
+  const displayedBookings = showCancelled ? cancelledBookings : activeBookings;
+
+  // Calendar navigation
+  const navigateCalendar = (direction: 1 | -1) => {
+    if (calendarMode === "day") setCalendarDate(prev => direction === 1 ? addDays(prev, 1) : subDays(prev, 1));
+    else if (calendarMode === "week") setCalendarDate(prev => direction === 1 ? addWeeks(prev, 1) : subWeeks(prev, 1));
+    else setCalendarDate(prev => direction === 1 ? addMonths(prev, 1) : subMonths(prev, 1));
+  };
+
+  const calendarDays = useMemo(() => {
+    if (calendarMode === "day") return [calendarDate];
+    if (calendarMode === "week") {
+      const start = startOfWeek(calendarDate, { weekStartsOn: 1 });
+      const end = endOfWeek(calendarDate, { weekStartsOn: 1 });
+      return eachDayOfInterval({ start, end });
+    }
+    const start = startOfMonth(calendarDate);
+    const end = endOfMonth(calendarDate);
+    return eachDayOfInterval({ start, end });
+  }, [calendarDate, calendarMode]);
+
+  const calendarTitle = useMemo(() => {
+    if (calendarMode === "day") return format(calendarDate, "yyyy年M月d日 (EEEE)", { locale: zhTW });
+    if (calendarMode === "week") {
+      const start = startOfWeek(calendarDate, { weekStartsOn: 1 });
+      const end = endOfWeek(calendarDate, { weekStartsOn: 1 });
+      return `${format(start, "M/d")} ~ ${format(end, "M/d")}`;
+    }
+    return format(calendarDate, "yyyy年M月", { locale: zhTW });
+  }, [calendarDate, calendarMode]);
+
+  const getBookingsForDay = (day: Date) => {
+    const dateStr = format(day, "yyyy-MM-dd");
+    return activeBookings.filter(b => b.date === dateStr).sort((a, b) => a.start_hour - b.start_hour);
+  };
+
   // Stats data
-  const monthlyRevenue = bookings.reduce((acc, b) => {
+  const monthlyRevenue = activeBookings.reduce((acc, b) => {
     const month = b.date.substring(0, 7);
     acc[month] = (acc[month] || 0) + b.total_price;
     return acc;
   }, {} as Record<string, number>);
 
-  const serviceCount = bookings.reduce((acc, b) => {
+  const serviceCount = activeBookings.reduce((acc, b) => {
     const sName = b.service.split(' (')[0].split('（')[0];
     acc[sName] = (acc[sName] || 0) + 1;
     return acc;
@@ -158,7 +227,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-5xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold text-foreground">不老松足湯 · 管理後台</h1>
           <Button variant="outline" size="sm" onClick={() => { setAuthenticated(false); sessionStorage.removeItem("admin_auth"); }}>
@@ -173,48 +242,235 @@ export default function AdminPage() {
             <TabsTrigger value="stats" className="flex-1">統計</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="bookings" className="mt-4">
-            <div className="bg-card rounded-xl shadow p-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground">
-                    <th className="text-left p-2">下單時間</th>
-                    <th className="text-left p-2">日期</th>
-                    <th className="text-left p-2">時段</th>
-                    <th className="text-left p-2">姓名</th>
-                    <th className="text-left p-2">電話</th>
-                    <th className="text-left p-2">服務</th>
-                    <th className="text-left p-2">加購</th>
-                    <th className="text-left p-2">時長</th>
-                    <th className="text-left p-2">金額</th>
-                    <th className="p-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {bookings.map(b => (
-                    <tr key={b.id} className="border-b border-border hover:bg-secondary/50">
-                      <td className="p-2 whitespace-nowrap">{new Date(b.order_time).toLocaleString('zh-TW')}</td>
-                      <td className="p-2">{b.date}</td>
-                      <td className="p-2">{b.start_time_str}</td>
-                      <td className="p-2">{b.name}</td>
-                      <td className="p-2">{b.phone}</td>
-                      <td className="p-2 max-w-[150px] truncate">{b.service}</td>
-                      <td className="p-2 max-w-[120px] truncate">{b.addons?.join(', ') || '-'}</td>
-                      <td className="p-2">{b.duration}分</td>
-                      <td className="p-2 font-medium text-primary">NT${b.total_price.toLocaleString()}</td>
-                      <td className="p-2">
-                        <Button variant="ghost" size="sm" onClick={() => deleteBooking(b.id)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                  {bookings.length === 0 && (
-                    <tr><td colSpan={10} className="text-center text-muted-foreground p-8">尚無預約</td></tr>
-                  )}
-                </tbody>
-              </table>
+          <TabsContent value="bookings" className="mt-4 space-y-4">
+            {/* View toggle bar */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={viewMode === "list" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setViewMode("list")}
+                >
+                  <List className="w-4 h-4 mr-1" /> 列表
+                </Button>
+                <Button
+                  variant={viewMode === "calendar" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setViewMode("calendar")}
+                >
+                  <CalendarDays className="w-4 h-4 mr-1" /> 日曆
+                </Button>
+              </div>
+              {viewMode === "list" && (
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={!showCancelled ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setShowCancelled(false)}
+                  >
+                    有效預約 ({activeBookings.length})
+                  </Button>
+                  <Button
+                    variant={showCancelled ? "destructive" : "outline"}
+                    size="sm"
+                    onClick={() => setShowCancelled(true)}
+                  >
+                    已取消 ({cancelledBookings.length})
+                  </Button>
+                </div>
+              )}
+              {viewMode === "calendar" && (
+                <div className="flex items-center gap-1">
+                  <Button variant={calendarMode === "day" ? "default" : "outline"} size="sm" onClick={() => setCalendarMode("day")}>日</Button>
+                  <Button variant={calendarMode === "week" ? "default" : "outline"} size="sm" onClick={() => setCalendarMode("week")}>週</Button>
+                  <Button variant={calendarMode === "month" ? "default" : "outline"} size="sm" onClick={() => setCalendarMode("month")}>月</Button>
+                </div>
+              )}
             </div>
+
+            {viewMode === "list" ? (
+              <div className="bg-card rounded-xl shadow p-4 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-muted-foreground">
+                      <th className="text-left p-2">下單時間</th>
+                      <th className="text-left p-2">日期</th>
+                      <th className="text-left p-2">時段</th>
+                      <th className="text-left p-2">姓名</th>
+                      <th className="text-left p-2">電話</th>
+                      <th className="text-left p-2">服務</th>
+                      <th className="text-left p-2">加購</th>
+                      <th className="text-left p-2">時長</th>
+                      <th className="text-left p-2">金額</th>
+                      <th className="p-2">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {displayedBookings.map(b => (
+                      <tr key={b.id} className={cn("border-b border-border hover:bg-secondary/50", b.cancelled_at && "opacity-60")}>
+                        <td className="p-2 whitespace-nowrap">{new Date(b.order_time).toLocaleString('zh-TW')}</td>
+                        <td className="p-2">{b.date}</td>
+                        <td className="p-2">{b.start_time_str}</td>
+                        <td className="p-2">{b.name}</td>
+                        <td className="p-2">{b.phone}</td>
+                        <td className="p-2 max-w-[150px] truncate">{b.service}</td>
+                        <td className="p-2 max-w-[120px] truncate">{b.addons?.join(', ') || '-'}</td>
+                        <td className="p-2">{b.duration}分</td>
+                        <td className="p-2 font-medium text-primary">NT${b.total_price.toLocaleString()}</td>
+                        <td className="p-2">
+                          <div className="flex items-center gap-1">
+                            {b.cancelled_at ? (
+                              <>
+                                <Button variant="ghost" size="sm" onClick={() => restoreBooking(b.id)} title="復原">
+                                  <RotateCcw className="w-4 h-4 text-primary" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="sm" title="永久刪除">
+                                      <Trash2 className="w-4 h-4 text-destructive" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>確認永久刪除？</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        此操作無法復原，預約資料將被永久移除。
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>取消</AlertDialogCancel>
+                                      <AlertDialogAction onClick={() => permanentDeleteBooking(b.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">確認刪除</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </>
+                            ) : (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" title="取消預約">
+                                    <Trash2 className="w-4 h-4 text-destructive" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>確認取消預約？</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      取消後可在「已取消」列表中復原。
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>返回</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => softDeleteBooking(b.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">確認取消</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {displayedBookings.length === 0 && (
+                      <tr><td colSpan={10} className="text-center text-muted-foreground p-8">{showCancelled ? "沒有已取消的預約" : "尚無預約"}</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              /* Calendar View */
+              <div className="bg-card rounded-xl shadow p-4">
+                {/* Calendar header */}
+                <div className="flex items-center justify-between mb-4">
+                  <Button variant="outline" size="sm" onClick={() => navigateCalendar(-1)}>
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <div className="text-center">
+                    <span className="font-semibold text-foreground">{calendarTitle}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setCalendarDate(new Date())}>今天</Button>
+                    <Button variant="outline" size="sm" onClick={() => navigateCalendar(1)}>
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {calendarMode === "day" ? (
+                  /* Day view: time slots with bookings */
+                  <DayView day={calendarDate} bookings={activeBookings} />
+                ) : calendarMode === "week" ? (
+                  /* Week view */
+                  <div className="grid grid-cols-7 gap-1">
+                    {["一", "二", "三", "四", "五", "六", "日"].map(d => (
+                      <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
+                    ))}
+                    {calendarDays.map(day => {
+                      const dayBookings = getBookingsForDay(day);
+                      const isToday = isSameDay(day, new Date());
+                      return (
+                        <div
+                          key={day.toISOString()}
+                          className={cn(
+                            "border border-border rounded-lg p-1 min-h-[100px] cursor-pointer hover:bg-secondary/30 transition-colors",
+                            isToday && "border-primary bg-primary/5"
+                          )}
+                          onClick={() => { setCalendarMode("day"); setCalendarDate(day); }}
+                        >
+                          <div className={cn("text-xs font-medium mb-1 text-center", isToday ? "text-primary" : "text-foreground")}>
+                            {format(day, "M/d")}
+                          </div>
+                          <div className="space-y-0.5">
+                            {dayBookings.slice(0, 3).map(b => (
+                              <div key={b.id} className="bg-primary/10 text-primary text-[10px] px-1 py-0.5 rounded truncate">
+                                {b.start_time_str} {b.name}
+                              </div>
+                            ))}
+                            {dayBookings.length > 3 && (
+                              <div className="text-[10px] text-muted-foreground text-center">+{dayBookings.length - 3} 筆</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Month view */
+                  <div className="grid grid-cols-7 gap-1">
+                    {["一", "二", "三", "四", "五", "六", "日"].map(d => (
+                      <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1">{d}</div>
+                    ))}
+                    {/* Pad first week */}
+                    {Array.from({ length: (calendarDays[0].getDay() + 6) % 7 }).map((_, i) => (
+                      <div key={`pad-${i}`} className="min-h-[80px]" />
+                    ))}
+                    {calendarDays.map(day => {
+                      const dayBookings = getBookingsForDay(day);
+                      const isToday = isSameDay(day, new Date());
+                      return (
+                        <div
+                          key={day.toISOString()}
+                          className={cn(
+                            "border border-border rounded p-1 min-h-[80px] cursor-pointer hover:bg-secondary/30 transition-colors",
+                            isToday && "border-primary bg-primary/5"
+                          )}
+                          onClick={() => { setCalendarMode("day"); setCalendarDate(day); }}
+                        >
+                          <div className={cn("text-xs font-medium text-center", isToday ? "text-primary" : "text-foreground")}>
+                            {format(day, "d")}
+                          </div>
+                          {dayBookings.length > 0 && (
+                            <div className="mt-0.5">
+                              <Badge variant="secondary" className="text-[10px] px-1 py-0 w-full justify-center bg-primary/10 text-primary border-0">
+                                {dayBookings.length} 筆
+                              </Badge>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="holidays" className="mt-4 space-y-4">
@@ -346,6 +602,47 @@ export default function AdminPage() {
           </TabsContent>
         </Tabs>
       </div>
+    </div>
+  );
+}
+
+/* Day View Component */
+function DayView({ day, bookings }: { day: Date; bookings: Booking[] }) {
+  const dateStr = format(day, "yyyy-MM-dd");
+  const dayBookings = bookings.filter(b => b.date === dateStr).sort((a, b) => a.start_hour - b.start_hour);
+
+  const timeSlots = generateTimeSlots();
+
+  return (
+    <div className="space-y-0">
+      {timeSlots.map(slot => {
+        const slotBookings = dayBookings.filter(b => b.start_hour === slot);
+        return (
+          <div key={slot} className={cn("flex border-b border-border/50 min-h-[44px]", slotBookings.length > 0 && "bg-primary/5")}>
+            <div className="w-16 shrink-0 text-xs text-muted-foreground py-2 pr-2 text-right font-mono">
+              {formatHourToTime(slot)}
+            </div>
+            <div className="flex-1 py-1 px-2 space-y-1">
+              {slotBookings.map(b => (
+                <div key={b.id} className="bg-primary/15 border border-primary/20 rounded-md px-2 py-1.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-foreground">{b.name}</span>
+                    <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary border-0">
+                      {b.duration}分
+                    </Badge>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">
+                    {b.service} · NT${b.total_price.toLocaleString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+      {dayBookings.length === 0 && (
+        <div className="text-center text-muted-foreground py-8">當日無預約</div>
+      )}
     </div>
   );
 }
