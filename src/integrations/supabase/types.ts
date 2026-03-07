@@ -144,6 +144,7 @@ export type Database = {
         Row: {
           category: string
           created_at: string | null
+          deduction: number | null
           duration: number
           id: string
           is_active: boolean | null
@@ -154,6 +155,7 @@ export type Database = {
         Insert: {
           category: string
           created_at?: string | null
+          deduction?: number | null
           duration: number
           id?: string
           is_active?: boolean | null
@@ -164,12 +166,31 @@ export type Database = {
         Update: {
           category?: string
           created_at?: string | null
+          deduction?: number | null
           duration?: number
           id?: string
           is_active?: boolean | null
           name?: string
           price?: number
           sort_order?: number | null
+        }
+        Relationships: []
+      }
+      system_config: {
+        Row: {
+          key: string
+          updated_at: string | null
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string | null
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string | null
+          value?: string
         }
         Relationships: []
       }
