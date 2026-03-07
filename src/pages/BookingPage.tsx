@@ -326,9 +326,12 @@ export default function BookingPage() {
           )}
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-4">
-          營業時間：14:00 ~ 02:00（隔日）
-        </p>
+        <div className="text-center mt-6 space-y-1">
+          <p className="text-xs text-muted-foreground">營業時間：14:00 ~ 02:00（隔日）</p>
+          <p className="text-xs text-muted-foreground">
+            台南市安平區 · 不老松足湯安平店
+          </p>
+        </div>
       </div>
     </div>
   );
