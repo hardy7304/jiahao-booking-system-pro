@@ -1,0 +1,6 @@
+
+ALTER TABLE public.bookings 
+  ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'confirmed',
+  ADD COLUMN IF NOT EXISTS cancel_reason TEXT,
+  ADD COLUMN IF NOT EXISTS admin_note TEXT,
+  ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ;
