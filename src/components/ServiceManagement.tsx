@@ -119,6 +119,7 @@ export default function ServiceManagement() {
   const updateDeduction = async (s: ServiceRow, val: number) => {
     await supabase.from("services").update({ deduction: val } as any).eq("id", s.id);
     setServices(prev => prev.map(x => x.id === s.id ? { ...x, deduction: val } : x));
+    toast.success(`已更新「${s.name}」差價為 NT$${val}`);
   };
 
   const moveService = async (index: number, direction: -1 | 1) => {
@@ -224,17 +225,21 @@ export default function ServiceManagement() {
                   <td className="p-2 whitespace-nowrap">{s.duration} 分</td>
                   <td className="p-2 whitespace-nowrap font-medium text-primary">NT${s.price.toLocaleString()}</td>
                   <td className="p-2 whitespace-nowrap">
-                    <Input
-                      type="number"
-                      className="w-20 h-7 text-xs"
-                      value={s.deduction}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value) || 0;
-                        setServices(prev => prev.map(x => x.id === s.id ? { ...x, deduction: val } : x));
-                      }}
-                      onBlur={(e) => updateDeduction(s, parseInt(e.target.value) || 0)}
-                      placeholder="0"
-                    />
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        className="w-20 h-7 text-xs"
+                        value={s.deduction}
+                        onChange={(e) => {
+                          const val = parseInt(e.target.value) || 0;
+                          setServices(prev => prev.map(x => x.id === s.id ? { ...x, deduction: val } : x));
+                        }}
+                        onBlur={(e) => updateDeduction(s, parseInt(e.target.value) || 0)}
+                        onKeyDown={(e) => { if (e.key === "Enter") { (e.target as HTMLInputElement).blur(); } }}
+                        placeholder="0"
+                      />
+                      <Save className="w-3 h-3 text-muted-foreground opacity-50" />
+                    </div>
                   </td>
                   <td className="p-2">
                     <Badge variant="outline" className="text-xs">{CATEGORY_LABELS[s.category] || s.category}</Badge>
