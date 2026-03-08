@@ -65,6 +65,7 @@ export type Database = {
           order_time: string
           phone: string
           service: string
+          source: string | null
           start_hour: number
           start_time_str: string
           status: string | null
@@ -84,6 +85,7 @@ export type Database = {
           order_time?: string
           phone: string
           service: string
+          source?: string | null
           start_hour: number
           start_time_str: string
           status?: string | null
@@ -103,6 +105,7 @@ export type Database = {
           order_time?: string
           phone?: string
           service?: string
+          source?: string | null
           start_hour?: number
           start_time_str?: string
           status?: string | null
