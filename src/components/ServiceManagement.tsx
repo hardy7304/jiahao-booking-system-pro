@@ -284,7 +284,7 @@ export default function ServiceManagement() {
                 </tr>
               ))}
               {services.length === 0 && (
-                <tr><td colSpan={8} className="text-center text-muted-foreground p-8">尚無服務項目</td></tr>
+                <tr><td colSpan={9} className="text-center text-muted-foreground p-8">尚無服務項目</td></tr>
               )}
             </tbody>
           </table>
