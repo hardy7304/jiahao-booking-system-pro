@@ -159,6 +159,7 @@ export default function BookingPage() {
       addons: allAddons,
       duration: totalDuration,
       total_price: totalPrice,
+      source: 'customer',
     };
 
     const { error } = await supabase.from('bookings').insert(bookingData);

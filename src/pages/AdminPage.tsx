@@ -50,7 +50,14 @@ interface Booking {
   cancel_reason: string | null;
   admin_note: string | null;
   completed_at: string | null;
+  source: string | null;
 }
+
+const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
+  customer: { label: "客人預約", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  admin: { label: "系統代訂", color: "bg-purple-100 text-purple-700 border-purple-200" },
+  front_desk: { label: "櫃檯代訂", color: "bg-amber-100 text-amber-700 border-amber-200" },
+};
 
 interface Holiday {
   id: string;
