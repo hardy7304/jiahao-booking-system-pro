@@ -250,6 +250,9 @@ export default function ServiceManagement() {
                       <Save className="w-3 h-3 text-muted-foreground opacity-50" />
                     </div>
                   </td>
+                  <td className="p-2 whitespace-nowrap font-medium text-accent-foreground">
+                    NT${(s.price - s.deduction).toLocaleString()}
+                  </td>
                   <td className="p-2">
                     <Badge variant="outline" className="text-xs">{CATEGORY_LABELS[s.category] || s.category}</Badge>
                   </td>
