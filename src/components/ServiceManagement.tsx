@@ -71,6 +71,12 @@ export default function ServiceManagement() {
   const [newService, setNewService] = useState({ name: "", duration: 60, price: 1000, category: "foot", is_active: true, deduction: 0 });
   const [newAddon, setNewAddon] = useState({ name: "", extra_duration: 0, extra_price: 0, applicable_categories: [] as string[], addon_type: "加購", is_active: true });
 
+  const toNonNegativeInt = (value: string) => {
+    const digitsOnly = value.replace(/\D/g, "");
+    if (!digitsOnly) return 0;
+    return parseInt(digitsOnly, 10);
+  };
+
   const fetchAll = async () => {
     const [{ data: s }, { data: a }] = await Promise.all([
       supabase.from("services").select("*").order("sort_order"),
@@ -381,15 +387,34 @@ export default function ServiceManagement() {
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label className="text-sm">時長（分鐘）</Label>
-                  <Input type="number" value={editingService.duration} onChange={e => setEditingService({ ...editingService, duration: parseInt(e.target.value) || 0 })} />
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={editingService.duration}
+                    onChange={e => setEditingService({ ...editingService, duration: toNonNegativeInt(e.target.value) })}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-sm">價格（NT$）</Label>
-                  <Input type="number" value={editingService.price} onChange={e => setEditingService({ ...editingService, price: parseInt(e.target.value) || 0 })} />
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={editingService.price}
+                    onChange={e => setEditingService({ ...editingService, price: toNonNegativeInt(e.target.value) })}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-sm">差價（NT$）</Label>
-                  <Input type="number" value={editingService.deduction} onChange={e => setEditingService({ ...editingService, deduction: parseInt(e.target.value) || 0 })} placeholder="0" />
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={editingService.deduction}
+                    onChange={e => setEditingService({ ...editingService, deduction: toNonNegativeInt(e.target.value) })}
+                    placeholder="0"
+                  />
                 </div>
               </div>
               <div className="space-y-1">
@@ -428,15 +453,34 @@ export default function ServiceManagement() {
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label className="text-sm">時長（分鐘）</Label>
-                <Input type="number" value={newService.duration} onChange={e => setNewService({ ...newService, duration: parseInt(e.target.value) || 0 })} />
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={newService.duration}
+                  onChange={e => setNewService({ ...newService, duration: toNonNegativeInt(e.target.value) })}
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-sm">價格（NT$）</Label>
-                <Input type="number" value={newService.price} onChange={e => setNewService({ ...newService, price: parseInt(e.target.value) || 0 })} />
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={newService.price}
+                  onChange={e => setNewService({ ...newService, price: toNonNegativeInt(e.target.value) })}
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-sm">差價（NT$）</Label>
-                <Input type="number" value={newService.deduction} onChange={e => setNewService({ ...newService, deduction: parseInt(e.target.value) || 0 })} placeholder="0" />
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={newService.deduction}
+                  onChange={e => setNewService({ ...newService, deduction: toNonNegativeInt(e.target.value) })}
+                  placeholder="0"
+                />
               </div>
             </div>
             <div className="space-y-1">
@@ -475,11 +519,23 @@ export default function ServiceManagement() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-sm">額外時長（分鐘）</Label>
-                  <Input type="number" value={editingAddon.extra_duration} onChange={e => setEditingAddon({ ...editingAddon, extra_duration: parseInt(e.target.value) || 0 })} />
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={editingAddon.extra_duration}
+                    onChange={e => setEditingAddon({ ...editingAddon, extra_duration: toNonNegativeInt(e.target.value) })}
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-sm">額外價格（NT$）</Label>
-                  <Input type="number" value={editingAddon.extra_price} onChange={e => setEditingAddon({ ...editingAddon, extra_price: parseInt(e.target.value) || 0 })} />
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={editingAddon.extra_price}
+                    onChange={e => setEditingAddon({ ...editingAddon, extra_price: toNonNegativeInt(e.target.value) })}
+                  />
                 </div>
               </div>
               <div className="space-y-1">
@@ -537,11 +593,23 @@ export default function ServiceManagement() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-sm">額外時長（分鐘）</Label>
-                <Input type="number" value={newAddon.extra_duration} onChange={e => setNewAddon({ ...newAddon, extra_duration: parseInt(e.target.value) || 0 })} />
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={newAddon.extra_duration}
+                  onChange={e => setNewAddon({ ...newAddon, extra_duration: toNonNegativeInt(e.target.value) })}
+                />
               </div>
               <div className="space-y-1">
                 <Label className="text-sm">額外價格（NT$）</Label>
-                <Input type="number" value={newAddon.extra_price} onChange={e => setNewAddon({ ...newAddon, extra_price: parseInt(e.target.value) || 0 })} />
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={newAddon.extra_price}
+                  onChange={e => setNewAddon({ ...newAddon, extra_price: toNonNegativeInt(e.target.value) })}
+                />
               </div>
             </div>
             <div className="space-y-1">
