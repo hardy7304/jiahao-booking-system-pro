@@ -32,6 +32,7 @@ interface CommissionHelpers {
   calcBase: (totalPrice: number, serviceName: string) => number;
   calcTherapist: (totalPrice: number, serviceName: string) => number;
   calcShop: (totalPrice: number, serviceName: string) => number;
+  getDeduction: (serviceName: string) => number;
   commissionRate: number;
 }
 
@@ -97,6 +98,7 @@ export default function TodayDashboard({
   const completedCount = todayBookings.filter((b) => b.status === "completed").length;
 
   // Commission calculations
+  const todayDeductionTotal = commission ? todayBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
   const todayBaseTotal = commission ? todayBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service), 0) : 0;
   const todayTherapist = commission ? todayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
   const todayShop = commission ? todayBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
@@ -184,7 +186,15 @@ export default function TodayDashboard({
 
       {/* Commission cards */}
       {commission && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-card rounded-xl shadow p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+              <DollarSign className="w-4 h-4" />
+              今日公司差價
+            </div>
+            <div className="text-xl font-bold text-destructive">-NT${todayDeductionTotal.toLocaleString()}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">售價扣除金額</div>
+          </div>
           <div className="bg-card rounded-xl shadow p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <Briefcase className="w-4 h-4" />
@@ -269,7 +279,7 @@ export default function TodayDashboard({
                   </div>
                   {commission && base !== null && (
                     <div className="mt-1 ml-[68px] text-xs text-muted-foreground">
-                      售價 NT${b.total_price.toLocaleString()} → 基底 NT${base.toLocaleString()} → <span className="text-blue-600 font-medium">師傅 NT${therapist!.toLocaleString()}</span>
+                      售價 NT${b.total_price.toLocaleString()} → <span className="text-destructive">差價 -NT${commission.getDeduction(b.service).toLocaleString()}</span> → 基底 NT${base.toLocaleString()} → <span className="text-blue-600 font-medium">師傅 NT${therapist!.toLocaleString()}</span>
                     </div>
                   )}
                 </div>

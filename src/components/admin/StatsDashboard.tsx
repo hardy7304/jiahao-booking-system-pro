@@ -94,6 +94,7 @@ export default function StatsDashboard({
   }, [monthPhones, phoneCountAll]);
 
   // Commission monthly totals
+  const monthDeductionTotal = commission ? monthBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
   const monthBaseTotal = commission ? monthBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service), 0) : 0;
   const monthTherapist = commission ? monthBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
   const monthShopTotal = commission ? monthBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
@@ -207,7 +208,8 @@ export default function StatsDashboard({
 
       {/* Commission summary */}
       {commission && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <SummaryCard icon={<DollarSign className="w-4 h-4" />} label="本月公司差價" value={`-NT$${monthDeductionTotal.toLocaleString()}`} valueClass="text-destructive" />
           <SummaryCard icon={<Briefcase className="w-4 h-4" />} label="本月業績基底" value={`NT$${monthBaseTotal.toLocaleString()}`} valueClass="text-muted-foreground" />
           <SummaryCard icon={<Wallet className="w-4 h-4" />} label="本月師傅累計收入" value={`NT$${monthTherapist.toLocaleString()}`} valueClass="text-blue-600" />
           <SummaryCard icon={<Building2 className="w-4 h-4" />} label="本月店家抽成" value={`NT$${monthShopTotal.toLocaleString()}`} valueClass="text-orange-600" />
