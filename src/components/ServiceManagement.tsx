@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useCommission } from "@/hooks/useCommission";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,6 +65,7 @@ const APPLICABLE_CAT_OPTIONS = [
 export default function ServiceManagement() {
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [addons, setAddons] = useState<AddonRow[]>([]);
+  const { commissionRate } = useCommission();
   const [editingService, setEditingService] = useState<ServiceRow | null>(null);
   const [editingAddon, setEditingAddon] = useState<AddonRow | null>(null);
   const [showServiceDialog, setShowServiceDialog] = useState(false);
@@ -208,6 +210,7 @@ export default function ServiceManagement() {
                 <th className="text-left p-2">價格</th>
                 <th className="text-left p-2">差價</th>
                 <th className="text-left p-2">業績金額</th>
+                <th className="text-left p-2">師傅預估</th>
                 <th className="text-left p-2">分類</th>
                 <th className="text-center p-2">狀態</th>
                 <th className="text-center p-2">操作</th>
@@ -253,6 +256,9 @@ export default function ServiceManagement() {
                   <td className="p-2 whitespace-nowrap font-medium text-accent-foreground">
                     NT${(s.price - s.deduction).toLocaleString()}
                   </td>
+                  <td className="p-2 whitespace-nowrap font-semibold text-primary">
+                    NT${Math.floor((s.price - s.deduction) * commissionRate).toLocaleString()}
+                  </td>
                   <td className="p-2">
                     <Badge variant="outline" className="text-xs">{CATEGORY_LABELS[s.category] || s.category}</Badge>
                   </td>
@@ -284,7 +290,7 @@ export default function ServiceManagement() {
                 </tr>
               ))}
               {services.length === 0 && (
-                <tr><td colSpan={9} className="text-center text-muted-foreground p-8">尚無服務項目</td></tr>
+                <tr><td colSpan={10} className="text-center text-muted-foreground p-8">尚無服務項目</td></tr>
               )}
             </tbody>
           </table>
