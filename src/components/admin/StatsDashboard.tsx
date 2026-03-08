@@ -83,7 +83,7 @@ export default function StatsDashboard({
     }
   }, [preset, customFrom, customTo]);
 
-  const active = bookings.filter((b) => !b.cancelled_at && b.status !== "cancelled");
+  const active = bookings.filter((b) => b.status === "completed");
 
   const rangeBookings = useMemo(() => {
     return active.filter((b) => {
