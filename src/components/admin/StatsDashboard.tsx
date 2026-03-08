@@ -463,7 +463,7 @@ export default function StatsDashboard({
       {/* SECTION F: Export */}
       <div className="bg-card rounded-xl shadow p-4 flex flex-wrap gap-3">
         <Button variant="outline" onClick={exportBookingsCSV}>
-          <Download className="w-4 h-4 mr-1" /> 匯出本月報表 CSV
+          <Download className="w-4 h-4 mr-1" /> 匯出{rangeLabel}報表 CSV
         </Button>
         <Button variant="outline" onClick={exportCustomersCSV}>
           <Download className="w-4 h-4 mr-1" /> 匯出客戶名單 CSV
