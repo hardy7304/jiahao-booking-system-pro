@@ -183,6 +183,38 @@ export default function AdminPage() {
     toast.success("已標記完成");
   };
 
+  const uncompleteBooking = async (id: string) => {
+    await supabase.from("bookings").update({
+      status: "confirmed", completed_at: null,
+    } as any).eq("id", id);
+    fetchBookings();
+    toast.success("已改回確認狀態");
+  };
+
+  const openEditBooking = (b: Booking) => {
+    setEditingBooking(b);
+    setEditForm({
+      name: b.name, phone: b.phone, service: b.service, date: b.date,
+      start_hour: b.start_hour, duration: b.duration, total_price: b.total_price,
+      addons: b.addons || [], source: b.source || "customer",
+    });
+  };
+
+  const saveEditBooking = async () => {
+    if (!editingBooking) return;
+    const { error } = await supabase.from("bookings").update({
+      name: editForm.name, phone: editForm.phone, service: editForm.service,
+      date: editForm.date, start_hour: editForm.start_hour,
+      start_time_str: formatHourToTime(editForm.start_hour),
+      duration: editForm.duration, total_price: editForm.total_price,
+      addons: editForm.addons, source: editForm.source,
+    } as any).eq("id", editingBooking.id);
+    if (error) { toast.error("更新失敗"); return; }
+    setEditingBooking(null);
+    fetchBookings();
+    toast.success("已更新預約");
+  };
+
   const permanentDeleteBooking = async (id: string) => {
     await supabase.from("bookings").delete().eq("id", id);
     fetchBookings();
