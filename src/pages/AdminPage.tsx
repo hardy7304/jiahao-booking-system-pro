@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings } from "lucide-react";
+import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings, Pencil, Undo2 } from "lucide-react";
 import ServiceManagement from "@/components/ServiceManagement";
 import TodayDashboard from "@/components/admin/TodayDashboard";
 import BookingCalendarView from "@/components/admin/BookingCalendarView";
@@ -92,6 +92,12 @@ export default function AdminPage() {
   // Note dialog
   const [noteBookingId, setNoteBookingId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
+
+  // Edit booking dialog
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "customer",
+  });
 
   // Manual booking dialog
   const [showManualBooking, setShowManualBooking] = useState(false);
@@ -175,6 +181,38 @@ export default function AdminPage() {
     } as any).eq("id", id);
     fetchBookings();
     toast.success("已標記完成");
+  };
+
+  const uncompleteBooking = async (id: string) => {
+    await supabase.from("bookings").update({
+      status: "confirmed", completed_at: null,
+    } as any).eq("id", id);
+    fetchBookings();
+    toast.success("已改回確認狀態");
+  };
+
+  const openEditBooking = (b: Booking) => {
+    setEditingBooking(b);
+    setEditForm({
+      name: b.name, phone: b.phone, service: b.service, date: b.date,
+      start_hour: b.start_hour, duration: b.duration, total_price: b.total_price,
+      addons: b.addons || [], source: b.source || "customer",
+    });
+  };
+
+  const saveEditBooking = async () => {
+    if (!editingBooking) return;
+    const { error } = await supabase.from("bookings").update({
+      name: editForm.name, phone: editForm.phone, service: editForm.service,
+      date: editForm.date, start_hour: editForm.start_hour,
+      start_time_str: formatHourToTime(editForm.start_hour),
+      duration: editForm.duration, total_price: editForm.total_price,
+      addons: editForm.addons, source: editForm.source,
+    } as any).eq("id", editingBooking.id);
+    if (error) { toast.error("更新失敗"); return; }
+    setEditingBooking(null);
+    fetchBookings();
+    toast.success("已更新預約");
   };
 
   const permanentDeleteBooking = async (id: string) => {
@@ -399,6 +437,9 @@ export default function AdminPage() {
                               <Button variant="ghost" size="sm" title="備註" onClick={() => { setNoteBookingId(b.id); setNoteText(b.admin_note || ""); }}>
                                 <StickyNote className={cn("w-3.5 h-3.5", b.admin_note ? "text-amber-600" : "text-muted-foreground")} />
                               </Button>
+                              <Button variant="ghost" size="sm" title="編輯" onClick={() => openEditBooking(b)}>
+                                <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                              </Button>
                               {b.cancelled_at || b.status === "cancelled" ? (
                                 <>
                                   <Button variant="ghost" size="sm" onClick={() => restoreBooking(b.id)} title="復原">
@@ -422,7 +463,11 @@ export default function AdminPage() {
                                 </>
                               ) : (
                                 <>
-                                  {b.status !== "completed" && (
+                                  {b.status === "completed" ? (
+                                    <Button variant="ghost" size="sm" title="取消完成" onClick={() => uncompleteBooking(b.id)}>
+                                      <Undo2 className="w-3.5 h-3.5 text-amber-600" />
+                                    </Button>
+                                  ) : (
                                     <Button variant="ghost" size="sm" title="標記完成" onClick={() => completeBooking(b.id)}>
                                       <Check className="w-3.5 h-3.5 text-emerald-600" />
                                     </Button>
@@ -687,6 +732,81 @@ export default function AdminPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSettings(false)}>取消</Button>
             <Button onClick={saveCommissionRate}>儲存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit booking dialog */}
+      <Dialog open={!!editingBooking} onOpenChange={(open) => !open && setEditingBooking(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>編輯預約</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-sm">姓名</Label>
+                <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm">電話</Label>
+                <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-sm">服務</Label>
+              <Select value={editForm.service} onValueChange={(v) => {
+                const svc = servicesList.find((s) => s.name === v);
+                setEditForm({ ...editForm, service: v, duration: svc?.duration || editForm.duration, total_price: svc?.price || editForm.total_price });
+              }}>
+                <SelectTrigger><SelectValue placeholder="選擇服務" /></SelectTrigger>
+                <SelectContent>
+                  {servicesList.map((s) => (
+                    <SelectItem key={s.id} value={s.name}>{s.name} - NT${s.price}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-sm">日期</Label>
+                <Input type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm">開始時段</Label>
+                <Select value={editForm.start_hour.toString()} onValueChange={(v) => setEditForm({ ...editForm, start_hour: parseFloat(v) })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {timeSlots.map((s) => (
+                      <SelectItem key={s} value={s.toString()}>{formatHourToTime(s)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-sm">時長（分鐘）</Label>
+                <Input type="number" value={editForm.duration} onChange={(e) => setEditForm({ ...editForm, duration: parseInt(e.target.value) || 0 })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm">金額</Label>
+                <Input type="number" value={editForm.total_price} onChange={(e) => setEditForm({ ...editForm, total_price: parseInt(e.target.value) || 0 })} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-sm">預約來源</Label>
+              <Select value={editForm.source} onValueChange={(v) => setEditForm({ ...editForm, source: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="customer">客人自行預約</SelectItem>
+                  <SelectItem value="admin">系統代訂（師傅）</SelectItem>
+                  <SelectItem value="front_desk">櫃檯代訂</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingBooking(null)}>取消</Button>
+            <Button onClick={saveEditBooking}>儲存修改</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
