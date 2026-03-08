@@ -89,10 +89,11 @@ export default function TodayDashboard({
     [bookings, viewDateStr]
   );
 
-  const dayRevenue = dayBookings.reduce((sum, b) => sum + b.total_price, 0);
+  const completedBookings = dayBookings.filter((b) => b.status === "completed");
+  const dayRevenue = completedBookings.reduce((sum, b) => sum + b.total_price, 0);
 
-  const currentHour = now.getHours() + now.getMinutes() / 60;
-  const adjustedCurrentHour = currentHour < 6 ? currentHour + 24 : currentHour;
+  const currentHourRaw = now.getHours() + now.getMinutes() / 60;
+  const adjustedCurrentHour = currentHourRaw < 6 ? currentHourRaw + 24 : currentHourRaw;
 
   const nextBooking = isViewingToday ? dayBookings.find((b) => b.start_hour > adjustedCurrentHour) : null;
   const minutesUntilNext = nextBooking
@@ -103,13 +104,13 @@ export default function TodayDashboard({
   const totalSlots = 24;
   const bookedSlots = dayBookings.length;
   const availableSlots = isHolidayOnDate ? 0 : Math.max(0, totalSlots - bookedSlots);
-  const completedCount = dayBookings.filter((b) => b.status === "completed").length;
+  const completedCount = completedBookings.length;
 
-  // Commission calculations
-  const dayDeductionTotal = commission ? dayBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
-  const dayBaseTotal = commission ? dayBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service), 0) : 0;
-  const dayTherapist = commission ? dayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
-  const dayShop = commission ? dayBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
+  // Commission calculations - only count completed bookings
+  const dayDeductionTotal = commission ? completedBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
+  const dayBaseTotal = commission ? completedBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service), 0) : 0;
+  const dayTherapist = commission ? completedBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
+  const dayShop = commission ? completedBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
 
   const dateLabel = isViewingToday ? "今日" : format(selectedDate, "M/d");
 
