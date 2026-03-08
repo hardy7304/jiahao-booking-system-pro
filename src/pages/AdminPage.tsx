@@ -96,7 +96,7 @@ export default function AdminPage() {
   // Manual booking dialog
   const [showManualBooking, setShowManualBooking] = useState(false);
   const [manualForm, setManualForm] = useState({
-    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[],
+    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "admin",
   });
 
   // Holiday form
@@ -223,10 +223,10 @@ export default function AdminPage() {
       date: manualForm.date, start_hour: manualForm.start_hour,
       start_time_str: formatHourToTime(manualForm.start_hour),
       duration: manualForm.duration, total_price: manualForm.total_price,
-      addons: manualForm.addons, status: "confirmed",
+      addons: manualForm.addons, status: "confirmed", source: manualForm.source,
     } as any);
     setShowManualBooking(false);
-    setManualForm({ name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] });
+    setManualForm({ name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [], source: "admin" });
     fetchBookings();
     toast.success("已新增預約");
   };
