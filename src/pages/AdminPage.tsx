@@ -50,7 +50,14 @@ interface Booking {
   cancel_reason: string | null;
   admin_note: string | null;
   completed_at: string | null;
+  source: string | null;
 }
+
+const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
+  customer: { label: "客人預約", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  admin: { label: "系統代訂", color: "bg-purple-100 text-purple-700 border-purple-200" },
+  front_desk: { label: "櫃檯代訂", color: "bg-amber-100 text-amber-700 border-amber-200" },
+};
 
 interface Holiday {
   id: string;
@@ -89,7 +96,7 @@ export default function AdminPage() {
   // Manual booking dialog
   const [showManualBooking, setShowManualBooking] = useState(false);
   const [manualForm, setManualForm] = useState({
-    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[],
+    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "admin",
   });
 
   // Holiday form
@@ -216,10 +223,10 @@ export default function AdminPage() {
       date: manualForm.date, start_hour: manualForm.start_hour,
       start_time_str: formatHourToTime(manualForm.start_hour),
       duration: manualForm.duration, total_price: manualForm.total_price,
-      addons: manualForm.addons, status: "confirmed",
+      addons: manualForm.addons, status: "confirmed", source: manualForm.source,
     } as any);
     setShowManualBooking(false);
-    setManualForm({ name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] });
+    setManualForm({ name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [], source: "admin" });
     fetchBookings();
     toast.success("已新增預約");
   };
@@ -355,6 +362,7 @@ export default function AdminPage() {
                             <th className="text-left p-2">師傅收入</th>
                           </>
                         )}
+                        <th className="text-left p-2">來源</th>
                         <th className="text-left p-2">狀態</th>
                         <th className="p-2">操作</th>
                       </tr>
@@ -378,13 +386,16 @@ export default function AdminPage() {
                             </>
                           )}
                           <td className="p-2">
+                            {(() => { const s = SOURCE_LABELS[b.source || "customer"]; return <Badge variant="outline" className={cn("text-xs", s?.color)}>{s?.label || "客人預約"}</Badge>; })()}
+                          </td>
+                          <td className="p-2">
                             <StatusBadge status={b.status} cancelledAt={b.cancelled_at} />
                           </td>
                           <td className="p-2">
                             <div className="flex items-center gap-0.5 flex-wrap">
-                              <a href={`tel:${b.phone}`}>
-                                <Button variant="ghost" size="sm" title="撥打電話"><Phone className="w-3.5 h-3.5 text-blue-600" /></Button>
-                              </a>
+                              <Button variant="ghost" size="sm" title="撥打電話" onClick={() => window.open(`tel:${b.phone}`, '_self')}>
+                                <Phone className="w-3.5 h-3.5 text-blue-600" />
+                              </Button>
                               <Button variant="ghost" size="sm" title="備註" onClick={() => { setNoteBookingId(b.id); setNoteText(b.admin_note || ""); }}>
                                 <StickyNote className={cn("w-3.5 h-3.5", b.admin_note ? "text-amber-600" : "text-muted-foreground")} />
                               </Button>
@@ -426,7 +437,7 @@ export default function AdminPage() {
                         </tr>
                       ))}
                       {filteredBookings.length === 0 && (
-                        <tr><td colSpan={showCommissionCols ? 13 : 11} className="text-center text-muted-foreground p-8">沒有符合條件的預約</td></tr>
+                        <tr><td colSpan={showCommissionCols ? 14 : 12} className="text-center text-muted-foreground p-8">沒有符合條件的預約</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -634,6 +645,17 @@ export default function AdminPage() {
                 <Label className="text-sm">金額</Label>
                 <Input type="number" value={manualForm.total_price} onChange={(e) => setManualForm({ ...manualForm, total_price: parseInt(e.target.value) || 0 })} />
               </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-sm">預約來源</Label>
+              <Select value={manualForm.source} onValueChange={(v) => setManualForm({ ...manualForm, source: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">系統代訂（師傅）</SelectItem>
+                  <SelectItem value="front_desk">櫃檯代訂</SelectItem>
+                  <SelectItem value="customer">客人自行預約</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
