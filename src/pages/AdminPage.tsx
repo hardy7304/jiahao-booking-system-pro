@@ -437,7 +437,7 @@ export default function AdminPage() {
                         </tr>
                       ))}
                       {filteredBookings.length === 0 && (
-                        <tr><td colSpan={showCommissionCols ? 13 : 11} className="text-center text-muted-foreground p-8">沒有符合條件的預約</td></tr>
+                        <tr><td colSpan={showCommissionCols ? 14 : 12} className="text-center text-muted-foreground p-8">沒有符合條件的預約</td></tr>
                       )}
                     </tbody>
                   </table>
