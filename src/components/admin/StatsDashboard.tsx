@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, subDays, parseISO, startOfMonth, endOfMonth, isWithinInterval, getDay, subMonths, differenceInDays } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase, CalendarIcon } from "lucide-react";
+import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase, CalendarIcon, TrendingUp, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
