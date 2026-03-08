@@ -646,6 +646,17 @@ export default function AdminPage() {
                 <Input type="number" value={manualForm.total_price} onChange={(e) => setManualForm({ ...manualForm, total_price: parseInt(e.target.value) || 0 })} />
               </div>
             </div>
+            <div className="space-y-1">
+              <Label className="text-sm">預約來源</Label>
+              <Select value={manualForm.source} onValueChange={(v) => setManualForm({ ...manualForm, source: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">系統代訂（師傅）</SelectItem>
+                  <SelectItem value="front_desk">櫃檯代訂</SelectItem>
+                  <SelectItem value="customer">客人自行預約</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowManualBooking(false)}>取消</Button>
