@@ -320,7 +320,7 @@ export default function StatsDashboard({
       {/* Commission daily stacked bar chart */}
       {commission && revenueTrend.some((d) => d.therapist! > 0) && (
         <div className="bg-card rounded-xl shadow p-4">
-          <h2 className="font-semibold text-foreground mb-3">💼 收入分析（近30天）</h2>
+          <h2 className="font-semibold text-foreground mb-3">💼 收入分析（{rangeLabel}）</h2>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={revenueTrend}>
               <CartesianGrid strokeDasharray="3 3" />
