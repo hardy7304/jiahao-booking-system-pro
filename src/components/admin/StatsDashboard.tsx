@@ -216,7 +216,8 @@ export default function StatsDashboard({
         b.service, b.addons?.join("; ") || "", `${b.duration}分`, b.total_price, ded, base, ther, shop,
       ];
     });
-    downloadCSV(headers, rows, `預約報表_${rangeLabel}.csv`);
+    const fileDate = `${format(rangeStart, "yyyyMMdd")}_${format(rangeEnd, "yyyyMMdd")}`;
+    downloadCSV(headers, rows, `預約報表_${fileDate}.csv`);
   };
 
   const exportCustomersCSV = () => {
