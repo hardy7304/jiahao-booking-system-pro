@@ -65,6 +65,7 @@ const APPLICABLE_CAT_OPTIONS = [
 export default function ServiceManagement() {
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [addons, setAddons] = useState<AddonRow[]>([]);
+  const { commissionRate } = useCommission();
   const [editingService, setEditingService] = useState<ServiceRow | null>(null);
   const [editingAddon, setEditingAddon] = useState<AddonRow | null>(null);
   const [showServiceDialog, setShowServiceDialog] = useState(false);
