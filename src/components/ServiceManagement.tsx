@@ -207,6 +207,7 @@ export default function ServiceManagement() {
                 <th className="text-left p-2">時長</th>
                 <th className="text-left p-2">價格</th>
                 <th className="text-left p-2">差價</th>
+                <th className="text-left p-2">業績金額</th>
                 <th className="text-left p-2">分類</th>
                 <th className="text-center p-2">狀態</th>
                 <th className="text-center p-2">操作</th>
@@ -249,6 +250,9 @@ export default function ServiceManagement() {
                       <Save className="w-3 h-3 text-muted-foreground opacity-50" />
                     </div>
                   </td>
+                  <td className="p-2 whitespace-nowrap font-medium text-accent-foreground">
+                    NT${(s.price - s.deduction).toLocaleString()}
+                  </td>
                   <td className="p-2">
                     <Badge variant="outline" className="text-xs">{CATEGORY_LABELS[s.category] || s.category}</Badge>
                   </td>
@@ -280,7 +284,7 @@ export default function ServiceManagement() {
                 </tr>
               ))}
               {services.length === 0 && (
-                <tr><td colSpan={8} className="text-center text-muted-foreground p-8">尚無服務項目</td></tr>
+                <tr><td colSpan={9} className="text-center text-muted-foreground p-8">尚無服務項目</td></tr>
               )}
             </tbody>
           </table>
