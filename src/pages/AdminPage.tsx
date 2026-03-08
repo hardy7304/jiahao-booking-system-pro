@@ -602,6 +602,11 @@ export default function AdminPage() {
           <TabsContent value="stats" className="mt-4">
             <StatsDashboard bookings={bookings} loading={loading} commission={commission} />
           </TabsContent>
+
+          {/* CUSTOMERS */}
+          <TabsContent value="customers" className="mt-4">
+            <CustomerTracking />
+          </TabsContent>
         </Tabs>
       </div>
 
