@@ -1,10 +1,13 @@
-import { useMemo } from "react";
-import { format, subDays, parseISO, startOfMonth, endOfMonth, isWithinInterval, getDay } from "date-fns";
+import { useState, useMemo } from "react";
+import { format, subDays, parseISO, startOfMonth, endOfMonth, isWithinInterval, getDay, subMonths, differenceInDays } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase } from "lucide-react";
+import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase, CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, Legend,
@@ -41,6 +44,8 @@ for (let h = 14; h < 26; h += 0.5) {
   HOURS_LABELS.push(`${Math.floor(dh).toString().padStart(2, "0")}:${h % 1 === 0 ? "00" : "30"}`);
 }
 
+type Preset = "thisMonth" | "lastMonth" | "7days" | "30days" | "custom";
+
 export default function StatsDashboard({
   bookings,
   loading,
@@ -50,19 +55,48 @@ export default function StatsDashboard({
   loading: boolean;
   commission?: CommissionHelpers;
 }) {
+  const now = new Date();
+  const [preset, setPreset] = useState<Preset>("thisMonth");
+  const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(now));
+  const [customTo, setCustomTo] = useState<Date>(endOfMonth(now));
+  const [fromOpen, setFromOpen] = useState(false);
+  const [toOpen, setToOpen] = useState(false);
+
+  const { rangeStart, rangeEnd, rangeLabel } = useMemo(() => {
+    switch (preset) {
+      case "thisMonth":
+        return { rangeStart: startOfMonth(now), rangeEnd: endOfMonth(now), rangeLabel: "本月" };
+      case "lastMonth": {
+        const lm = subMonths(now, 1);
+        return { rangeStart: startOfMonth(lm), rangeEnd: endOfMonth(lm), rangeLabel: "上月" };
+      }
+      case "7days":
+        return { rangeStart: subDays(now, 6), rangeEnd: now, rangeLabel: "近7天" };
+      case "30days":
+        return { rangeStart: subDays(now, 29), rangeEnd: now, rangeLabel: "近30天" };
+      case "custom":
+        return {
+          rangeStart: customFrom,
+          rangeEnd: customTo,
+          rangeLabel: `${format(customFrom, "M/d")} ~ ${format(customTo, "M/d")}`,
+        };
+    }
+  }, [preset, customFrom, customTo]);
+
   const active = bookings.filter((b) => !b.cancelled_at && b.status !== "cancelled");
 
-  const now = new Date();
-  const monthStart = startOfMonth(now);
-  const monthEnd = endOfMonth(now);
-  const monthBookings = active.filter((b) => {
-    const d = parseISO(b.date);
-    return isWithinInterval(d, { start: monthStart, end: monthEnd });
-  });
+  const rangeBookings = useMemo(() => {
+    return active.filter((b) => {
+      const d = parseISO(b.date);
+      return isWithinInterval(d, { start: rangeStart, end: rangeEnd });
+    });
+  }, [active, rangeStart, rangeEnd]);
 
-  // SECTION A: Monthly summary
-  const monthRevenue = monthBookings.reduce((s, b) => s + b.total_price, 0);
-  const monthCount = monthBookings.length;
+  const rangeDays = Math.max(1, differenceInDays(rangeEnd, rangeStart) + 1);
+
+  // SECTION A: Summary
+  const rangeRevenue = rangeBookings.reduce((s, b) => s + b.total_price, 0);
+  const rangeCount = rangeBookings.length;
 
   const phoneCountAll = useMemo(() => {
     const map: Record<string, number> = {};
@@ -70,34 +104,35 @@ export default function StatsDashboard({
     return map;
   }, [active]);
 
-  const monthPhones = useMemo(() => {
+  const rangePhones = useMemo(() => {
     const set = new Set<string>();
-    monthBookings.forEach((b) => set.add(b.phone));
+    rangeBookings.forEach((b) => set.add(b.phone));
     return set;
-  }, [monthBookings]);
+  }, [rangeBookings]);
 
   const newCustomers = useMemo(() => {
     let count = 0;
-    monthPhones.forEach((phone) => {
+    const rangeStartStr = format(rangeStart, "yyyy-MM-dd");
+    rangePhones.forEach((phone) => {
       const allBookingsForPhone = active.filter((b) => b.phone === phone);
       const earliest = allBookingsForPhone.reduce((min, b) => (b.date < min ? b.date : min), "9999");
-      if (earliest >= format(monthStart, "yyyy-MM-dd")) count++;
+      if (earliest >= rangeStartStr) count++;
     });
     return count;
-  }, [monthPhones, active, monthStart]);
+  }, [rangePhones, active, rangeStart]);
 
   const returnRate = useMemo(() => {
-    if (monthPhones.size === 0) return 0;
+    if (rangePhones.size === 0) return 0;
     let returning = 0;
-    monthPhones.forEach((phone) => { if ((phoneCountAll[phone] || 0) >= 2) returning++; });
-    return Math.round((returning / monthPhones.size) * 100);
-  }, [monthPhones, phoneCountAll]);
+    rangePhones.forEach((phone) => { if ((phoneCountAll[phone] || 0) >= 2) returning++; });
+    return Math.round((returning / rangePhones.size) * 100);
+  }, [rangePhones, phoneCountAll]);
 
-  // Commission monthly totals
-  const monthDeductionTotal = commission ? monthBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
-  const monthBaseTotal = commission ? monthBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service), 0) : 0;
-  const monthTherapist = commission ? monthBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
-  const monthShopTotal = commission ? monthBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
+  // Commission totals
+  const rangeDeductionTotal = commission ? rangeBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
+  const rangeBaseTotal = commission ? rangeBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service), 0) : 0;
+  const rangeTherapist = commission ? rangeBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
+  const rangeShopTotal = commission ? rangeBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
 
   // SECTION B: Revenue trend (last 30 days)
   const revenueTrend = useMemo(() => {
