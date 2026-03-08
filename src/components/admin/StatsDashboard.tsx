@@ -134,16 +134,18 @@ export default function StatsDashboard({
   const rangeTherapist = commission ? rangeBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
   const rangeShopTotal = commission ? rangeBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
 
-  // SECTION B: Revenue trend (last 30 days)
+  // SECTION B: Revenue trend (within selected range)
   const revenueTrend = useMemo(() => {
     const data: { date: string; revenue: number; count: number; avg7?: number; therapist?: number; shop?: number }[] = [];
-    for (let i = 29; i >= 0; i--) {
-      const d = format(subDays(now, i), "yyyy-MM-dd");
+    const days = Math.min(rangeDays, 90);
+    for (let i = days - 1; i >= 0; i--) {
+      const dateObj = subDays(rangeEnd, i);
+      const d = format(dateObj, "yyyy-MM-dd");
       const dayBookings = active.filter((b) => b.date === d);
       const rev = dayBookings.reduce((s, b) => s + b.total_price, 0);
       const ther = commission ? dayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
       const shop = commission ? dayBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
-      data.push({ date: format(subDays(now, i), "M/d"), revenue: rev, count: dayBookings.length, therapist: ther, shop: shop });
+      data.push({ date: format(dateObj, "M/d"), revenue: rev, count: dayBookings.length, therapist: ther, shop: shop });
     }
     for (let i = 0; i < data.length; i++) {
       const start = Math.max(0, i - 6);
@@ -151,24 +153,24 @@ export default function StatsDashboard({
       data[i].avg7 = Math.round(slice.reduce((s, d) => s + d.revenue, 0) / slice.length);
     }
     return data;
-  }, [active, commission]);
+  }, [active, commission, rangeEnd, rangeDays]);
 
-  // SECTION C: Popular services
+  // SECTION C: Popular services (within range)
   const serviceStats = useMemo(() => {
     const map: Record<string, { count: number; revenue: number }> = {};
-    active.forEach((b) => {
+    rangeBookings.forEach((b) => {
       const name = b.service.split(" (")[0].split("（")[0];
       if (!map[name]) map[name] = { count: 0, revenue: 0 };
       map[name].count++;
       map[name].revenue += b.total_price;
     });
     return Object.entries(map).sort((a, b) => b[1].count - a[1].count).slice(0, 8).map(([name, stats]) => ({ name, ...stats }));
-  }, [active]);
+  }, [rangeBookings]);
 
-  // SECTION D: Heatmap
+  // SECTION D: Heatmap (within range)
   const heatmapData = useMemo(() => {
     const grid: Record<string, number> = {};
-    active.forEach((b) => {
+    rangeBookings.forEach((b) => {
       const d = parseISO(b.date);
       const dayOfWeek = getDay(d);
       const hourIdx = Math.round((b.start_hour - 14) * 2);
@@ -177,21 +179,21 @@ export default function StatsDashboard({
       }
     });
     return grid;
-  }, [active]);
+  }, [rangeBookings]);
 
   const maxHeat = Math.max(1, ...Object.values(heatmapData));
 
-  // SECTION E: Customer analysis
+  // SECTION E: Customer analysis (within range)
   const customerStats = useMemo(() => {
     const map: Record<string, { name: string; phone: string; count: number; lastDate: string; total: number }> = {};
-    active.forEach((b) => {
+    rangeBookings.forEach((b) => {
       if (!map[b.phone]) map[b.phone] = { name: b.name, phone: b.phone, count: 0, lastDate: "", total: 0 };
       map[b.phone].count++;
       map[b.phone].total += b.total_price;
       if (b.date > map[b.phone].lastDate) { map[b.phone].lastDate = b.date; map[b.phone].name = b.name; }
     });
     return Object.values(map).sort((a, b) => b.count - a.count);
-  }, [active]);
+  }, [rangeBookings]);
 
   const top10 = customerStats.slice(0, 10);
   const newCount = customerStats.filter((c) => c.count === 1).length;
@@ -204,7 +206,7 @@ export default function StatsDashboard({
   // CSV export
   const exportBookingsCSV = () => {
     const headers = ["下單時間", "日期", "時段", "姓名", "電話", "服務", "加購", "時長", "金額", "差價", "計算基底", "師傅收入", "店家抽成"];
-    const rows = monthBookings.map((b) => {
+    const rows = rangeBookings.map((b) => {
       const ded = commission ? commission.getDeduction(b.service) : 0;
       const base = commission ? commission.calcBase(b.total_price, b.service) : b.total_price;
       const ther = commission ? commission.calcTherapist(b.total_price, b.service) : 0;
@@ -214,13 +216,13 @@ export default function StatsDashboard({
         b.service, b.addons?.join("; ") || "", `${b.duration}分`, b.total_price, ded, base, ther, shop,
       ];
     });
-    downloadCSV(headers, rows, `預約報表_${format(now, "yyyyMM")}.csv`);
+    downloadCSV(headers, rows, `預約報表_${rangeLabel}.csv`);
   };
 
   const exportCustomersCSV = () => {
     const headers = ["姓名", "電話", "預約次數", "最後預約日", "累計消費"];
     const rows = customerStats.map((c) => [c.name, c.phone, c.count, c.lastDate, c.total]);
-    downloadCSV(headers, rows, `客戶名單_${format(now, "yyyyMM")}.csv`);
+    downloadCSV(headers, rows, `客戶名單_${rangeLabel}.csv`);
   };
 
   if (loading) {
@@ -233,10 +235,74 @@ export default function StatsDashboard({
 
   return (
     <div className="space-y-4">
+      {/* Date range picker */}
+      <div className="bg-card rounded-xl shadow p-4 space-y-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {([
+            ["thisMonth", "本月"],
+            ["lastMonth", "上月"],
+            ["7days", "近7天"],
+            ["30days", "近30天"],
+            ["custom", "自訂"],
+          ] as [Preset, string][]).map(([key, label]) => (
+            <Button
+              key={key}
+              variant={preset === key ? "default" : "outline"}
+              size="sm"
+              onClick={() => setPreset(key)}
+            >
+              {label}
+            </Button>
+          ))}
+        </div>
+        {preset === "custom" && (
+          <div className="flex items-center gap-2 flex-wrap">
+            <Popover open={fromOpen} onOpenChange={setFromOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <CalendarIcon className="w-4 h-4" />
+                  {format(customFrom, "yyyy/M/d")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={customFrom}
+                  onSelect={(d) => { if (d) { setCustomFrom(d); setFromOpen(false); } }}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+            <span className="text-muted-foreground">～</span>
+            <Popover open={toOpen} onOpenChange={setToOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <CalendarIcon className="w-4 h-4" />
+                  {format(customTo, "yyyy/M/d")}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={customTo}
+                  onSelect={(d) => { if (d) { setCustomTo(d); setToOpen(false); } }}
+                  initialFocus
+                  className={cn("p-3 pointer-events-auto")}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+        )}
+        <div className="text-xs text-muted-foreground">
+          📊 統計區間：{format(rangeStart, "yyyy/M/d")} ~ {format(rangeEnd, "yyyy/M/d")}（{rangeDays} 天，{rangeCount} 筆預約）
+        </div>
+      </div>
+
       {/* SECTION A: Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <SummaryCard icon={<DollarSign className="w-4 h-4" />} label="本月營業額" value={`NT$${monthRevenue.toLocaleString()}`} valueClass="text-primary" />
-        <SummaryCard icon={<CalendarDays className="w-4 h-4" />} label="本月預約數" value={`${monthCount} 筆`} />
+        <SummaryCard icon={<DollarSign className="w-4 h-4" />} label={`${rangeLabel}營業額`} value={`NT$${rangeRevenue.toLocaleString()}`} valueClass="text-primary" />
+        <SummaryCard icon={<CalendarDays className="w-4 h-4" />} label={`${rangeLabel}預約數`} value={`${rangeCount} 筆`} />
         <SummaryCard icon={<Users className="w-4 h-4" />} label="新客數" value={`${newCustomers} 人`} />
         <SummaryCard icon={<RotateCcw className="w-4 h-4" />} label="回流率" value={`${returnRate}%`} valueClass="text-primary" />
       </div>
@@ -244,10 +310,10 @@ export default function StatsDashboard({
       {/* Commission summary */}
       {commission && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <SummaryCard icon={<DollarSign className="w-4 h-4" />} label="本月公司差價" value={`-NT$${monthDeductionTotal.toLocaleString()}`} valueClass="text-destructive" />
-          <SummaryCard icon={<Briefcase className="w-4 h-4" />} label="本月業績基底" value={`NT$${monthBaseTotal.toLocaleString()}`} valueClass="text-muted-foreground" />
-          <SummaryCard icon={<Wallet className="w-4 h-4" />} label="本月師傅累計收入" value={`NT$${monthTherapist.toLocaleString()}`} valueClass="text-blue-600" />
-          <SummaryCard icon={<Building2 className="w-4 h-4" />} label="本月店家抽成" value={`NT$${monthShopTotal.toLocaleString()}`} valueClass="text-orange-600" />
+          <SummaryCard icon={<DollarSign className="w-4 h-4" />} label={`${rangeLabel}公司差價`} value={`-NT$${rangeDeductionTotal.toLocaleString()}`} valueClass="text-destructive" />
+          <SummaryCard icon={<Briefcase className="w-4 h-4" />} label={`${rangeLabel}業績基底`} value={`NT$${rangeBaseTotal.toLocaleString()}`} valueClass="text-muted-foreground" />
+          <SummaryCard icon={<Wallet className="w-4 h-4" />} label={`${rangeLabel}師傅累計收入`} value={`NT$${rangeTherapist.toLocaleString()}`} valueClass="text-blue-600" />
+          <SummaryCard icon={<Building2 className="w-4 h-4" />} label={`${rangeLabel}店家抽成`} value={`NT$${rangeShopTotal.toLocaleString()}`} valueClass="text-orange-600" />
         </div>
       )}
 
