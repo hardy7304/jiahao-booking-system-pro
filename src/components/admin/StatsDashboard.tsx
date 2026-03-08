@@ -223,7 +223,8 @@ export default function StatsDashboard({
   const exportCustomersCSV = () => {
     const headers = ["姓名", "電話", "預約次數", "最後預約日", "累計消費"];
     const rows = customerStats.map((c) => [c.name, c.phone, c.count, c.lastDate, c.total]);
-    downloadCSV(headers, rows, `客戶名單_${rangeLabel}.csv`);
+    const fileDate = `${format(rangeStart, "yyyyMMdd")}_${format(rangeEnd, "yyyyMMdd")}`;
+    downloadCSV(headers, rows, `客戶名單_${fileDate}.csv`);
   };
 
   if (loading) {
