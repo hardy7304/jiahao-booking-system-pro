@@ -256,7 +256,7 @@ export default function ServiceManagement() {
                   <td className="p-2 whitespace-nowrap font-medium text-accent-foreground">
                     NT${(s.price - s.deduction).toLocaleString()}
                   </td>
-                  <td className="p-2 whitespace-nowrap font-semibold text-green-600 dark:text-green-400">
+                  <td className="p-2 whitespace-nowrap font-semibold text-primary">
                     NT${Math.floor((s.price - s.deduction) * commissionRate).toLocaleString()}
                   </td>
                   <td className="p-2">
