@@ -227,14 +227,16 @@ export default function ServiceManagement() {
                   <td className="p-2 whitespace-nowrap">
                     <div className="flex items-center gap-1">
                       <Input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
                         className="w-20 h-7 text-xs"
-                        value={s.deduction}
-                        onChange={(e) => {
+                        defaultValue={s.deduction.toString()}
+                        key={`ded-${s.id}-${s.deduction}`}
+                        onFocus={(e) => e.target.select()}
+                        onBlur={(e) => {
                           const val = parseInt(e.target.value) || 0;
-                          setServices(prev => prev.map(x => x.id === s.id ? { ...x, deduction: val } : x));
+                          updateDeduction(s, val);
                         }}
-                        onBlur={(e) => updateDeduction(s, parseInt(e.target.value) || 0)}
                         onKeyDown={(e) => { if (e.key === "Enter") { (e.target as HTMLInputElement).blur(); } }}
                         placeholder="0"
                       />
