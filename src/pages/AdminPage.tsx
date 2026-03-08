@@ -437,6 +437,9 @@ export default function AdminPage() {
                               <Button variant="ghost" size="sm" title="備註" onClick={() => { setNoteBookingId(b.id); setNoteText(b.admin_note || ""); }}>
                                 <StickyNote className={cn("w-3.5 h-3.5", b.admin_note ? "text-amber-600" : "text-muted-foreground")} />
                               </Button>
+                              <Button variant="ghost" size="sm" title="編輯" onClick={() => openEditBooking(b)}>
+                                <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                              </Button>
                               {b.cancelled_at || b.status === "cancelled" ? (
                                 <>
                                   <Button variant="ghost" size="sm" onClick={() => restoreBooking(b.id)} title="復原">
@@ -460,7 +463,11 @@ export default function AdminPage() {
                                 </>
                               ) : (
                                 <>
-                                  {b.status !== "completed" && (
+                                  {b.status === "completed" ? (
+                                    <Button variant="ghost" size="sm" title="取消完成" onClick={() => uncompleteBooking(b.id)}>
+                                      <Undo2 className="w-3.5 h-3.5 text-amber-600" />
+                                    </Button>
+                                  ) : (
                                     <Button variant="ghost" size="sm" title="標記完成" onClick={() => completeBooking(b.id)}>
                                       <Check className="w-3.5 h-3.5 text-emerald-600" />
                                     </Button>
