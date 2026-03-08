@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, subDays, parseISO, startOfMonth, endOfMonth, isWithinInterval, getDay, subMonths, differenceInDays } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase, CalendarIcon } from "lucide-react";
+import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase, CalendarIcon, TrendingUp, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -307,6 +307,12 @@ export default function StatsDashboard({
         <SummaryCard icon={<CalendarDays className="w-4 h-4" />} label={`${rangeLabel}預約數`} value={`${rangeCount} 筆`} />
         <SummaryCard icon={<Users className="w-4 h-4" />} label="新客數" value={`${newCustomers} 人`} />
         <SummaryCard icon={<RotateCcw className="w-4 h-4" />} label="回流率" value={`${returnRate}%`} valueClass="text-primary" />
+      </div>
+
+      {/* Daily averages */}
+      <div className="grid grid-cols-2 gap-3">
+        <SummaryCard icon={<TrendingUp className="w-4 h-4" />} label="日均營收" value={`NT$${Math.round(rangeRevenue / rangeDays).toLocaleString()}`} valueClass="text-primary" />
+        <SummaryCard icon={<BarChart3 className="w-4 h-4" />} label="日均預約數" value={`${(rangeCount / rangeDays).toFixed(1)} 筆`} />
       </div>
 
       {/* Commission summary */}
