@@ -210,6 +210,7 @@ export default function ServiceManagement() {
                 <th className="text-left p-2">價格</th>
                 <th className="text-left p-2">差價</th>
                 <th className="text-left p-2">業績金額</th>
+                <th className="text-left p-2">師傅預估</th>
                 <th className="text-left p-2">分類</th>
                 <th className="text-center p-2">狀態</th>
                 <th className="text-center p-2">操作</th>
