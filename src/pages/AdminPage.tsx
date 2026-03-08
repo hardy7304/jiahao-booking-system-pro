@@ -396,6 +396,7 @@ export default function AdminPage() {
                         <th className="text-left p-2">金額</th>
                         {showCommissionCols && (
                           <>
+                            <th className="text-left p-2">公司差價</th>
                             <th className="text-left p-2">計算基底</th>
                             <th className="text-left p-2">師傅收入</th>
                           </>
@@ -419,6 +420,7 @@ export default function AdminPage() {
                           <td className="p-2 font-medium text-primary">NT${b.total_price.toLocaleString()}</td>
                           {showCommissionCols && (
                             <>
+                              <td className="p-2 font-medium text-destructive">-NT${commission.getDeduction(b.service).toLocaleString()}</td>
                               <td className="p-2 text-muted-foreground">NT${commission.calcBase(b.total_price, b.service).toLocaleString()}</td>
                               <td className="p-2 font-bold text-blue-600">NT${commission.calcTherapist(b.total_price, b.service).toLocaleString()}</td>
                             </>
