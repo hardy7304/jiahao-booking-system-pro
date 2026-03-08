@@ -735,6 +735,81 @@ export default function AdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit booking dialog */}
+      <Dialog open={!!editingBooking} onOpenChange={(open) => !open && setEditingBooking(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>編輯預約</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-sm">姓名</Label>
+                <Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm">電話</Label>
+                <Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-sm">服務</Label>
+              <Select value={editForm.service} onValueChange={(v) => {
+                const svc = servicesList.find((s) => s.name === v);
+                setEditForm({ ...editForm, service: v, duration: svc?.duration || editForm.duration, total_price: svc?.price || editForm.total_price });
+              }}>
+                <SelectTrigger><SelectValue placeholder="選擇服務" /></SelectTrigger>
+                <SelectContent>
+                  {servicesList.map((s) => (
+                    <SelectItem key={s.id} value={s.name}>{s.name} - NT${s.price}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-sm">日期</Label>
+                <Input type="date" value={editForm.date} onChange={(e) => setEditForm({ ...editForm, date: e.target.value })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm">開始時段</Label>
+                <Select value={editForm.start_hour.toString()} onValueChange={(v) => setEditForm({ ...editForm, start_hour: parseFloat(v) })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {timeSlots.map((s) => (
+                      <SelectItem key={s} value={s.toString()}>{formatHourToTime(s)}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-sm">時長（分鐘）</Label>
+                <Input type="number" value={editForm.duration} onChange={(e) => setEditForm({ ...editForm, duration: parseInt(e.target.value) || 0 })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm">金額</Label>
+                <Input type="number" value={editForm.total_price} onChange={(e) => setEditForm({ ...editForm, total_price: parseInt(e.target.value) || 0 })} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-sm">預約來源</Label>
+              <Select value={editForm.source} onValueChange={(v) => setEditForm({ ...editForm, source: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="customer">客人自行預約</SelectItem>
+                  <SelectItem value="admin">系統代訂（師傅）</SelectItem>
+                  <SelectItem value="front_desk">櫃檯代訂</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingBooking(null)}>取消</Button>
+            <Button onClick={saveEditBooking}>儲存修改</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
