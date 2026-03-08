@@ -93,6 +93,12 @@ export default function AdminPage() {
   const [noteBookingId, setNoteBookingId] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
 
+  // Edit booking dialog
+  const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "customer",
+  });
+
   // Manual booking dialog
   const [showManualBooking, setShowManualBooking] = useState(false);
   const [manualForm, setManualForm] = useState({
