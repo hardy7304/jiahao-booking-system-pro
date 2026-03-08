@@ -15,6 +15,7 @@ import ServiceManagement from "@/components/ServiceManagement";
 import TodayDashboard from "@/components/admin/TodayDashboard";
 import BookingCalendarView from "@/components/admin/BookingCalendarView";
 import StatsDashboard from "@/components/admin/StatsDashboard";
+import CustomerTracking from "@/components/admin/CustomerTracking";
 import BookingFiltersBar, { type BookingFilters } from "@/components/admin/BookingFilters";
 import { useCommission } from "@/hooks/useCommission";
 import { format, parseISO } from "date-fns";
