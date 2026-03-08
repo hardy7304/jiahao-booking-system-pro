@@ -350,6 +350,7 @@ export default function AdminPage() {
             <TabsTrigger value="holidays" className="flex-1">公休設定</TabsTrigger>
             <TabsTrigger value="services" className="flex-1">服務管理</TabsTrigger>
             <TabsTrigger value="stats" className="flex-1">統計</TabsTrigger>
+            <TabsTrigger value="customers" className="flex-1">客戶</TabsTrigger>
           </TabsList>
 
           {/* TODAY */}
