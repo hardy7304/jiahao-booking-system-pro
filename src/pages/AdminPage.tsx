@@ -15,6 +15,7 @@ import ServiceManagement from "@/components/ServiceManagement";
 import TodayDashboard from "@/components/admin/TodayDashboard";
 import BookingCalendarView from "@/components/admin/BookingCalendarView";
 import StatsDashboard from "@/components/admin/StatsDashboard";
+import CustomerTracking from "@/components/admin/CustomerTracking";
 import BookingFiltersBar, { type BookingFilters } from "@/components/admin/BookingFilters";
 import { useCommission } from "@/hooks/useCommission";
 import { format, parseISO } from "date-fns";
@@ -349,6 +350,7 @@ export default function AdminPage() {
             <TabsTrigger value="holidays" className="flex-1">公休設定</TabsTrigger>
             <TabsTrigger value="services" className="flex-1">服務管理</TabsTrigger>
             <TabsTrigger value="stats" className="flex-1">統計</TabsTrigger>
+            <TabsTrigger value="customers" className="flex-1">客戶</TabsTrigger>
           </TabsList>
 
           {/* TODAY */}
@@ -599,6 +601,11 @@ export default function AdminPage() {
           {/* STATS */}
           <TabsContent value="stats" className="mt-4">
             <StatsDashboard bookings={bookings} loading={loading} commission={commission} />
+          </TabsContent>
+
+          {/* CUSTOMERS */}
+          <TabsContent value="customers" className="mt-4">
+            <CustomerTracking />
           </TabsContent>
         </Tabs>
       </div>

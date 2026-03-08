@@ -113,6 +113,39 @@ export type Database = {
         }
         Relationships: []
       }
+      customers: {
+        Row: {
+          created_at: string | null
+          id: string
+          last_visit_date: string | null
+          name: string
+          no_show_count: number
+          phone: string
+          updated_at: string | null
+          visit_count: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          last_visit_date?: string | null
+          name?: string
+          no_show_count?: number
+          phone: string
+          updated_at?: string | null
+          visit_count?: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          last_visit_date?: string | null
+          name?: string
+          no_show_count?: number
+          phone?: string
+          updated_at?: string | null
+          visit_count?: number
+        }
+        Relationships: []
+      }
       holidays: {
         Row: {
           created_at: string
