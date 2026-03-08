@@ -1,9 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
-import { format } from "date-fns";
+import { format, addDays, isToday } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { Clock, CalendarDays, DollarSign, AlertTriangle, Briefcase, Building2, Wallet } from "lucide-react";
+import { Clock, CalendarDays, DollarSign, AlertTriangle, Briefcase, Building2, Wallet, ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { formatHourToTime } from "@/lib/services";
 
 interface Booking {
@@ -66,42 +70,48 @@ export default function TodayDashboard({
   commission?: CommissionHelpers;
 }) {
   const [now, setNow] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
 
-  const todayStr = format(now, "yyyy-MM-dd");
-  const todayBookings = useMemo(
+  const isViewingToday = isToday(selectedDate);
+  const viewDateStr = format(selectedDate, "yyyy-MM-dd");
+
+  const dayBookings = useMemo(
     () =>
       bookings
-        .filter((b) => b.date === todayStr && !b.cancelled_at && b.status !== "cancelled")
+        .filter((b) => b.date === viewDateStr && !b.cancelled_at && b.status !== "cancelled")
         .sort((a, b) => a.start_hour - b.start_hour),
-    [bookings, todayStr]
+    [bookings, viewDateStr]
   );
 
-  const todayRevenue = todayBookings.reduce((sum, b) => sum + b.total_price, 0);
+  const dayRevenue = dayBookings.reduce((sum, b) => sum + b.total_price, 0);
 
   const currentHour = now.getHours() + now.getMinutes() / 60;
   const adjustedCurrentHour = currentHour < 6 ? currentHour + 24 : currentHour;
 
-  const nextBooking = todayBookings.find((b) => b.start_hour > adjustedCurrentHour);
+  const nextBooking = isViewingToday ? dayBookings.find((b) => b.start_hour > adjustedCurrentHour) : null;
   const minutesUntilNext = nextBooking
     ? Math.round((nextBooking.start_hour - adjustedCurrentHour) * 60)
     : null;
 
-  const isHolidayToday = holidays.some((h) => h.date === todayStr && h.type === "整天公休");
+  const isHolidayOnDate = holidays.some((h) => h.date === viewDateStr && h.type === "整天公休");
   const totalSlots = 24;
-  const bookedSlots = todayBookings.length;
-  const availableSlots = isHolidayToday ? 0 : Math.max(0, totalSlots - bookedSlots);
-  const completedCount = todayBookings.filter((b) => b.status === "completed").length;
+  const bookedSlots = dayBookings.length;
+  const availableSlots = isHolidayOnDate ? 0 : Math.max(0, totalSlots - bookedSlots);
+  const completedCount = dayBookings.filter((b) => b.status === "completed").length;
 
   // Commission calculations
-  const todayDeductionTotal = commission ? todayBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
-  const todayBaseTotal = commission ? todayBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service), 0) : 0;
-  const todayTherapist = commission ? todayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
-  const todayShop = commission ? todayBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
+  const dayDeductionTotal = commission ? dayBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
+  const dayBaseTotal = commission ? dayBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service), 0) : 0;
+  const dayTherapist = commission ? dayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
+  const dayShop = commission ? dayBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
+
+  const dateLabel = isViewingToday ? "今日" : format(selectedDate, "M/d");
 
   if (loading) {
     return (
@@ -118,21 +128,60 @@ export default function TodayDashboard({
 
   return (
     <div className="space-y-4">
-      {/* Live clock + date */}
-      <div className="bg-card rounded-xl shadow p-4 flex items-center justify-between">
-        <div>
-          <div className="text-2xl font-bold text-foreground tracking-wide font-mono">
-            {format(now, "HH:mm:ss")}
+      {/* Date navigation + live clock */}
+      <div className="bg-card rounded-xl shadow p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-2xl font-bold text-foreground tracking-wide font-mono">
+              {format(now, "HH:mm:ss")}
+            </div>
+            <div className="text-sm text-muted-foreground">
+              {format(now, "yyyy年M月d日 (EEEE)", { locale: zhTW })}
+            </div>
           </div>
-          <div className="text-sm text-muted-foreground">
-            {format(now, "yyyy年M月d日 (EEEE)", { locale: zhTW })}
-          </div>
+          {isHolidayOnDate && (
+            <Badge variant="destructive" className="text-sm px-3 py-1">
+              {isViewingToday ? "今日公休" : "該日公休"}
+            </Badge>
+          )}
         </div>
-        {isHolidayToday && (
-          <Badge variant="destructive" className="text-sm px-3 py-1">
-            今日公休
-          </Badge>
-        )}
+
+        {/* Date switcher */}
+        <div className="flex items-center justify-center gap-2 mt-3 pt-3 border-t border-border">
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setSelectedDate(d => addDays(d, -1))}>
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+
+          <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+            <PopoverTrigger asChild>
+              <Button variant={isViewingToday ? "default" : "outline"} size="sm" className="min-w-[140px] gap-1.5">
+                <CalendarIcon className="w-4 h-4" />
+                {isViewingToday
+                  ? "今天"
+                  : format(selectedDate, "M月d日 (EEE)", { locale: zhTW })}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="center">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(d) => { if (d) { setSelectedDate(d); setCalendarOpen(false); } }}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setSelectedDate(d => addDays(d, 1))}>
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+
+          {!isViewingToday && (
+            <Button variant="ghost" size="sm" className="text-xs" onClick={() => setSelectedDate(new Date())}>
+              回今天
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Summary cards */}
@@ -140,9 +189,9 @@ export default function TodayDashboard({
         <div className="bg-card rounded-xl shadow p-4">
           <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
             <CalendarDays className="w-4 h-4" />
-            今日預約
+            {dateLabel}預約
           </div>
-          <div className="text-2xl font-bold text-foreground">{todayBookings.length} 筆</div>
+          <div className="text-2xl font-bold text-foreground">{dayBookings.length} 筆</div>
           {completedCount > 0 && (
             <div className="text-xs text-muted-foreground mt-1">已完成 {completedCount} 筆</div>
           )}
@@ -151,15 +200,15 @@ export default function TodayDashboard({
         <div className="bg-card rounded-xl shadow p-4">
           <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
             <DollarSign className="w-4 h-4" />
-            今日營業額
+            {dateLabel}營業額
           </div>
-          <div className="text-2xl font-bold text-primary">NT${todayRevenue.toLocaleString()}</div>
+          <div className="text-2xl font-bold text-primary">NT${dayRevenue.toLocaleString()}</div>
         </div>
 
         <div className="bg-card rounded-xl shadow p-4">
           <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
             <AlertTriangle className="w-4 h-4" />
-            今日空檔
+            {dateLabel}空檔
           </div>
           <div className="text-2xl font-bold text-foreground">{availableSlots} 個</div>
         </div>
@@ -179,7 +228,9 @@ export default function TodayDashboard({
               </div>
             </>
           ) : (
-            <div className="text-sm text-muted-foreground">無後續預約</div>
+            <div className="text-sm text-muted-foreground">
+              {isViewingToday ? "無後續預約" : "—"}
+            </div>
           )}
         </div>
       </div>
@@ -190,24 +241,24 @@ export default function TodayDashboard({
           <div className="bg-card rounded-xl shadow p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <DollarSign className="w-4 h-4" />
-              今日公司差價
+              {dateLabel}公司差價
             </div>
-            <div className="text-xl font-bold text-destructive">-NT${todayDeductionTotal.toLocaleString()}</div>
+            <div className="text-xl font-bold text-destructive">-NT${dayDeductionTotal.toLocaleString()}</div>
             <div className="text-xs text-muted-foreground mt-0.5">售價扣除金額</div>
           </div>
           <div className="bg-card rounded-xl shadow p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <Briefcase className="w-4 h-4" />
-              今日業績基底
+              {dateLabel}業績基底
             </div>
-            <div className="text-xl font-bold text-muted-foreground">NT${todayBaseTotal.toLocaleString()}</div>
+            <div className="text-xl font-bold text-muted-foreground">NT${dayBaseTotal.toLocaleString()}</div>
           </div>
           <div className="bg-card rounded-xl shadow p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <Wallet className="w-4 h-4" />
-              今日師傅收入
+              {dateLabel}師傅收入
             </div>
-            <div className="text-xl font-bold text-blue-600">NT${todayTherapist.toLocaleString()}</div>
+            <div className="text-xl font-bold text-blue-600">NT${dayTherapist.toLocaleString()}</div>
             <div className="text-xs text-muted-foreground mt-0.5">×{commission.commissionRate} 計算</div>
           </div>
           <div className="bg-card rounded-xl shadow p-4">
@@ -215,26 +266,29 @@ export default function TodayDashboard({
               <Building2 className="w-4 h-4" />
               店家抽成
             </div>
-            <div className="text-xl font-bold text-orange-600">NT${todayShop.toLocaleString()}</div>
+            <div className="text-xl font-bold text-orange-600">NT${dayShop.toLocaleString()}</div>
             <div className="text-xs text-muted-foreground mt-0.5">×{(1 - commission.commissionRate).toFixed(1)} 店家</div>
           </div>
         </div>
       )}
 
-      {/* Today's bookings list */}
+      {/* Day's bookings list */}
       <div className="bg-card rounded-xl shadow p-4">
-        <h2 className="font-semibold text-foreground mb-3">📋 今日預約時程</h2>
-        {todayBookings.length === 0 ? (
+        <h2 className="font-semibold text-foreground mb-3">
+          📋 {isViewingToday ? "今日" : format(selectedDate, "M/d", { locale: zhTW })} 預約時程
+        </h2>
+        {dayBookings.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
-            {isHolidayToday ? "今日公休，無預約" : "今日尚無預約"}
+            {isHolidayOnDate ? (isViewingToday ? "今日公休，無預約" : "該日公休，無預約") : (isViewingToday ? "今日尚無預約" : "該日尚無預約")}
           </div>
         ) : (
           <div className="space-y-2">
-            {todayBookings.map((b) => {
+            {dayBookings.map((b) => {
               const cat = getCategoryFromService(b.service);
               const colorClass = SERVICE_COLORS[cat] || SERVICE_COLORS.foot;
-              const isPast = b.start_hour < adjustedCurrentHour;
+              const isPast = isViewingToday && b.start_hour < adjustedCurrentHour;
               const isCurrent =
+                isViewingToday &&
                 b.start_hour <= adjustedCurrentHour &&
                 b.start_hour + b.duration / 60 > adjustedCurrentHour;
 
