@@ -339,7 +339,7 @@ export default function StatsDashboard({
 
       {/* SECTION B: Revenue trend */}
       <div className="bg-card rounded-xl shadow p-4">
-        <h2 className="font-semibold text-foreground mb-3">📈 營收趨勢（近30天）</h2>
+        <h2 className="font-semibold text-foreground mb-3">📈 營收趨勢（{rangeLabel}）</h2>
         {revenueTrend.some((d) => d.revenue > 0) ? (
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={revenueTrend}>
