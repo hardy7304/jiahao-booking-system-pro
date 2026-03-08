@@ -309,6 +309,12 @@ export default function StatsDashboard({
         <SummaryCard icon={<RotateCcw className="w-4 h-4" />} label="回流率" value={`${returnRate}%`} valueClass="text-primary" />
       </div>
 
+      {/* Daily averages */}
+      <div className="grid grid-cols-2 gap-3">
+        <SummaryCard icon={<TrendingUp className="w-4 h-4" />} label="日均營收" value={`NT$${Math.round(rangeRevenue / rangeDays).toLocaleString()}`} valueClass="text-primary" />
+        <SummaryCard icon={<BarChart3 className="w-4 h-4" />} label="日均預約數" value={`${(rangeCount / rangeDays).toFixed(1)} 筆`} />
+      </div>
+
       {/* Commission summary */}
       {commission && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
