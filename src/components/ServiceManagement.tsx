@@ -34,6 +34,7 @@ interface AddonRow {
   name: string;
   extra_duration: number;
   extra_price: number;
+  deduction: number;
   applicable_categories: string[];
   addon_type: string;
   is_active: boolean;
