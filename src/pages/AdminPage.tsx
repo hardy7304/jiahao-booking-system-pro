@@ -118,6 +118,7 @@ export default function AdminPage() {
   // Settings dialog
   const [showSettings, setShowSettings] = useState(false);
   const [rateInput, setRateInput] = useState("60");
+  const [calendarNotesInput, setCalendarNotesInput] = useState("");
 
   // Services list for manual booking
   const [servicesList, setServicesList] = useState<any[]>([]);
