@@ -340,7 +340,7 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-foreground">不老松足湯 · 管理後台</h1>
+          <h1 className="text-xl font-bold text-foreground">{shopInfoHook.info.store_name} · 管理後台</h1>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setCalendarNotesInput(calendarNotesHook.notes); setShowSettings(true); }}>
               <Settings className="w-4 h-4 mr-1" /> 設定
