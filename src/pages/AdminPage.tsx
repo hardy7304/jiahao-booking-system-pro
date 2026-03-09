@@ -86,6 +86,7 @@ export default function AdminPage() {
   const commission = useCommission();
   const calendarNotesHook = useCalendarNotes();
   const shopInfoHook = useShopInfo();
+  const bookingSettingsHook = useBookingSettings();
 
   // Filters
   const [filters, setFilters] = useState<BookingFilters>({
