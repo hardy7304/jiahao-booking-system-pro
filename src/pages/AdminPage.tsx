@@ -18,6 +18,7 @@ import StatsDashboard from "@/components/admin/StatsDashboard";
 import CustomerTracking from "@/components/admin/CustomerTracking";
 import BookingFiltersBar, { type BookingFilters } from "@/components/admin/BookingFilters";
 import { useCommission } from "@/hooks/useCommission";
+import { useCalendarNotes } from "@/hooks/useCalendarNotes";
 import { format, parseISO } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
