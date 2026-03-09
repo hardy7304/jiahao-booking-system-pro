@@ -34,6 +34,7 @@ interface AddonRow {
   name: string;
   extra_duration: number;
   extra_price: number;
+  deduction: number;
   applicable_categories: string[];
   addon_type: string;
   is_active: boolean;
@@ -45,6 +46,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   body: "全身指壓",
   "fascia-foot": "筋膜刀腳底",
   "fascia-body": "筋膜刀身體",
+  "fascia-neck": "筋膜刀肩頸",
   combo: "深層雙拼",
   package: "套餐",
 };
@@ -58,6 +60,7 @@ const APPLICABLE_CAT_OPTIONS = [
   { value: "body", label: "全身指壓" },
   { value: "fascia-foot", label: "筋膜刀腳底" },
   { value: "fascia-body", label: "筋膜刀身體" },
+  { value: "fascia-neck", label: "筋膜刀肩頸" },
   { value: "combo", label: "深層雙拼" },
   { value: "package", label: "套餐" },
 ];
@@ -71,7 +74,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
   const [showServiceDialog, setShowServiceDialog] = useState(false);
   const [showAddonDialog, setShowAddonDialog] = useState(false);
   const [newService, setNewService] = useState({ name: "", duration: 60, price: 1000, category: "foot", is_active: true, deduction: 0 });
-  const [newAddon, setNewAddon] = useState({ name: "", extra_duration: 0, extra_price: 0, applicable_categories: [] as string[], addon_type: "加購", is_active: true });
+  const [newAddon, setNewAddon] = useState({ name: "", extra_duration: 0, extra_price: 0, deduction: 0, applicable_categories: [] as string[], addon_type: "加購", is_active: true });
 
   const toNonNegativeInt = (value: string) => {
     const digitsOnly = value.replace(/\D/g, "");
@@ -167,7 +170,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
     const maxOrder = addons.length > 0 ? Math.max(...addons.map(a => a.sort_order)) + 1 : 0;
     await supabase.from("addons").insert({ ...newAddon, sort_order: maxOrder } as any);
     setShowAddonDialog(false);
-    setNewAddon({ name: "", extra_duration: 0, extra_price: 0, applicable_categories: [], addon_type: "加購", is_active: true });
+    setNewAddon({ name: "", extra_duration: 0, extra_price: 0, deduction: 0, applicable_categories: [], addon_type: "加購", is_active: true });
     fetchAll();
     toast.success("已新增加購項目");
   };
@@ -318,6 +321,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
                 <th className="text-left p-2">名稱</th>
                 <th className="text-left p-2">額外時長</th>
                 <th className="text-left p-2">額外價格</th>
+                <th className="text-left p-2">差價</th>
                 <th className="text-left p-2">適用分類</th>
                 <th className="text-left p-2">類型</th>
                 <th className="text-center p-2">狀態</th>
@@ -340,6 +344,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
                   <td className="p-2 max-w-[180px]"><span className="truncate block">{a.name}</span></td>
                   <td className="p-2 whitespace-nowrap">{a.extra_duration} 分</td>
                   <td className="p-2 whitespace-nowrap font-medium text-primary">{a.extra_price > 0 ? `NT$${a.extra_price.toLocaleString()}` : "-"}</td>
+                  <td className="p-2 whitespace-nowrap">{a.deduction > 0 ? `NT$${a.deduction.toLocaleString()}` : "-"}</td>
                   <td className="p-2">
                     <div className="flex flex-wrap gap-1">
                       {a.applicable_categories.length === 0 ? (
@@ -380,7 +385,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
                 </tr>
               ))}
               {addons.length === 0 && (
-                <tr><td colSpan={8} className="text-center text-muted-foreground p-8">尚無加購項目</td></tr>
+                <tr><td colSpan={9} className="text-center text-muted-foreground p-8">尚無加購項目</td></tr>
               )}
             </tbody>
           </table>
@@ -529,7 +534,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
                 <Label className="text-sm">加購名稱</Label>
                 <Input value={editingAddon.name} onChange={e => setEditingAddon({ ...editingAddon, name: e.target.value })} />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <Label className="text-sm">額外時長（分鐘）</Label>
                   <Input
@@ -548,6 +553,17 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
                     pattern="[0-9]*"
                     value={editingAddon.extra_price}
                     onChange={e => setEditingAddon({ ...editingAddon, extra_price: toNonNegativeInt(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-sm">差價（NT$）</Label>
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={editingAddon.deduction}
+                    onChange={e => setEditingAddon({ ...editingAddon, deduction: toNonNegativeInt(e.target.value) })}
+                    placeholder="0"
                   />
                 </div>
               </div>
@@ -603,7 +619,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
               <Label className="text-sm">加購名稱</Label>
               <Input value={newAddon.name} onChange={e => setNewAddon({ ...newAddon, name: e.target.value })} placeholder="例：加購：刮痧 (30分)" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label className="text-sm">額外時長（分鐘）</Label>
                 <Input
@@ -622,6 +638,17 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
                   pattern="[0-9]*"
                   value={newAddon.extra_price}
                   onChange={e => setNewAddon({ ...newAddon, extra_price: toNonNegativeInt(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm">差價（NT$）</Label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={newAddon.deduction}
+                  onChange={e => setNewAddon({ ...newAddon, deduction: toNonNegativeInt(e.target.value) })}
+                  placeholder="0"
                 />
               </div>
             </div>
