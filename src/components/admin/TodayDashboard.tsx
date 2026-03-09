@@ -23,6 +23,7 @@ interface Booking {
   total_price: number;
   cancelled_at: string | null;
   status: string | null;
+  oil_bonus: number;
 }
 
 interface Holiday {
