@@ -209,9 +209,9 @@ export default function StatsDashboard({
     const headers = ["下單時間", "日期", "時段", "姓名", "電話", "服務", "加購", "時長", "金額", "差價", "計算基底", "師傅收入", "店家抽成"];
     const rows = rangeBookings.map((b) => {
       const ded = commission ? commission.getDeduction(b.service) : 0;
-      const base = commission ? commission.calcBase(b.total_price, b.service) : b.total_price;
-      const ther = commission ? commission.calcTherapist(b.total_price, b.service) : 0;
-      const shop = commission ? commission.calcShop(b.total_price, b.service) : 0;
+      const base = commission ? commission.calcBase(b.total_price, b.service, b.addons) : b.total_price;
+      const ther = commission ? commission.calcTherapist(b.total_price, b.service, b.addons) : 0;
+      const shop = commission ? commission.calcShop(b.total_price, b.service, b.addons) : 0;
       return [
         new Date(b.order_time).toLocaleString("zh-TW"), b.date, b.start_time_str, b.name, b.phone,
         b.service, b.addons?.join("; ") || "", `${b.duration}分`, b.total_price, ded, base, ther, shop,

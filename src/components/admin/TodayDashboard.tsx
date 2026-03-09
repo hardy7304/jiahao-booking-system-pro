@@ -294,8 +294,8 @@ export default function TodayDashboard({
                 b.start_hour <= adjustedCurrentHour &&
                 b.start_hour + b.duration / 60 > adjustedCurrentHour;
 
-              const base = commission ? commission.calcBase(b.total_price, b.service) : null;
-              const therapist = commission ? commission.calcTherapist(b.total_price, b.service) + (b.oil_bonus || 0) : null;
+              const base = commission ? commission.calcBase(b.total_price, b.service, b.addons) : null;
+              const therapist = commission ? commission.calcTherapist(b.total_price, b.service, b.addons) + (b.oil_bonus || 0) : null;
 
               return (
                 <div
