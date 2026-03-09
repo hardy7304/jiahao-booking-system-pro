@@ -599,7 +599,7 @@ export default function AdminPage() {
 
           {/* SERVICES */}
           <TabsContent value="services" className="mt-4">
-            <ServiceManagement onOpenSettings={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setShowSettings(true); }} />
+            <ServiceManagement onOpenSettings={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setCalendarNotesInput(calendarNotesHook.notes); setShowSettings(true); }} />
           </TabsContent>
 
           {/* STATS */}
