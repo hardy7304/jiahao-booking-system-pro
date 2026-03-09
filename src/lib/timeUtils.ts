@@ -139,12 +139,11 @@ export function generateGoogleCalendarLink(booking: {
   detailLines.push(`👨‍🔧 師傅：嘉豪師傅`);
   detailLines.push(`📍 地點：不老松足湯安平店`);
   detailLines.push(`══════════════════`);
-  detailLines.push(``);
-  detailLines.push(`⚠️ 注意事項：`);
-  detailLines.push(`• 請於預約時間前 5 分鐘到場`);
-  detailLines.push(`• 如需取消或更改，請至少提前 2 小時聯繫`);
-  detailLines.push(`• 未到或遲到超過 15 分鐘視為放棄預約`);
-  detailLines.push(`• 聯繫方式：請透過預約系統或電話聯繫`);
+  if (calendarNotes && calendarNotes.trim()) {
+    detailLines.push(``);
+    detailLines.push(`⚠️ 注意事項：`);
+    calendarNotes.split('\n').forEach(line => detailLines.push(line));
+  }
 
   const params = new URLSearchParams({
     action: 'TEMPLATE',
