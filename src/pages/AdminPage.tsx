@@ -124,8 +124,9 @@ export default function AdminPage() {
   const [calendarNotesInput, setCalendarNotesInput] = useState("");
   const [shopInfoInput, setShopInfoInput] = useState(shopInfoHook.info);
 
-  // Services list for manual booking
+  // Services & addons list for manual booking
   const [servicesList, setServicesList] = useState<any[]>([]);
+  const [addonsList, setAddonsList] = useState<any[]>([]);
 
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {
