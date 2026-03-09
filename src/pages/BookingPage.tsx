@@ -308,19 +308,26 @@ export default function BookingPage() {
 
           {/* Price & Duration */}
           {selectedService && (
-            <div className="flex gap-3 animate-fade-in">
-              <div className="flex-1 bg-accent rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center gap-1 text-accent-foreground">
-                  <Clock className="w-4 h-4" />
-                  <span className="text-sm font-medium">{totalDuration} 分鐘</span>
+            <div className="space-y-2 animate-fade-in">
+              <div className="flex gap-3">
+                <div className="flex-1 bg-accent rounded-lg p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 text-accent-foreground">
+                    <Clock className="w-4 h-4" />
+                    <span className="text-sm font-medium">{totalDuration} 分鐘</span>
+                  </div>
+                </div>
+                <div className="flex-1 bg-primary/10 rounded-lg p-3 text-center">
+                  <div className="flex items-center justify-center gap-1 text-primary">
+                    <DollarSign className="w-4 h-4" />
+                    <span className="text-sm font-bold">NT$ {totalPrice.toLocaleString()}</span>
+                  </div>
                 </div>
               </div>
-              <div className="flex-1 bg-primary/10 rounded-lg p-3 text-center">
-                <div className="flex items-center justify-center gap-1 text-primary">
-                  <DollarSign className="w-4 h-4" />
-                  <span className="text-sm font-bold">NT$ {totalPrice.toLocaleString()}</span>
-                </div>
-              </div>
+              {bookingSettings.free_addon_duration > 0 && (
+                <p className="text-xs text-muted-foreground text-center">
+                  ✨ 含免費 {bookingSettings.free_addon_duration} 分鐘泡腳肩頸（已計入總時長）
+                </p>
+              )}
             </div>
           )}
 
