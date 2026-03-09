@@ -20,6 +20,7 @@ import BookingFiltersBar, { type BookingFilters } from "@/components/admin/Booki
 import { useCommission } from "@/hooks/useCommission";
 import { useCalendarNotes } from "@/hooks/useCalendarNotes";
 import { useShopInfo } from "@/hooks/useShopInfo";
+import { useBookingSettings } from "@/hooks/useBookingSettings";
 import { format, parseISO } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
