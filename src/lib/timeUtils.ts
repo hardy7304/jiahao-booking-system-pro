@@ -101,8 +101,9 @@ export function generateGoogleCalendarLink(booking: {
   phone?: string;
   addons?: string[];
   total_price?: number;
+  calendarNotes?: string;
 }): string {
-  const { date, start_hour, duration, service, name, phone, addons, total_price } = booking;
+  const { date, start_hour, duration, service, name, phone, addons, total_price, calendarNotes } = booking;
   
   const startDate = new Date(date);
   const displayHour = start_hour >= 24 ? start_hour - 24 : start_hour;
