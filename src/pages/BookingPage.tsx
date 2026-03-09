@@ -177,6 +177,9 @@ export default function BookingPage() {
           duration: totalDuration,
           service: selectedService.name,
           name: name.trim(),
+          phone: phone.trim(),
+          addons: allAddons,
+          total_price: totalPrice,
         }),
       });
     }
