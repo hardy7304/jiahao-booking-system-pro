@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatHourToTime } from "@/lib/services";
 import { getAvailableSlots, generateGoogleCalendarLink } from "@/lib/timeUtils";
 import { useCalendarNotes } from "@/hooks/useCalendarNotes";
+import { useShopInfo } from "@/hooks/useShopInfo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,7 @@ interface DbAddon {
 
 export default function BookingPage() {
   const { notes: calendarNotes } = useCalendarNotes();
+  const { info: shopInfo } = useShopInfo();
   const [dbServices, setDbServices] = useState<DbService[]>([]);
   const [dbAddons, setDbAddons] = useState<DbAddon[]>([]);
   const [selectedService, setSelectedService] = useState<DbService | null>(null);
@@ -183,6 +185,9 @@ export default function BookingPage() {
           addons: allAddons,
           total_price: totalPrice,
           calendarNotes,
+          storeName: shopInfo.store_name,
+          therapistName: shopInfo.therapist_name,
+          storeLocation: shopInfo.store_location,
         }),
       });
     }
@@ -238,8 +243,8 @@ export default function BookingPage() {
     <div className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto px-4 py-6">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-foreground">不老松足湯安平店</h1>
-          <p className="text-muted-foreground mt-1">嘉豪師傅 · 線上預約</p>
+          <h1 className="text-2xl font-bold text-foreground">{shopInfo.store_name}</h1>
+          <p className="text-muted-foreground mt-1">{shopInfo.therapist_name} · 線上預約</p>
         </div>
 
         <div className="bg-card rounded-xl shadow-lg p-5 space-y-5 animate-fade-in">
@@ -387,7 +392,7 @@ export default function BookingPage() {
 
         <div className="text-center mt-6 space-y-1">
           <p className="text-xs text-muted-foreground">營業時間：14:00 ~ 02:00（隔日）</p>
-          <p className="text-xs text-muted-foreground">台南市安平區 · 不老松足湯安平店</p>
+          <p className="text-xs text-muted-foreground">{shopInfo.store_address}</p>
         </div>
       </div>
     </div>

@@ -19,6 +19,7 @@ import CustomerTracking from "@/components/admin/CustomerTracking";
 import BookingFiltersBar, { type BookingFilters } from "@/components/admin/BookingFilters";
 import { useCommission } from "@/hooks/useCommission";
 import { useCalendarNotes } from "@/hooks/useCalendarNotes";
+import { useShopInfo } from "@/hooks/useShopInfo";
 import { format, parseISO } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -82,6 +83,7 @@ export default function AdminPage() {
 
   const commission = useCommission();
   const calendarNotesHook = useCalendarNotes();
+  const shopInfoHook = useShopInfo();
 
   // Filters
   const [filters, setFilters] = useState<BookingFilters>({
@@ -119,6 +121,7 @@ export default function AdminPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [rateInput, setRateInput] = useState("60");
   const [calendarNotesInput, setCalendarNotesInput] = useState("");
+  const [shopInfoInput, setShopInfoInput] = useState(shopInfoHook.info);
 
   // Services list for manual booking
   const [servicesList, setServicesList] = useState<any[]>([]);
@@ -278,6 +281,7 @@ export default function AdminPage() {
     if (rate <= 0 || rate >= 1) { toast.error("請輸入 1~99 的數值"); return; }
     await commission.updateRate(rate);
     await calendarNotesHook.updateNotes(calendarNotesInput);
+    await shopInfoHook.updateInfo(shopInfoInput);
     setShowSettings(false);
     toast.success("已儲存設定");
   };
@@ -336,9 +340,9 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-foreground">不老松足湯 · 管理後台</h1>
+          <h1 className="text-xl font-bold text-foreground">{shopInfoHook.info.store_name} · 管理後台</h1>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setCalendarNotesInput(calendarNotesHook.notes); setShowSettings(true); }}>
+            <Button variant="outline" size="sm" onClick={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setCalendarNotesInput(calendarNotesHook.notes); setShopInfoInput(shopInfoHook.info); setShowSettings(true); }}>
               <Settings className="w-4 h-4 mr-1" /> 設定
             </Button>
             <Button variant="outline" size="sm" onClick={() => { setAuthenticated(false); sessionStorage.removeItem("admin_auth"); }}>
@@ -599,7 +603,7 @@ export default function AdminPage() {
 
           {/* SERVICES */}
           <TabsContent value="services" className="mt-4">
-            <ServiceManagement onOpenSettings={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setCalendarNotesInput(calendarNotesHook.notes); setShowSettings(true); }} />
+            <ServiceManagement onOpenSettings={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setCalendarNotesInput(calendarNotesHook.notes); setShopInfoInput(shopInfoHook.info); setShowSettings(true); }} />
           </TabsContent>
 
           {/* STATS */}
@@ -727,7 +731,23 @@ export default function AdminPage() {
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>⚙️ 系統設定</DialogTitle></DialogHeader>
-          <div className="space-y-5">
+          <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">店名</Label>
+              <Input value={shopInfoInput.store_name} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_name: e.target.value }))} placeholder="例：不老松足湯安平店" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">師傅名稱</Label>
+              <Input value={shopInfoInput.therapist_name} onChange={(e) => setShopInfoInput(prev => ({ ...prev, therapist_name: e.target.value }))} placeholder="例：嘉豪師傅" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">地點（日曆顯示）</Label>
+              <Input value={shopInfoInput.store_location} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_location: e.target.value }))} placeholder="例：不老松足湯安平店" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">地址（預約頁底部）</Label>
+              <Input value={shopInfoInput.store_address} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_address: e.target.value }))} placeholder="例：台南市安平區 · 不老松足湯安平店" />
+            </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">師傅抽成比例</Label>
               <div className="flex items-center gap-2">

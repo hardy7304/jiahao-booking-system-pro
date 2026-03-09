@@ -102,8 +102,11 @@ export function generateGoogleCalendarLink(booking: {
   addons?: string[];
   total_price?: number;
   calendarNotes?: string;
+  storeName?: string;
+  therapistName?: string;
+  storeLocation?: string;
 }): string {
-  const { date, start_hour, duration, service, name, phone, addons, total_price, calendarNotes } = booking;
+  const { date, start_hour, duration, service, name, phone, addons, total_price, calendarNotes, storeName = '不老松足湯安平店', therapistName = '嘉豪師傅', storeLocation = '不老松足湯安平店' } = booking;
   
   const startDate = new Date(date);
   const displayHour = start_hour >= 24 ? start_hour - 24 : start_hour;
@@ -136,8 +139,8 @@ export function generateGoogleCalendarLink(booking: {
   if (total_price != null) {
     detailLines.push(`💰 金額：NT$ ${total_price.toLocaleString()}`);
   }
-  detailLines.push(`👨‍🔧 師傅：嘉豪師傅`);
-  detailLines.push(`📍 地點：不老松足湯安平店`);
+  detailLines.push(`👨‍🔧 師傅：${therapistName}`);
+  detailLines.push(`📍 地點：${storeLocation}`);
   detailLines.push(`══════════════════`);
   if (calendarNotes && calendarNotes.trim()) {
     detailLines.push(``);
@@ -147,10 +150,10 @@ export function generateGoogleCalendarLink(booking: {
 
   const params = new URLSearchParams({
     action: 'TEMPLATE',
-    text: `不老松足湯安平店 - ${service}`,
+    text: `${storeName} - ${service}`,
     dates: `${fmt(startDate)}/${fmt(endDate)}`,
     details: detailLines.join('\n'),
-    location: '不老松足湯安平店',
+    location: storeLocation,
   });
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
