@@ -81,6 +81,7 @@ export default function AdminPage() {
   const [showCommissionCols, setShowCommissionCols] = useState(false);
 
   const commission = useCommission();
+  const calendarNotesHook = useCalendarNotes();
 
   // Filters
   const [filters, setFilters] = useState<BookingFilters>({
