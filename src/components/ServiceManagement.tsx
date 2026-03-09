@@ -295,7 +295,10 @@ export default function ServiceManagement() {
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-muted-foreground">差價 = 從售價扣除後才計算業績的金額（公司規定）</p>
+        <div className="text-xs text-muted-foreground space-y-0.5">
+          <p>差價 = 從售價扣除後才計算業績的金額（公司規定）</p>
+          <p>目前抽成比例：<span className="font-semibold text-foreground">{(commissionRate * 100).toFixed(0)}%</span>（師傅 {(commissionRate * 100).toFixed(0)}% ／ 店家 {((1 - commissionRate) * 100).toFixed(0)}%）</p>
+        </div>
       </div>
 
       {/* === Section 2: Addons === */}
