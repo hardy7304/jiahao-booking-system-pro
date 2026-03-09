@@ -182,6 +182,7 @@ export default function BookingPage() {
           phone: phone.trim(),
           addons: allAddons,
           total_price: totalPrice,
+          calendarNotes,
         }),
       });
     }
