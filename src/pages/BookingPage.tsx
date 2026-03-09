@@ -41,6 +41,7 @@ interface DbAddon {
 
 export default function BookingPage() {
   const { notes: calendarNotes } = useCalendarNotes();
+  const { info: shopInfo } = useShopInfo();
   const [dbServices, setDbServices] = useState<DbService[]>([]);
   const [dbAddons, setDbAddons] = useState<DbAddon[]>([]);
   const [selectedService, setSelectedService] = useState<DbService | null>(null);
