@@ -4,6 +4,7 @@ import { formatHourToTime } from "@/lib/services";
 import { getAvailableSlots, generateGoogleCalendarLink } from "@/lib/timeUtils";
 import { useCalendarNotes } from "@/hooks/useCalendarNotes";
 import { useShopInfo } from "@/hooks/useShopInfo";
+import { useBookingSettings } from "@/hooks/useBookingSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
