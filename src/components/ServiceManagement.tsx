@@ -59,6 +59,7 @@ const APPLICABLE_CAT_OPTIONS = [
   { value: "body", label: "全身指壓" },
   { value: "fascia-foot", label: "筋膜刀腳底" },
   { value: "fascia-body", label: "筋膜刀身體" },
+  { value: "fascia-neck", label: "筋膜刀肩頸" },
   { value: "combo", label: "深層雙拼" },
   { value: "package", label: "套餐" },
 ];
