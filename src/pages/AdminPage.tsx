@@ -102,7 +102,7 @@ export default function AdminPage() {
   // Edit booking dialog
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [editForm, setEditForm] = useState({
-    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "customer",
+    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "customer", oil_bonus: 0,
   });
 
   // Manual booking dialog
