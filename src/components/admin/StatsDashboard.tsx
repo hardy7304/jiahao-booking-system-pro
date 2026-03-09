@@ -31,9 +31,9 @@ interface Booking {
 }
 
 interface CommissionHelpers {
-  calcBase: (totalPrice: number, serviceName: string) => number;
-  calcTherapist: (totalPrice: number, serviceName: string) => number;
-  calcShop: (totalPrice: number, serviceName: string) => number;
+  calcBase: (totalPrice: number, serviceName: string, addons?: string[] | null) => number;
+  calcTherapist: (totalPrice: number, serviceName: string, addons?: string[] | null) => number;
+  calcShop: (totalPrice: number, serviceName: string, addons?: string[] | null) => number;
   commissionRate: number;
   getDeduction: (serviceName: string) => number;
 }
@@ -131,9 +131,9 @@ export default function StatsDashboard({
 
   // Commission totals
   const rangeDeductionTotal = commission ? rangeBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
-  const rangeBaseTotal = commission ? rangeBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service), 0) : 0;
-  const rangeTherapist = commission ? rangeBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service) + (b.oil_bonus || 0), 0) : 0;
-  const rangeShopTotal = commission ? rangeBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
+  const rangeBaseTotal = commission ? rangeBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service, b.addons), 0) : 0;
+  const rangeTherapist = commission ? rangeBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service, b.addons) + (b.oil_bonus || 0), 0) : 0;
+  const rangeShopTotal = commission ? rangeBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service, b.addons), 0) : 0;
 
   // SECTION B: Revenue trend (within selected range)
   const revenueTrend = useMemo(() => {
@@ -144,8 +144,8 @@ export default function StatsDashboard({
       const d = format(dateObj, "yyyy-MM-dd");
       const dayBookings = active.filter((b) => b.date === d);
       const rev = dayBookings.reduce((s, b) => s + b.total_price, 0);
-      const ther = commission ? dayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service) + (b.oil_bonus || 0), 0) : 0;
-      const shop = commission ? dayBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
+      const ther = commission ? dayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service, b.addons) + (b.oil_bonus || 0), 0) : 0;
+      const shop = commission ? dayBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service, b.addons), 0) : 0;
       data.push({ date: format(dateObj, "M/d"), revenue: rev, count: dayBookings.length, therapist: ther, shop: shop });
     }
     for (let i = 0; i < data.length; i++) {
@@ -209,9 +209,9 @@ export default function StatsDashboard({
     const headers = ["下單時間", "日期", "時段", "姓名", "電話", "服務", "加購", "時長", "金額", "差價", "計算基底", "師傅收入", "店家抽成"];
     const rows = rangeBookings.map((b) => {
       const ded = commission ? commission.getDeduction(b.service) : 0;
-      const base = commission ? commission.calcBase(b.total_price, b.service) : b.total_price;
-      const ther = commission ? commission.calcTherapist(b.total_price, b.service) : 0;
-      const shop = commission ? commission.calcShop(b.total_price, b.service) : 0;
+      const base = commission ? commission.calcBase(b.total_price, b.service, b.addons) : b.total_price;
+      const ther = commission ? commission.calcTherapist(b.total_price, b.service, b.addons) : 0;
+      const shop = commission ? commission.calcShop(b.total_price, b.service, b.addons) : 0;
       return [
         new Date(b.order_time).toLocaleString("zh-TW"), b.date, b.start_time_str, b.name, b.phone,
         b.service, b.addons?.join("; ") || "", `${b.duration}分`, b.total_price, ded, base, ther, shop,

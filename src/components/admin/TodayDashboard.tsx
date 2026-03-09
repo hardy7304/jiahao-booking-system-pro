@@ -34,9 +34,9 @@ interface Holiday {
 }
 
 interface CommissionHelpers {
-  calcBase: (totalPrice: number, serviceName: string) => number;
-  calcTherapist: (totalPrice: number, serviceName: string) => number;
-  calcShop: (totalPrice: number, serviceName: string) => number;
+  calcBase: (totalPrice: number, serviceName: string, addons?: string[] | null) => number;
+  calcTherapist: (totalPrice: number, serviceName: string, addons?: string[] | null) => number;
+  calcShop: (totalPrice: number, serviceName: string, addons?: string[] | null) => number;
   getDeduction: (serviceName: string) => number;
   commissionRate: number;
 }
@@ -109,9 +109,9 @@ export default function TodayDashboard({
 
   // Commission calculations - only count completed bookings
   const dayDeductionTotal = commission ? completedBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
-  const dayBaseTotal = commission ? completedBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service), 0) : 0;
-  const dayTherapist = commission ? completedBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service) + (b.oil_bonus || 0), 0) : 0;
-  const dayShop = commission ? completedBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
+  const dayBaseTotal = commission ? completedBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service, b.addons), 0) : 0;
+  const dayTherapist = commission ? completedBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service, b.addons) + (b.oil_bonus || 0), 0) : 0;
+  const dayShop = commission ? completedBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service, b.addons), 0) : 0;
 
   const dateLabel = isViewingToday ? "今日" : format(selectedDate, "M/d");
 
@@ -294,8 +294,8 @@ export default function TodayDashboard({
                 b.start_hour <= adjustedCurrentHour &&
                 b.start_hour + b.duration / 60 > adjustedCurrentHour;
 
-              const base = commission ? commission.calcBase(b.total_price, b.service) : null;
-              const therapist = commission ? commission.calcTherapist(b.total_price, b.service) + (b.oil_bonus || 0) : null;
+              const base = commission ? commission.calcBase(b.total_price, b.service, b.addons) : null;
+              const therapist = commission ? commission.calcTherapist(b.total_price, b.service, b.addons) + (b.oil_bonus || 0) : null;
 
               return (
                 <div
