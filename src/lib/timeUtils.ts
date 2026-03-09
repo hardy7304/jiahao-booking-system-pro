@@ -98,8 +98,11 @@ export function generateGoogleCalendarLink(booking: {
   duration: number;
   service: string;
   name: string;
+  phone?: string;
+  addons?: string[];
+  total_price?: number;
 }): string {
-  const { date, start_hour, duration, service, name } = booking;
+  const { date, start_hour, duration, service, name, phone, addons, total_price } = booking;
   
   const startDate = new Date(date);
   const displayHour = start_hour >= 24 ? start_hour - 24 : start_hour;
@@ -111,12 +114,36 @@ export function generateGoogleCalendarLink(booking: {
   const endDate = new Date(startDate.getTime() + duration * 60000);
   
   const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  
+
+  const startTimeStr = `${String(Math.floor(displayHour)).padStart(2, '0')}:${String(Math.round((displayHour % 1) * 60)).padStart(2, '0')}`;
+  const endHour = displayHour + duration / 60;
+  const endTimeStr = `${String(Math.floor(endHour)).padStart(2, '0')}:${String(Math.round((endHour % 1) * 60)).padStart(2, '0')}`;
+
+  const detailLines = [
+    `══════════════════`,
+    `📋 預約確認單`,
+    `══════════════════`,
+    `📅 日期：${date}`,
+    `⏰ 時段：${startTimeStr} ~ ${endTimeStr}（共 ${duration} 分鐘）`,
+    `👤 預約人：${name}`,
+  ];
+  if (phone) detailLines.push(`📞 電話：${phone}`);
+  detailLines.push(`💆 服務：${service}`);
+  if (addons && addons.length > 0) {
+    detailLines.push(`➕ 加購：${addons.join('、')}`);
+  }
+  if (total_price != null) {
+    detailLines.push(`💰 金額：NT$ ${total_price.toLocaleString()}`);
+  }
+  detailLines.push(`👨‍🔧 師傅：嘉豪師傅`);
+  detailLines.push(`📍 地點：不老松足湯安平店`);
+  detailLines.push(`══════════════════`);
+
   const params = new URLSearchParams({
     action: 'TEMPLATE',
     text: `不老松足湯安平店 - ${service}`,
     dates: `${fmt(startDate)}/${fmt(endDate)}`,
-    details: `預約人：${name}\n服務：${service}\n師傅：嘉豪師傅`,
+    details: detailLines.join('\n'),
     location: '不老松足湯安平店',
   });
 
