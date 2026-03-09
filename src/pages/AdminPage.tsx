@@ -731,7 +731,23 @@ export default function AdminPage() {
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>⚙️ 系統設定</DialogTitle></DialogHeader>
-          <div className="space-y-5">
+          <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">店名</Label>
+              <Input value={shopInfoInput.store_name} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_name: e.target.value }))} placeholder="例：不老松足湯安平店" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">師傅名稱</Label>
+              <Input value={shopInfoInput.therapist_name} onChange={(e) => setShopInfoInput(prev => ({ ...prev, therapist_name: e.target.value }))} placeholder="例：嘉豪師傅" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">地點（日曆顯示）</Label>
+              <Input value={shopInfoInput.store_location} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_location: e.target.value }))} placeholder="例：不老松足湯安平店" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">地址（預約頁底部）</Label>
+              <Input value={shopInfoInput.store_address} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_address: e.target.value }))} placeholder="例：台南市安平區 · 不老松足湯安平店" />
+            </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">師傅抽成比例</Label>
               <div className="flex items-center gap-2">
