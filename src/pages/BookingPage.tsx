@@ -185,6 +185,9 @@ export default function BookingPage() {
           addons: allAddons,
           total_price: totalPrice,
           calendarNotes,
+          storeName: shopInfo.store_name,
+          therapistName: shopInfo.therapist_name,
+          storeLocation: shopInfo.store_location,
         }),
       });
     }
