@@ -121,6 +121,7 @@ export default function AdminPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [rateInput, setRateInput] = useState("60");
   const [calendarNotesInput, setCalendarNotesInput] = useState("");
+  const [shopInfoInput, setShopInfoInput] = useState(shopInfoHook.info);
 
   // Services list for manual booking
   const [servicesList, setServicesList] = useState<any[]>([]);
