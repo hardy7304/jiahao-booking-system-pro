@@ -31,9 +31,9 @@ interface Booking {
 }
 
 interface CommissionHelpers {
-  calcBase: (totalPrice: number, serviceName: string) => number;
-  calcTherapist: (totalPrice: number, serviceName: string) => number;
-  calcShop: (totalPrice: number, serviceName: string) => number;
+  calcBase: (totalPrice: number, serviceName: string, addons?: string[] | null) => number;
+  calcTherapist: (totalPrice: number, serviceName: string, addons?: string[] | null) => number;
+  calcShop: (totalPrice: number, serviceName: string, addons?: string[] | null) => number;
   commissionRate: number;
   getDeduction: (serviceName: string) => number;
 }
