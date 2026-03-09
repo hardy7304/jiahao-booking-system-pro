@@ -293,6 +293,11 @@ export default function AdminPage() {
     await commission.updateRate(rate);
     await calendarNotesHook.updateNotes(calendarNotesInput);
     await shopInfoHook.updateInfo(shopInfoInput);
+    await bookingSettingsHook.updateSettings({
+      buffer_minutes: parseInt(bufferInput) || 10,
+      free_addon_duration: parseInt(freeAddonInput) || 10,
+      pre_block_minutes: parseInt(preBlockInput) || 60,
+    });
     setShowSettings(false);
     toast.success("已儲存設定");
   };
