@@ -215,7 +215,7 @@ export default function AdminPage() {
       date: editForm.date, start_hour: editForm.start_hour,
       start_time_str: formatHourToTime(editForm.start_hour),
       duration: editForm.duration, total_price: editForm.total_price,
-      addons: editForm.addons, source: editForm.source,
+      addons: editForm.addons, source: editForm.source, oil_bonus: editForm.oil_bonus,
     } as any).eq("id", editingBooking.id);
     if (error) { toast.error("更新失敗"); return; }
     setEditingBooking(null);
