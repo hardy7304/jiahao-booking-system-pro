@@ -144,8 +144,8 @@ export default function StatsDashboard({
       const d = format(dateObj, "yyyy-MM-dd");
       const dayBookings = active.filter((b) => b.date === d);
       const rev = dayBookings.reduce((s, b) => s + b.total_price, 0);
-      const ther = commission ? dayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service) + (b.oil_bonus || 0), 0) : 0;
-      const shop = commission ? dayBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
+      const ther = commission ? dayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service, b.addons) + (b.oil_bonus || 0), 0) : 0;
+      const shop = commission ? dayBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service, b.addons), 0) : 0;
       data.push({ date: format(dateObj, "M/d"), revenue: rev, count: dayBookings.length, therapist: ther, shop: shop });
     }
     for (let i = 0; i < data.length; i++) {
