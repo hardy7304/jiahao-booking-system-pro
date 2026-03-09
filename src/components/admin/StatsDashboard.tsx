@@ -323,7 +323,16 @@ export default function StatsDashboard({
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <SummaryCard icon={<DollarSign className="w-4 h-4" />} label={`${rangeLabel}公司差價`} value={`-NT$${rangeDeductionTotal.toLocaleString()}`} valueClass="text-destructive" />
           <SummaryCard icon={<Briefcase className="w-4 h-4" />} label={`${rangeLabel}業績基底`} value={`NT$${rangeBaseTotal.toLocaleString()}`} valueClass="text-muted-foreground" />
-          <SummaryCard icon={<Wallet className="w-4 h-4" />} label={`${rangeLabel}師傅累計收入`} value={`NT$${rangeTherapist.toLocaleString()}`} valueClass="text-blue-600" />
+          <div className="bg-card rounded-xl shadow p-4">
+            <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
+              <Wallet className="w-4 h-4" />
+              {rangeLabel}師傅累計收入
+            </div>
+            <div className="text-xl font-bold text-blue-600">NT${rangeTherapist.toLocaleString()}</div>
+            {rangeOilBonus > 0 && (
+              <div className="text-xs text-emerald-600 mt-0.5">含精油獎金 NT${rangeOilBonus.toLocaleString()}</div>
+            )}
+          </div>
           <SummaryCard icon={<Building2 className="w-4 h-4" />} label={`${rangeLabel}店家抽成`} value={`NT$${rangeShopTotal.toLocaleString()}`} valueClass="text-orange-600" />
         </div>
       )}
