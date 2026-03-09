@@ -335,7 +335,7 @@ export default function TodayDashboard({
                   </div>
                   {commission && base !== null && (
                     <div className="mt-1 ml-[68px] text-xs text-muted-foreground">
-                      售價 NT${b.total_price.toLocaleString()} → <span className="text-destructive">差價 -NT${commission.getDeduction(b.service).toLocaleString()}</span> → 基底 NT${base.toLocaleString()} → <span className="text-blue-600 font-medium">師傅 NT${therapist!.toLocaleString()}</span>
+                      售價 NT${b.total_price.toLocaleString()} → <span className="text-destructive">差價 -NT${commission.getDeduction(b.service).toLocaleString()}</span> → 基底 NT${base.toLocaleString()} → <span className="text-blue-600 font-medium">師傅 NT${therapist!.toLocaleString()}</span>{(b.oil_bonus || 0) > 0 && <span className="text-emerald-600"> (含精油+{b.oil_bonus})</span>}
                     </div>
                   )}
                 </div>
