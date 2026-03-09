@@ -170,7 +170,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
     const maxOrder = addons.length > 0 ? Math.max(...addons.map(a => a.sort_order)) + 1 : 0;
     await supabase.from("addons").insert({ ...newAddon, sort_order: maxOrder } as any);
     setShowAddonDialog(false);
-    setNewAddon({ name: "", extra_duration: 0, extra_price: 0, applicable_categories: [], addon_type: "加購", is_active: true });
+    setNewAddon({ name: "", extra_duration: 0, extra_price: 0, deduction: 0, applicable_categories: [], addon_type: "加購", is_active: true });
     fetchAll();
     toast.success("已新增加購項目");
   };
