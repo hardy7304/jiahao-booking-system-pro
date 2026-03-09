@@ -110,7 +110,8 @@ export default function TodayDashboard({
   // Commission calculations - only count completed bookings
   const dayDeductionTotal = commission ? completedBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
   const dayBaseTotal = commission ? completedBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service, b.addons), 0) : 0;
-  const dayTherapist = commission ? completedBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service, b.addons) + (b.oil_bonus || 0), 0) : 0;
+  const dayOilBonus = completedBookings.reduce((s, b) => s + (b.oil_bonus || 0), 0);
+  const dayTherapist = commission ? completedBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service, b.addons), 0) + dayOilBonus : 0;
   const dayShop = commission ? completedBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service, b.addons), 0) : 0;
 
   const dateLabel = isViewingToday ? "今日" : format(selectedDate, "M/d");
@@ -261,7 +262,10 @@ export default function TodayDashboard({
               {dateLabel}師傅收入
             </div>
             <div className="text-xl font-bold text-blue-600">NT${dayTherapist.toLocaleString()}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">×{commission.commissionRate} 計算</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              ×{commission.commissionRate} 計算
+              {dayOilBonus > 0 && <span className="text-emerald-600 ml-1">（含精油獎金 NT${dayOilBonus.toLocaleString()}）</span>}
+            </div>
           </div>
           <div className="bg-card rounded-xl shadow p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
