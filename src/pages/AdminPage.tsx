@@ -595,7 +595,7 @@ export default function AdminPage() {
 
           {/* SERVICES */}
           <TabsContent value="services" className="mt-4">
-            <ServiceManagement />
+            <ServiceManagement onOpenSettings={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setShowSettings(true); }} />
           </TabsContent>
 
           {/* STATS */}
