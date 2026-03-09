@@ -267,7 +267,6 @@ export default function TodayDashboard({
               {dayOilBonus > 0 && <span className="text-emerald-600 ml-1">（含精油獎金 NT${dayOilBonus.toLocaleString()}）</span>}
             </div>
           </div>
-          </div>
           <div className="bg-card rounded-xl shadow p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">
               <Building2 className="w-4 h-4" />
