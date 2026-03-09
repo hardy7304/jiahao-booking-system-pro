@@ -385,7 +385,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
                 </tr>
               ))}
               {addons.length === 0 && (
-                <tr><td colSpan={8} className="text-center text-muted-foreground p-8">尚無加購項目</td></tr>
+                <tr><td colSpan={9} className="text-center text-muted-foreground p-8">尚無加購項目</td></tr>
               )}
             </tbody>
           </table>
