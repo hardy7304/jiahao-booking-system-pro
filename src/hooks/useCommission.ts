@@ -32,7 +32,7 @@ export function useCommission() {
   }, []);
 
   const fetchAddonPrices = useCallback(async () => {
-    const { data } = await supabase.from("addons").select("name, extra_price");
+    const { data } = await supabase.from("addons").select("name, extra_price, deduction");
     if (data) setAddonPrices(data as AddonPrice[]);
   }, []);
 
