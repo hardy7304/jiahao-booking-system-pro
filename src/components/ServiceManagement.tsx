@@ -74,7 +74,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
   const [showServiceDialog, setShowServiceDialog] = useState(false);
   const [showAddonDialog, setShowAddonDialog] = useState(false);
   const [newService, setNewService] = useState({ name: "", duration: 60, price: 1000, category: "foot", is_active: true, deduction: 0 });
-  const [newAddon, setNewAddon] = useState({ name: "", extra_duration: 0, extra_price: 0, applicable_categories: [] as string[], addon_type: "加購", is_active: true });
+  const [newAddon, setNewAddon] = useState({ name: "", extra_duration: 0, extra_price: 0, deduction: 0, applicable_categories: [] as string[], addon_type: "加購", is_active: true });
 
   const toNonNegativeInt = (value: string) => {
     const digitsOnly = value.replace(/\D/g, "");
