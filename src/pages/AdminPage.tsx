@@ -725,9 +725,9 @@ export default function AdminPage() {
 
       {/* Settings dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>⚙️ 系統設定</DialogTitle></DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div className="space-y-2">
               <Label className="text-sm font-medium">師傅抽成比例</Label>
               <div className="flex items-center gap-2">
@@ -737,14 +737,23 @@ export default function AdminPage() {
               <p className="text-xs text-muted-foreground">
                 目前設定：師傅 {rateInput}% / 店家 {100 - (parseInt(rateInput) || 0)}%
               </p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Google 日曆注意事項</Label>
+              <Textarea
+                className="min-h-[120px] text-sm"
+                value={calendarNotesInput}
+                onChange={(e) => setCalendarNotesInput(e.target.value)}
+                placeholder="輸入要顯示在 Google 日曆描述中的注意事項..."
+              />
               <p className="text-xs text-muted-foreground">
-                修改後會立即套用到所有計算
+                此內容會顯示在客人加入 Google 日曆時的事件描述底部
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSettings(false)}>取消</Button>
-            <Button onClick={saveCommissionRate}>儲存</Button>
+            <Button onClick={saveSettings}>儲存</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
