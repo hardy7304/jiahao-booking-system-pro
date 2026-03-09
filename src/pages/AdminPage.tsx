@@ -281,6 +281,7 @@ export default function AdminPage() {
     if (rate <= 0 || rate >= 1) { toast.error("請輸入 1~99 的數值"); return; }
     await commission.updateRate(rate);
     await calendarNotesHook.updateNotes(calendarNotesInput);
+    await shopInfoHook.updateInfo(shopInfoInput);
     setShowSettings(false);
     toast.success("已儲存設定");
   };
