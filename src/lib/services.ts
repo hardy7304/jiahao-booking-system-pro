@@ -2,7 +2,7 @@ export interface Service {
   name: string;
   duration: number;
   price: number;
-  category: 'combo' | 'foot' | 'body' | 'fascia-foot' | 'fascia-body' | 'package';
+  category: 'combo' | 'foot' | 'body' | 'fascia-foot' | 'fascia-body' | 'fascia-neck' | 'package';
 }
 
 export interface AddOn {

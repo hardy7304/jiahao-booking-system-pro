@@ -619,7 +619,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
               <Label className="text-sm">加購名稱</Label>
               <Input value={newAddon.name} onChange={e => setNewAddon({ ...newAddon, name: e.target.value })} placeholder="例：加購：刮痧 (30分)" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label className="text-sm">額外時長（分鐘）</Label>
                 <Input
@@ -638,6 +638,17 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
                   pattern="[0-9]*"
                   value={newAddon.extra_price}
                   onChange={e => setNewAddon({ ...newAddon, extra_price: toNonNegativeInt(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-sm">差價（NT$）</Label>
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={newAddon.deduction}
+                  onChange={e => setNewAddon({ ...newAddon, deduction: toNonNegativeInt(e.target.value) })}
+                  placeholder="0"
                 />
               </div>
             </div>

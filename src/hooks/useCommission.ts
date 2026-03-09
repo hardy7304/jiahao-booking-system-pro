@@ -90,6 +90,7 @@ export function useCommission() {
     updateRate,
     getDeduction,
     getAddonTotal,
+    getAddonDeduction,
     calcBase,
     calcTherapist,
     calcShop,
