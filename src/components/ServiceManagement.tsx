@@ -297,7 +297,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
         </div>
         <div className="text-xs text-muted-foreground space-y-0.5">
           <p>差價 = 從售價扣除後才計算業績的金額（公司規定）</p>
-          <p>目前抽成比例：<span className="font-semibold text-foreground">{(commissionRate * 100).toFixed(0)}%</span>（師傅 {(commissionRate * 100).toFixed(0)}% ／ 店家 {((1 - commissionRate) * 100).toFixed(0)}%）</p>
+          <p>目前抽成比例：<span className="font-semibold text-foreground">{(commissionRate * 100).toFixed(0)}%</span>（師傅 {(commissionRate * 100).toFixed(0)}% ／ 店家 {((1 - commissionRate) * 100).toFixed(0)}%）{onOpenSettings && <button onClick={onOpenSettings} className="ml-1 text-primary underline underline-offset-2 hover:text-primary/80 transition-colors">修改</button>}</p>
         </div>
       </div>
 
