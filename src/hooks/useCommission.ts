@@ -9,6 +9,7 @@ interface ServiceDeduction {
 interface AddonPrice {
   name: string;
   extra_price: number;
+  deduction: number;
 }
 
 export function useCommission() {
