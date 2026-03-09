@@ -19,6 +19,7 @@ export type Database = {
           addon_type: string | null
           applicable_categories: string[] | null
           created_at: string | null
+          deduction: number | null
           extra_duration: number | null
           extra_price: number | null
           id: string
@@ -30,6 +31,7 @@ export type Database = {
           addon_type?: string | null
           applicable_categories?: string[] | null
           created_at?: string | null
+          deduction?: number | null
           extra_duration?: number | null
           extra_price?: number | null
           id?: string
@@ -41,6 +43,7 @@ export type Database = {
           addon_type?: string | null
           applicable_categories?: string[] | null
           created_at?: string | null
+          deduction?: number | null
           extra_duration?: number | null
           extra_price?: number | null
           id?: string

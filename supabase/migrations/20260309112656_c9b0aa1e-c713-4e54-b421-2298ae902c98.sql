@@ -1,0 +1,1 @@
+ALTER TABLE public.addons ADD COLUMN IF NOT EXISTS deduction integer DEFAULT 0;
