@@ -321,6 +321,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
                 <th className="text-left p-2">名稱</th>
                 <th className="text-left p-2">額外時長</th>
                 <th className="text-left p-2">額外價格</th>
+                <th className="text-left p-2">差價</th>
                 <th className="text-left p-2">適用分類</th>
                 <th className="text-left p-2">類型</th>
                 <th className="text-center p-2">狀態</th>
