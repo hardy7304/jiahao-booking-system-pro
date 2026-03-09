@@ -62,7 +62,7 @@ const APPLICABLE_CAT_OPTIONS = [
   { value: "package", label: "套餐" },
 ];
 
-export default function ServiceManagement() {
+export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?: () => void }) {
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [addons, setAddons] = useState<AddonRow[]>([]);
   const { commissionRate } = useCommission();
