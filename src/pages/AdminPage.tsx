@@ -54,6 +54,7 @@ interface Booking {
   admin_note: string | null;
   completed_at: string | null;
   source: string | null;
+  oil_bonus: number;
 }
 
 const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
@@ -101,7 +102,7 @@ export default function AdminPage() {
   // Edit booking dialog
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [editForm, setEditForm] = useState({
-    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "customer",
+    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "customer", oil_bonus: 0,
   });
 
   // Manual booking dialog
@@ -203,7 +204,7 @@ export default function AdminPage() {
     setEditForm({
       name: b.name, phone: b.phone, service: b.service, date: b.date,
       start_hour: b.start_hour, duration: b.duration, total_price: b.total_price,
-      addons: b.addons || [], source: b.source || "customer",
+      addons: b.addons || [], source: b.source || "customer", oil_bonus: b.oil_bonus || 0,
     });
   };
 
@@ -214,7 +215,7 @@ export default function AdminPage() {
       date: editForm.date, start_hour: editForm.start_hour,
       start_time_str: formatHourToTime(editForm.start_hour),
       duration: editForm.duration, total_price: editForm.total_price,
-      addons: editForm.addons, source: editForm.source,
+      addons: editForm.addons, source: editForm.source, oil_bonus: editForm.oil_bonus,
     } as any).eq("id", editingBooking.id);
     if (error) { toast.error("更新失敗"); return; }
     setEditingBooking(null);
@@ -432,7 +433,10 @@ export default function AdminPage() {
                             <>
                               <td className="p-2 font-medium text-destructive">-NT${commission.getDeduction(b.service).toLocaleString()}</td>
                               <td className="p-2 text-muted-foreground">NT${commission.calcBase(b.total_price, b.service).toLocaleString()}</td>
-                              <td className="p-2 font-bold text-blue-600">NT${commission.calcTherapist(b.total_price, b.service).toLocaleString()}</td>
+                              <td className="p-2 font-bold text-blue-600">
+                                NT${(commission.calcTherapist(b.total_price, b.service) + (b.oil_bonus || 0)).toLocaleString()}
+                                {(b.oil_bonus || 0) > 0 && <span className="text-xs text-emerald-600 ml-1">(含精油+{b.oil_bonus})</span>}
+                              </td>
                             </>
                           )}
                           <td className="p-2">
@@ -844,6 +848,14 @@ export default function AdminPage() {
                   <SelectItem value="front_desk">櫃檯代訂</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-sm">精油推薦獎金</Label>
+              <div className="flex items-center gap-2">
+                <Input type="number" className="w-24" value={editForm.oil_bonus} onChange={(e) => setEditForm({ ...editForm, oil_bonus: parseInt(e.target.value) || 0 })} min={0} />
+                <span className="text-sm text-muted-foreground">元</span>
+              </div>
+              <p className="text-xs text-muted-foreground">師傅自己推薦精油升級時填入（例：100），櫃檯推薦則保持 0</p>
             </div>
           </div>
           <DialogFooter>

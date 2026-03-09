@@ -27,6 +27,7 @@ interface Booking {
   total_price: number;
   cancelled_at: string | null;
   status: string | null;
+  oil_bonus: number;
 }
 
 interface CommissionHelpers {
@@ -131,7 +132,7 @@ export default function StatsDashboard({
   // Commission totals
   const rangeDeductionTotal = commission ? rangeBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
   const rangeBaseTotal = commission ? rangeBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service), 0) : 0;
-  const rangeTherapist = commission ? rangeBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
+  const rangeTherapist = commission ? rangeBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service) + (b.oil_bonus || 0), 0) : 0;
   const rangeShopTotal = commission ? rangeBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
 
   // SECTION B: Revenue trend (within selected range)
@@ -143,7 +144,7 @@ export default function StatsDashboard({
       const d = format(dateObj, "yyyy-MM-dd");
       const dayBookings = active.filter((b) => b.date === d);
       const rev = dayBookings.reduce((s, b) => s + b.total_price, 0);
-      const ther = commission ? dayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
+      const ther = commission ? dayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service) + (b.oil_bonus || 0), 0) : 0;
       const shop = commission ? dayBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
       data.push({ date: format(dateObj, "M/d"), revenue: rev, count: dayBookings.length, therapist: ther, shop: shop });
     }

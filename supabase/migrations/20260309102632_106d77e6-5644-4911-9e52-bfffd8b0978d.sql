@@ -1,0 +1,1 @@
+ALTER TABLE public.bookings ADD COLUMN oil_bonus integer NOT NULL DEFAULT 0;

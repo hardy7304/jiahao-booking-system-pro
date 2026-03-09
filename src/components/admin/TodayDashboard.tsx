@@ -23,6 +23,7 @@ interface Booking {
   total_price: number;
   cancelled_at: string | null;
   status: string | null;
+  oil_bonus: number;
 }
 
 interface Holiday {
@@ -109,7 +110,7 @@ export default function TodayDashboard({
   // Commission calculations - only count completed bookings
   const dayDeductionTotal = commission ? completedBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
   const dayBaseTotal = commission ? completedBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service), 0) : 0;
-  const dayTherapist = commission ? completedBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service), 0) : 0;
+  const dayTherapist = commission ? completedBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service) + (b.oil_bonus || 0), 0) : 0;
   const dayShop = commission ? completedBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service), 0) : 0;
 
   const dateLabel = isViewingToday ? "今日" : format(selectedDate, "M/d");
@@ -294,7 +295,7 @@ export default function TodayDashboard({
                 b.start_hour + b.duration / 60 > adjustedCurrentHour;
 
               const base = commission ? commission.calcBase(b.total_price, b.service) : null;
-              const therapist = commission ? commission.calcTherapist(b.total_price, b.service) : null;
+              const therapist = commission ? commission.calcTherapist(b.total_price, b.service) + (b.oil_bonus || 0) : null;
 
               return (
                 <div
@@ -334,7 +335,7 @@ export default function TodayDashboard({
                   </div>
                   {commission && base !== null && (
                     <div className="mt-1 ml-[68px] text-xs text-muted-foreground">
-                      售價 NT${b.total_price.toLocaleString()} → <span className="text-destructive">差價 -NT${commission.getDeduction(b.service).toLocaleString()}</span> → 基底 NT${base.toLocaleString()} → <span className="text-blue-600 font-medium">師傅 NT${therapist!.toLocaleString()}</span>
+                      售價 NT${b.total_price.toLocaleString()} → <span className="text-destructive">差價 -NT${commission.getDeduction(b.service).toLocaleString()}</span> → 基底 NT${base.toLocaleString()} → <span className="text-blue-600 font-medium">師傅 NT${therapist!.toLocaleString()}</span>{(b.oil_bonus || 0) > 0 && <span className="text-emerald-600"> (含精油+{b.oil_bonus})</span>}
                     </div>
                   )}
                 </div>

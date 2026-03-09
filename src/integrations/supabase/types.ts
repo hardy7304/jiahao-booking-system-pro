@@ -62,6 +62,7 @@ export type Database = {
           duration: number
           id: string
           name: string
+          oil_bonus: number
           order_time: string
           phone: string
           service: string
@@ -82,6 +83,7 @@ export type Database = {
           duration: number
           id?: string
           name: string
+          oil_bonus?: number
           order_time?: string
           phone: string
           service: string
@@ -102,6 +104,7 @@ export type Database = {
           duration?: number
           id?: string
           name?: string
+          oil_bonus?: number
           order_time?: string
           phone?: string
           service?: string
