@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { BUFFER_MINUTES, formatHourToTime } from "./services";
+import { formatHourToTime } from "./services";
 
 interface Booking {
   date: string;
@@ -14,7 +14,23 @@ interface Holiday {
   end_hour: number | null;
 }
 
+async function getBookingConfig(): Promise<{ buffer_minutes: number; free_addon_duration: number; pre_block_minutes: number }> {
+  const { data } = await supabase
+    .from("system_config")
+    .select("key, value")
+    .in("key", ["buffer_minutes", "free_addon_duration", "pre_block_minutes"]);
+  const config = { buffer_minutes: 10, free_addon_duration: 10, pre_block_minutes: 60 };
+  data?.forEach((row) => {
+    if (row.key in config) {
+      (config as any)[row.key] = parseInt(row.value) || (config as any)[row.key];
+    }
+  });
+  return config;
+}
+
 export async function getAvailableSlots(dateStr: string, totalDuration: number): Promise<number[]> {
+  const config = await getBookingConfig();
+
   // Fetch active bookings for this date (exclude cancelled)
   const { data: bookings } = await supabase
     .from('bookings')
@@ -41,7 +57,7 @@ export async function getAvailableSlots(dateStr: string, totalDuration: number):
 
   const allBookings = [...(bookings || []), ...(prevBookings || []).map(b => ({
     ...b,
-    start_hour: b.start_hour // prev day bookings with hours >= 24 affect this day's 0-2am
+    start_hour: b.start_hour
   }))];
 
   // Check if full day holiday
@@ -49,8 +65,9 @@ export async function getAvailableSlots(dateStr: string, totalDuration: number):
     return [];
   }
 
-  const blockMinutes = totalDuration + BUFFER_MINUTES;
+  const blockMinutes = totalDuration + config.buffer_minutes;
   const blockHours = blockMinutes / 60;
+  const preBlockHours = config.pre_block_minutes / 60;
 
   const slots: number[] = [];
   const now = new Date();
@@ -65,9 +82,7 @@ export async function getAvailableSlots(dateStr: string, totalDuration: number):
     // Skip past times for today
     if (dateStr === today) {
       const currentHour = now.getHours() + now.getMinutes() / 60;
-      // For hours >= 24, they represent next day's 0-2am
-      const compareHour = hour >= 24 ? hour : hour;
-      if (compareHour <= currentHour + 0.5) continue;
+      if (hour <= currentHour + 0.5) continue;
     }
 
     // Check holiday conflicts
@@ -79,12 +94,24 @@ export async function getAvailableSlots(dateStr: string, totalDuration: number):
     });
     if (holidayConflict) continue;
 
-    // Check booking conflicts
+    // Check booking conflicts (using buffer)
     const bookingConflict = allBookings.some(b => {
-      const bEnd = b.start_hour + (b.duration + BUFFER_MINUTES) / 60;
+      const bEnd = b.start_hour + (b.duration + config.buffer_minutes) / 60;
       return hour < bEnd && endHour > b.start_hour;
     });
     if (bookingConflict) continue;
+
+    // Pre-block rule: if this slot's total duration > 60 min,
+    // check that no existing booking starts within pre_block_minutes after this slot ends
+    // i.e., if someone booked 19:00, we can't start a >60min service at 18:00
+    // Rule: for services > 60min total, the slot must not have an existing booking
+    // starting within pre_block_minutes ahead of it
+    if (totalDuration > 60) {
+      const preConflict = allBookings.some(b => {
+        return b.start_hour > hour && b.start_hour < hour + preBlockHours;
+      });
+      if (preConflict) continue;
+    }
 
     slots.push(hour);
   }
