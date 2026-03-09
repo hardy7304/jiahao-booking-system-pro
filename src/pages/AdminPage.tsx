@@ -54,6 +54,7 @@ interface Booking {
   admin_note: string | null;
   completed_at: string | null;
   source: string | null;
+  oil_bonus: number;
 }
 
 const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
