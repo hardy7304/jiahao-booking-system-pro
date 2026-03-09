@@ -1,7 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const BUFFER_MINUTES = 10;
-
 function formatHourToTime(hour: number): string {
   const displayHour = hour >= 24 ? hour - 24 : hour;
   const h = Math.floor(displayHour);
@@ -27,6 +25,19 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    // Fetch config
+    const { data: configData } = await supabase
+      .from("system_config")
+      .select("key, value")
+      .in("key", ["buffer_minutes", "pre_block_minutes"]);
+
+    let bufferMinutes = 10;
+    let preBlockMinutes = 60;
+    configData?.forEach((row: any) => {
+      if (row.key === "buffer_minutes") bufferMinutes = parseInt(row.value) || 10;
+      if (row.key === "pre_block_minutes") preBlockMinutes = parseInt(row.value) || 60;
+    });
 
     const { data: bookings } = await supabase
       .from("bookings")
@@ -54,8 +65,9 @@ Deno.serve(async (req) => {
     }
 
     const allBookings = [...(bookings || []), ...(prevBookings || [])];
-    const blockMinutes = totalDuration + BUFFER_MINUTES;
+    const blockMinutes = totalDuration + bufferMinutes;
     const blockHours = blockMinutes / 60;
+    const preBlockHours = preBlockMinutes / 60;
 
     const slots: number[] = [];
     const now = new Date();
@@ -79,10 +91,19 @@ Deno.serve(async (req) => {
       if (holidayConflict) continue;
 
       const bookingConflict = allBookings.some((b: any) => {
-        const bEnd = b.start_hour + (b.duration + BUFFER_MINUTES) / 60;
+        const bEnd = b.start_hour + (b.duration + bufferMinutes) / 60;
         return hour < bEnd && endHour > b.start_hour;
       });
       if (bookingConflict) continue;
+
+      // Pre-block rule: for services > 60min, don't allow if existing booking
+      // starts within pre_block_minutes after this slot
+      if (totalDuration > 60) {
+        const preConflict = allBookings.some((b: any) => {
+          return b.start_hour > hour && b.start_hour < hour + preBlockHours;
+        });
+        if (preConflict) continue;
+      }
 
       slots.push(hour);
     }
