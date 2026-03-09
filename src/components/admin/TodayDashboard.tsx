@@ -262,7 +262,11 @@ export default function TodayDashboard({
               {dateLabel}師傅收入
             </div>
             <div className="text-xl font-bold text-blue-600">NT${dayTherapist.toLocaleString()}</div>
-            <div className="text-xs text-muted-foreground mt-0.5">×{commission.commissionRate} 計算</div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              ×{commission.commissionRate} 計算
+              {dayOilBonus > 0 && <span className="text-emerald-600 ml-1">（含精油獎金 NT${dayOilBonus.toLocaleString()}）</span>}
+            </div>
+          </div>
           </div>
           <div className="bg-card rounded-xl shadow p-4">
             <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1">

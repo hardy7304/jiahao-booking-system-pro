@@ -132,7 +132,8 @@ export default function StatsDashboard({
   // Commission totals
   const rangeDeductionTotal = commission ? rangeBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
   const rangeBaseTotal = commission ? rangeBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service, b.addons), 0) : 0;
-  const rangeTherapist = commission ? rangeBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service, b.addons) + (b.oil_bonus || 0), 0) : 0;
+  const rangeOilBonus = rangeBookings.reduce((s, b) => s + (b.oil_bonus || 0), 0);
+  const rangeTherapist = commission ? rangeBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service, b.addons), 0) + rangeOilBonus : 0;
   const rangeShopTotal = commission ? rangeBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service, b.addons), 0) : 0;
 
   // SECTION B: Revenue trend (within selected range)
