@@ -204,7 +204,7 @@ export default function AdminPage() {
     setEditForm({
       name: b.name, phone: b.phone, service: b.service, date: b.date,
       start_hour: b.start_hour, duration: b.duration, total_price: b.total_price,
-      addons: b.addons || [], source: b.source || "customer",
+      addons: b.addons || [], source: b.source || "customer", oil_bonus: b.oil_bonus || 0,
     });
   };
 
