@@ -94,13 +94,17 @@ export default function BookingPage() {
 
   const hasOilUpgrade = selectedAddons.some(name => name.includes("精油"));
 
-  const totalDuration = useMemo(() => {
+  // Service duration + addon duration (without free addon, for display)
+  const serviceDuration = useMemo(() => {
     if (!selectedService) return 0;
     const addonDur = dbAddons
       .filter(a => selectedAddons.includes(a.name))
       .reduce((sum, a) => sum + a.extra_duration, 0);
     return selectedService.duration + addonDur;
   }, [selectedService, selectedAddons, dbAddons]);
+
+  // Total duration including free addon (for slot calculation & booking)
+  const totalDuration = serviceDuration + (selectedService ? bookingSettings.free_addon_duration : 0);
 
   const totalPrice = useMemo(() => {
     if (!selectedService) return 0;
