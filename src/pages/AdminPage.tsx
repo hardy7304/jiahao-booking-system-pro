@@ -433,7 +433,10 @@ export default function AdminPage() {
                             <>
                               <td className="p-2 font-medium text-destructive">-NT${commission.getDeduction(b.service).toLocaleString()}</td>
                               <td className="p-2 text-muted-foreground">NT${commission.calcBase(b.total_price, b.service).toLocaleString()}</td>
-                              <td className="p-2 font-bold text-blue-600">NT${commission.calcTherapist(b.total_price, b.service).toLocaleString()}</td>
+                              <td className="p-2 font-bold text-blue-600">
+                                NT${(commission.calcTherapist(b.total_price, b.service) + (b.oil_bonus || 0)).toLocaleString()}
+                                {(b.oil_bonus || 0) > 0 && <span className="text-xs text-emerald-600 ml-1">(含精油+{b.oil_bonus})</span>}
+                              </td>
                             </>
                           )}
                           <td className="p-2">
