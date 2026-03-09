@@ -45,6 +45,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   body: "全身指壓",
   "fascia-foot": "筋膜刀腳底",
   "fascia-body": "筋膜刀身體",
+  "fascia-neck": "筋膜刀肩頸",
   combo: "深層雙拼",
   package: "套餐",
 };
