@@ -828,6 +828,39 @@ export default function AdminPage() {
                 目前設定：師傅 {rateInput}% / 店家 {100 - (parseInt(rateInput) || 0)}%
               </p>
             </div>
+            <div className="border-t border-border pt-4 space-y-4">
+              <h3 className="text-sm font-semibold text-foreground">預約時段設定</h3>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">預約間隔緩衝時間</Label>
+                <div className="flex items-center gap-2">
+                  <Input type="number" className="w-24" value={bufferInput} onChange={(e) => setBufferInput(e.target.value)} min={0} max={60} />
+                  <span className="text-sm text-muted-foreground">分鐘</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  每筆預約結束後保留的緩衝時間，避免預約太密集
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">免費泡腳肩頸時長</Label>
+                <div className="flex items-center gap-2">
+                  <Input type="number" className="w-24" value={freeAddonInput} onChange={(e) => setFreeAddonInput(e.target.value)} min={0} max={30} />
+                  <span className="text-sm text-muted-foreground">分鐘</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  免費贈送的泡腳肩頸時長，會加入服務顯示時長與佔用時段
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">前方預約保護時間</Label>
+                <div className="flex items-center gap-2">
+                  <Input type="number" className="w-24" value={preBlockInput} onChange={(e) => setPreBlockInput(e.target.value)} min={0} max={120} />
+                  <span className="text-sm text-muted-foreground">分鐘</span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  超過 60 分鐘的服務，若前方有預約在此時間內開始，則不接新客
+                </p>
+              </div>
+            </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">Google 日曆注意事項</Label>
               <Textarea
