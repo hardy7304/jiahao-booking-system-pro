@@ -56,10 +56,20 @@ export function useCommission() {
     }, 0);
   };
 
-  /** Base = (totalPrice - addonPrices - deduction), i.e. original service price minus deduction */
+  /** Calculate total addon deductions from a booking's addons array */
+  const getAddonDeduction = (addons?: string[] | null): number => {
+    if (!addons || addons.length === 0) return 0;
+    return addons.reduce((sum, addonName) => {
+      const match = addonPrices.find((a) => addonName.includes(a.name) || a.name.includes(addonName));
+      return sum + (match?.deduction || 0);
+    }, 0);
+  };
+
+  /** Base = (totalPrice - addonPrices - addonDeductions - serviceDeduction) */
   const calcBase = (totalPrice: number, serviceName: string, addons?: string[] | null) => {
     const addonTotal = getAddonTotal(addons);
-    return totalPrice - addonTotal - getDeduction(serviceName);
+    const addonDed = getAddonDeduction(addons);
+    return totalPrice - addonTotal - addonDed - getDeduction(serviceName);
   };
 
   const calcTherapist = (totalPrice: number, serviceName: string, addons?: string[] | null) => {
