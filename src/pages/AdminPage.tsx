@@ -154,8 +154,12 @@ export default function AdminPage() {
   }, []);
 
   const fetchServices = useCallback(async () => {
-    const { data } = await supabase.from("services").select("*").eq("is_active", true).order("sort_order");
-    if (data) setServicesList(data);
+    const [{ data: svcData }, { data: addonData }] = await Promise.all([
+      supabase.from("services").select("*").eq("is_active", true).order("sort_order"),
+      supabase.from("addons").select("*").eq("is_active", true).order("sort_order"),
+    ]);
+    if (svcData) setServicesList(svcData);
+    if (addonData) setAddonsList(addonData);
   }, []);
 
   useEffect(() => {
