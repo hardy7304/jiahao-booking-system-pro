@@ -110,7 +110,8 @@ export default function TodayDashboard({
   // Commission calculations - only count completed bookings
   const dayDeductionTotal = commission ? completedBookings.reduce((s, b) => s + commission.getDeduction(b.service), 0) : 0;
   const dayBaseTotal = commission ? completedBookings.reduce((s, b) => s + commission.calcBase(b.total_price, b.service, b.addons), 0) : 0;
-  const dayTherapist = commission ? completedBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service, b.addons) + (b.oil_bonus || 0), 0) : 0;
+  const dayOilBonus = completedBookings.reduce((s, b) => s + (b.oil_bonus || 0), 0);
+  const dayTherapist = commission ? completedBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service, b.addons), 0) + dayOilBonus : 0;
   const dayShop = commission ? completedBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service, b.addons), 0) : 0;
 
   const dateLabel = isViewingToday ? "今日" : format(selectedDate, "M/d");
