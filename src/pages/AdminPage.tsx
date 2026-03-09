@@ -951,7 +951,7 @@ export default function AdminPage() {
             <div className="space-y-1">
               <Label className="text-sm">精油推薦獎金</Label>
               <div className="flex items-center gap-2">
-                <Input type="number" className="w-24" value={editForm.oil_bonus} onChange={(e) => setEditForm({ ...editForm, oil_bonus: parseInt(e.target.value) || 0 })} min={0} />
+                <Input type="text" inputMode="numeric" className="w-24" value={editForm.oil_bonus} onChange={(e) => { const v = e.target.value.replace(/\D/g, ""); setEditForm({ ...editForm, oil_bonus: v ? parseInt(v, 10) : 0 }); }} min={0} />
                 <span className="text-sm text-muted-foreground">元</span>
               </div>
               <p className="text-xs text-muted-foreground">師傅自己推薦精油升級時填入（例：100），櫃檯推薦則保持 0</p>
