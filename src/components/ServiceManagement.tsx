@@ -344,6 +344,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
                   <td className="p-2 max-w-[180px]"><span className="truncate block">{a.name}</span></td>
                   <td className="p-2 whitespace-nowrap">{a.extra_duration} 分</td>
                   <td className="p-2 whitespace-nowrap font-medium text-primary">{a.extra_price > 0 ? `NT$${a.extra_price.toLocaleString()}` : "-"}</td>
+                  <td className="p-2 whitespace-nowrap">{a.deduction > 0 ? `NT$${a.deduction.toLocaleString()}` : "-"}</td>
                   <td className="p-2">
                     <div className="flex flex-wrap gap-1">
                       {a.applicable_categories.length === 0 ? (
