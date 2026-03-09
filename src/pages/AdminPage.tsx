@@ -124,8 +124,9 @@ export default function AdminPage() {
   const [calendarNotesInput, setCalendarNotesInput] = useState("");
   const [shopInfoInput, setShopInfoInput] = useState(shopInfoHook.info);
 
-  // Services list for manual booking
+  // Services & addons list for manual booking
   const [servicesList, setServicesList] = useState<any[]>([]);
+  const [addonsList, setAddonsList] = useState<any[]>([]);
 
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {
@@ -153,8 +154,12 @@ export default function AdminPage() {
   }, []);
 
   const fetchServices = useCallback(async () => {
-    const { data } = await supabase.from("services").select("*").eq("is_active", true).order("sort_order");
-    if (data) setServicesList(data);
+    const [{ data: svcData }, { data: addonData }] = await Promise.all([
+      supabase.from("services").select("*").eq("is_active", true).order("sort_order"),
+      supabase.from("addons").select("*").eq("is_active", true).order("sort_order"),
+    ]);
+    if (svcData) setServicesList(svcData);
+    if (addonData) setAddonsList(addonData);
   }, []);
 
   useEffect(() => {
@@ -675,7 +680,7 @@ export default function AdminPage() {
               <Label className="text-sm">服務 *</Label>
               <Select value={manualForm.service} onValueChange={(v) => {
                 const svc = servicesList.find((s) => s.name === v);
-                setManualForm({ ...manualForm, service: v, duration: svc?.duration || 60, total_price: svc?.price || 0 });
+                setManualForm({ ...manualForm, service: v, duration: svc?.duration || 60, total_price: svc?.price || 0, addons: [] });
               }}>
                 <SelectTrigger><SelectValue placeholder="選擇服務" /></SelectTrigger>
                 <SelectContent>
@@ -685,6 +690,57 @@ export default function AdminPage() {
                 </SelectContent>
               </Select>
             </div>
+            {/* Addons */}
+            {manualForm.service && (() => {
+              const selectedSvc = servicesList.find((s) => s.name === manualForm.service);
+              const category = selectedSvc?.category || '';
+              if (category === 'package') return null;
+              const filtered = addonsList.filter((a: any) => {
+                if (a.addon_type === '精油香味') return false;
+                if (a.applicable_categories && a.applicable_categories.length > 0) {
+                  return a.applicable_categories.includes(category);
+                }
+                return true;
+              });
+              if (filtered.length === 0) return null;
+              return (
+                <div className="space-y-1">
+                  <Label className="text-sm">加購項目</Label>
+                  <div className="space-y-1">
+                    {filtered.map((addon: any) => {
+                      const checked = manualForm.addons.includes(addon.name);
+                      return (
+                        <label key={addon.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {
+                              const newAddons = checked
+                                ? manualForm.addons.filter((a) => a !== addon.name)
+                                : [...manualForm.addons, addon.name];
+                              const svc = servicesList.find((s) => s.name === manualForm.service);
+                              const basePrice = svc?.price || 0;
+                              const baseDuration = svc?.duration || 60;
+                              const addonPrice = newAddons.reduce((sum, name) => {
+                                const a = addonsList.find((x: any) => x.name === name);
+                                return sum + (a?.extra_price || 0);
+                              }, 0);
+                              const addonDuration = newAddons.reduce((sum, name) => {
+                                const a = addonsList.find((x: any) => x.name === name);
+                                return sum + (a?.extra_duration || 0);
+                              }, 0);
+                              setManualForm({ ...manualForm, addons: newAddons, total_price: basePrice + addonPrice, duration: baseDuration + addonDuration });
+                            }}
+                            className="rounded"
+                          />
+                          {addon.name} {addon.extra_price > 0 ? `+NT$${addon.extra_price}` : ''} {addon.extra_duration > 0 ? `+${addon.extra_duration}分` : ''}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-sm">日期 *</Label>
