@@ -18,6 +18,7 @@ import StatsDashboard from "@/components/admin/StatsDashboard";
 import CustomerTracking from "@/components/admin/CustomerTracking";
 import BookingFiltersBar, { type BookingFilters } from "@/components/admin/BookingFilters";
 import { useCommission } from "@/hooks/useCommission";
+import { useCalendarNotes } from "@/hooks/useCalendarNotes";
 import { format, parseISO } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -80,6 +81,7 @@ export default function AdminPage() {
   const [showCommissionCols, setShowCommissionCols] = useState(false);
 
   const commission = useCommission();
+  const calendarNotesHook = useCalendarNotes();
 
   // Filters
   const [filters, setFilters] = useState<BookingFilters>({
@@ -116,6 +118,7 @@ export default function AdminPage() {
   // Settings dialog
   const [showSettings, setShowSettings] = useState(false);
   const [rateInput, setRateInput] = useState("60");
+  const [calendarNotesInput, setCalendarNotesInput] = useState("");
 
   // Services list for manual booking
   const [servicesList, setServicesList] = useState<any[]>([]);
@@ -270,12 +273,13 @@ export default function AdminPage() {
     toast.success("已新增預約");
   };
 
-  const saveCommissionRate = async () => {
+  const saveSettings = async () => {
     const rate = parseInt(rateInput) / 100;
     if (rate <= 0 || rate >= 1) { toast.error("請輸入 1~99 的數值"); return; }
     await commission.updateRate(rate);
+    await calendarNotesHook.updateNotes(calendarNotesInput);
     setShowSettings(false);
-    toast.success("已更新抽成比例");
+    toast.success("已儲存設定");
   };
 
   // Filtered bookings
@@ -334,7 +338,7 @@ export default function AdminPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold text-foreground">不老松足湯 · 管理後台</h1>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setShowSettings(true); }}>
+            <Button variant="outline" size="sm" onClick={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setCalendarNotesInput(calendarNotesHook.notes); setShowSettings(true); }}>
               <Settings className="w-4 h-4 mr-1" /> 設定
             </Button>
             <Button variant="outline" size="sm" onClick={() => { setAuthenticated(false); sessionStorage.removeItem("admin_auth"); }}>
@@ -595,7 +599,7 @@ export default function AdminPage() {
 
           {/* SERVICES */}
           <TabsContent value="services" className="mt-4">
-            <ServiceManagement onOpenSettings={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setShowSettings(true); }} />
+            <ServiceManagement onOpenSettings={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setCalendarNotesInput(calendarNotesHook.notes); setShowSettings(true); }} />
           </TabsContent>
 
           {/* STATS */}
@@ -721,9 +725,9 @@ export default function AdminPage() {
 
       {/* Settings dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>⚙️ 系統設定</DialogTitle></DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-5">
             <div className="space-y-2">
               <Label className="text-sm font-medium">師傅抽成比例</Label>
               <div className="flex items-center gap-2">
@@ -733,14 +737,23 @@ export default function AdminPage() {
               <p className="text-xs text-muted-foreground">
                 目前設定：師傅 {rateInput}% / 店家 {100 - (parseInt(rateInput) || 0)}%
               </p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Google 日曆注意事項</Label>
+              <Textarea
+                className="min-h-[120px] text-sm"
+                value={calendarNotesInput}
+                onChange={(e) => setCalendarNotesInput(e.target.value)}
+                placeholder="輸入要顯示在 Google 日曆描述中的注意事項..."
+              />
               <p className="text-xs text-muted-foreground">
-                修改後會立即套用到所有計算
+                此內容會顯示在客人加入 Google 日曆時的事件描述底部
               </p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSettings(false)}>取消</Button>
-            <Button onClick={saveCommissionRate}>儲存</Button>
+            <Button onClick={saveSettings}>儲存</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

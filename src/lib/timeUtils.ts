@@ -101,8 +101,9 @@ export function generateGoogleCalendarLink(booking: {
   phone?: string;
   addons?: string[];
   total_price?: number;
+  calendarNotes?: string;
 }): string {
-  const { date, start_hour, duration, service, name, phone, addons, total_price } = booking;
+  const { date, start_hour, duration, service, name, phone, addons, total_price, calendarNotes } = booking;
   
   const startDate = new Date(date);
   const displayHour = start_hour >= 24 ? start_hour - 24 : start_hour;
@@ -138,12 +139,11 @@ export function generateGoogleCalendarLink(booking: {
   detailLines.push(`👨‍🔧 師傅：嘉豪師傅`);
   detailLines.push(`📍 地點：不老松足湯安平店`);
   detailLines.push(`══════════════════`);
-  detailLines.push(``);
-  detailLines.push(`⚠️ 注意事項：`);
-  detailLines.push(`• 請於預約時間前 5 分鐘到場`);
-  detailLines.push(`• 如需取消或更改，請至少提前 2 小時聯繫`);
-  detailLines.push(`• 未到或遲到超過 15 分鐘視為放棄預約`);
-  detailLines.push(`• 聯繫方式：請透過預約系統或電話聯繫`);
+  if (calendarNotes && calendarNotes.trim()) {
+    detailLines.push(``);
+    detailLines.push(`⚠️ 注意事項：`);
+    calendarNotes.split('\n').forEach(line => detailLines.push(line));
+  }
 
   const params = new URLSearchParams({
     action: 'TEMPLATE',

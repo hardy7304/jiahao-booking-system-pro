@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatHourToTime } from "@/lib/services";
 import { getAvailableSlots, generateGoogleCalendarLink } from "@/lib/timeUtils";
+import { useCalendarNotes } from "@/hooks/useCalendarNotes";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +39,7 @@ interface DbAddon {
 }
 
 export default function BookingPage() {
+  const { notes: calendarNotes } = useCalendarNotes();
   const [dbServices, setDbServices] = useState<DbService[]>([]);
   const [dbAddons, setDbAddons] = useState<DbAddon[]>([]);
   const [selectedService, setSelectedService] = useState<DbService | null>(null);
@@ -180,6 +182,7 @@ export default function BookingPage() {
           phone: phone.trim(),
           addons: allAddons,
           total_price: totalPrice,
+          calendarNotes,
         }),
       });
     }
