@@ -240,8 +240,8 @@ export default function BookingPage() {
     <div className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto px-4 py-6">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-foreground">不老松足湯安平店</h1>
-          <p className="text-muted-foreground mt-1">嘉豪師傅 · 線上預約</p>
+          <h1 className="text-2xl font-bold text-foreground">{shopInfo.store_name}</h1>
+          <p className="text-muted-foreground mt-1">{shopInfo.therapist_name} · 線上預約</p>
         </div>
 
         <div className="bg-card rounded-xl shadow-lg p-5 space-y-5 animate-fade-in">
