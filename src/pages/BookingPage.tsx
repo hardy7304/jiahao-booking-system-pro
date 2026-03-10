@@ -155,6 +155,22 @@ export default function BookingPage() {
     }
 
     setLoading(true);
+
+    // Blacklist check
+    const { data: customerData } = await supabase
+      .from("customers")
+      .select("is_blacklisted, blacklist_action")
+      .eq("phone", phone.trim())
+      .maybeSingle();
+
+    if (customerData?.is_blacklisted) {
+      if (customerData.blacklist_action === "block") {
+        toast.error("此電話號碼無法進行線上預約，請直接聯繫店家");
+        setLoading(false);
+        return;
+      }
+      // "warn" action: allow booking but it will show warning in admin
+    }
     const dateStr = format(date, "yyyy-MM-dd");
     const allAddons = [...selectedAddons];
     if (selectedAroma) allAddons.push(selectedAroma);
