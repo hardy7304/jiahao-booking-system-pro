@@ -142,6 +142,10 @@ export default function AdminPage() {
   const [holidayDialogEnd, setHolidayDialogEnd] = useState("");
   const [holidayDialogNote, setHolidayDialogNote] = useState("");
 
+  // Batch pending holidays (dates toggled but not yet saved)
+  const [pendingHolidayDates, setPendingHolidayDates] = useState<Set<string>>(new Set());
+  const [isSavingBatch, setIsSavingBatch] = useState(false);
+
   // Services & addons list for manual booking
   const [servicesList, setServicesList] = useState<any[]>([]);
   const [addonsList, setAddonsList] = useState<any[]>([]);
@@ -314,19 +318,48 @@ export default function AdminPage() {
     const dateStr = format(day, "yyyy-MM-dd");
     const dayHolidays = holidays.filter(h => h.date === dateStr);
     if (dayHolidays.length > 0) {
-      // Open dialog showing existing holidays for this date
+      // Has existing holidays - open dialog to view/manage
       setHolidayClickedDate(dateStr);
       setHolidayDialogType("部分時段公休");
       setHolidayDialogStart("");
       setHolidayDialogEnd("");
       setHolidayDialogNote("");
     } else {
-      // No holidays, open dialog to add
-      setHolidayClickedDate(dateStr);
-      setHolidayDialogType("整天公休");
-      setHolidayDialogStart("");
-      setHolidayDialogEnd("");
-      setHolidayDialogNote("");
+      // No holidays - toggle in pending batch set
+      setPendingHolidayDates(prev => {
+        const next = new Set(prev);
+        if (next.has(dateStr)) {
+          next.delete(dateStr);
+        } else {
+          next.add(dateStr);
+        }
+        return next;
+      });
+    }
+  };
+
+  const savePendingHolidays = async () => {
+    if (pendingHolidayDates.size === 0) return;
+    setIsSavingBatch(true);
+    try {
+      const rows = Array.from(pendingHolidayDates).map(date => ({
+        date, type: "整天公休" as const, note: null,
+      }));
+      const { data: inserted } = await supabase.from("holidays").insert(rows).select();
+      if (inserted && inserted.length > 0) {
+        // Batch sync to Google Calendar
+        for (const h of inserted) {
+          await syncHolidayToCalendar(h, "create_holiday");
+        }
+      }
+      setPendingHolidayDates(new Set());
+      fetchHolidays();
+      toast.success(`已新增 ${rows.length} 筆公休`);
+    } catch (err) {
+      toast.error("批次新增失敗");
+      console.error(err);
+    } finally {
+      setIsSavingBatch(false);
     }
   };
 
@@ -791,22 +824,42 @@ export default function AdminPage() {
                 modifiers={{
                   holiday: holidays.filter(h => h.type === "整天公休").map(h => parseISO(h.date)),
                   partialHoliday: holidays.filter(h => h.type === "部分時段公休").map(h => parseISO(h.date)),
+                  pending: Array.from(pendingHolidayDates).map(d => parseISO(d)),
                 }}
                 modifiersStyles={{
                   holiday: { backgroundColor: "hsl(var(--destructive))", color: "hsl(var(--destructive-foreground))", borderRadius: "6px" },
                   partialHoliday: { backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))", borderRadius: "6px", border: "2px solid hsl(var(--destructive))" },
+                  pending: { backgroundColor: "hsl(var(--primary) / 0.2)", color: "hsl(var(--primary))", borderRadius: "6px", border: "2px dashed hsl(var(--primary))" },
                 }}
                 numberOfMonths={2}
               />
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-destructive" />
-                  <span>整天公休</span>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded bg-destructive" />
+                    <span>整天公休</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded bg-accent border-2 border-destructive" />
+                    <span>部分時段公休</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded border-2 border-dashed border-primary bg-primary/20" />
+                    <span>待確認</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-accent border-2 border-destructive" />
-                  <span>部分時段公休</span>
-                </div>
+                {pendingHolidayDates.size > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">已選 {pendingHolidayDates.size} 天</span>
+                    <Button variant="outline" size="sm" onClick={() => setPendingHolidayDates(new Set())}>
+                      清除
+                    </Button>
+                    <Button size="sm" onClick={savePendingHolidays} disabled={isSavingBatch}>
+                      <Check className="w-4 h-4 mr-1" />
+                      {isSavingBatch ? "儲存中..." : "確認新增公休"}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
