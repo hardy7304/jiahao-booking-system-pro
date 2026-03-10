@@ -381,17 +381,21 @@ export default function AdminPage() {
       toast.error("請填寫所有必填欄位");
       return;
     }
-    await supabase.from("bookings").insert({
-      name: manualForm.name, phone: manualForm.phone, service: manualForm.service,
-      date: manualForm.date, start_hour: manualForm.start_hour,
-      start_time_str: formatHourToTime(manualForm.start_hour),
-      duration: manualForm.duration, total_price: manualForm.total_price,
-      addons: manualForm.addons, status: "confirmed", source: manualForm.source,
-    } as any);
-    setShowManualBooking(false);
-    setManualForm({ name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [], source: "admin" });
-    fetchBookings();
-    toast.success("已新增預約");
+    try {
+      await adminApi("booking.create_manual", {
+        booking: {
+          name: manualForm.name, phone: manualForm.phone, service: manualForm.service,
+          date: manualForm.date, start_hour: manualForm.start_hour,
+          start_time_str: formatHourToTime(manualForm.start_hour),
+          duration: manualForm.duration, total_price: manualForm.total_price,
+          addons: manualForm.addons, status: "confirmed", source: manualForm.source,
+        },
+      });
+      setShowManualBooking(false);
+      setManualForm({ name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [], source: "admin" });
+      fetchBookings();
+      toast.success("已新增預約");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const saveSettings = async () => {
