@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
-export type SortField = "order_time" | "date" | "total_price" | "duration" | "name" | "service";
+export type SortField = "order_time" | "date" | "total_price" | "duration";
 export type SortDirection = "asc" | "desc";
 
 export interface BookingFilters {
@@ -19,6 +19,8 @@ export interface BookingFilters {
   status: string;
   sortField: SortField;
   sortDirection: SortDirection;
+  filterName: string;
+  filterService: string;
 }
 
 const CATEGORY_OPTIONS = [
@@ -42,10 +44,10 @@ export default function BookingFiltersBar({
   resultCount: number;
 }) {
   const hasFilters =
-    filters.search || filters.dateFrom || filters.dateTo || filters.category !== "all" || filters.status !== "all";
+    filters.search || filters.dateFrom || filters.dateTo || filters.category !== "all" || filters.status !== "all" || filters.filterName || filters.filterService;
 
   const clearFilters = () =>
-    onChange({ ...filters, search: "", dateFrom: undefined, dateTo: undefined, category: "all", status: "all" });
+    onChange({ ...filters, search: "", dateFrom: undefined, dateTo: undefined, category: "all", status: "all", filterName: "", filterService: "" });
 
   return (
     <div className="bg-card rounded-xl shadow p-3 space-y-3">

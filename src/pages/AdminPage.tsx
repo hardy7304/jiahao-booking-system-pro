@@ -10,7 +10,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings, Pencil, Undo2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings, Pencil, Undo2, ArrowUpDown, ArrowUp, ArrowDown, Filter, ChevronDown } from "lucide-react";
 import ServiceManagement from "@/components/ServiceManagement";
 import TodayDashboard from "@/components/admin/TodayDashboard";
 import BookingCalendarView from "@/components/admin/BookingCalendarView";
@@ -91,7 +91,7 @@ export default function AdminPage() {
   // Filters
   const [filters, setFilters] = useState<BookingFilters>({
     search: "", dateFrom: undefined, dateTo: undefined, category: "all", status: "all",
-    sortField: "order_time", sortDirection: "desc",
+    sortField: "order_time", sortDirection: "desc", filterName: "", filterService: "",
   });
 
   // Cancel dialog
@@ -331,6 +331,13 @@ export default function AdminPage() {
       const q = filters.search.toLowerCase();
       result = result.filter((b) => b.name.toLowerCase().includes(q) || b.phone.includes(q));
     }
+    if (filters.filterName) {
+      const q = filters.filterName.toLowerCase();
+      result = result.filter((b) => b.name.toLowerCase().includes(q));
+    }
+    if (filters.filterService) {
+      result = result.filter((b) => b.service === filters.filterService);
+    }
     if (filters.dateFrom) {
       const from = format(filters.dateFrom, "yyyy-MM-dd");
       result = result.filter((b) => b.date >= from);
@@ -361,8 +368,6 @@ export default function AdminPage() {
         case "date": return dir * (a.date.localeCompare(b.date) || (a.start_hour - b.start_hour));
         case "total_price": return dir * (a.total_price - b.total_price);
         case "duration": return dir * (a.duration - b.duration);
-        case "name": return dir * a.name.localeCompare(b.name, "zh-TW");
-        case "service": return dir * a.service.localeCompare(b.service, "zh-TW");
         default: return 0;
       }
     });
@@ -371,6 +376,10 @@ export default function AdminPage() {
   }, [bookings, filters]);
 
   const timeSlots = generateTimeSlots();
+
+  // Unique names and services for column filters
+  const uniqueNames = useMemo(() => [...new Set(bookings.map(b => b.name))].sort((a, b) => a.localeCompare(b, "zh-TW")), [bookings]);
+  const uniqueServices = useMemo(() => [...new Set(bookings.map(b => b.service))].sort((a, b) => a.localeCompare(b, "zh-TW")), [bookings]);
 
   if (!authenticated) {
     return (
@@ -450,12 +459,6 @@ export default function AdminPage() {
                           { field: "order_time" as SortField, label: "下單時間" },
                           { field: "date" as SortField, label: "日期" },
                           { field: null, label: "時段" },
-                          { field: "name" as SortField, label: "姓名" },
-                          { field: null, label: "電話" },
-                          { field: "service" as SortField, label: "服務" },
-                          { field: null, label: "加購" },
-                          { field: "duration" as SortField, label: "時長" },
-                          { field: "total_price" as SortField, label: "金額" },
                         ] as const).map(({ field, label }) => (
                           <th key={label} className="text-left p-2">
                             {field ? (
@@ -477,6 +480,99 @@ export default function AdminPage() {
                                 )}
                               </button>
                             ) : label}
+                          </th>
+                        ))}
+                        {/* Name filter popover */}
+                        <th className="text-left p-2">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className={cn("flex items-center gap-1 hover:text-foreground transition-colors", filters.filterName && "text-primary font-semibold")}>
+                                姓名 <ChevronDown className="w-3 h-3" />
+                                {filters.filterName && <span className="text-xs bg-primary/10 text-primary rounded px-1">{filters.filterName}</span>}
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-48 p-2" align="start">
+                              <div className="space-y-1">
+                                <Input
+                                  placeholder="搜尋姓名..."
+                                  value={filters.filterName}
+                                  onChange={(e) => setFilters({ ...filters, filterName: e.target.value })}
+                                  className="h-8 text-sm"
+                                />
+                                <div className="max-h-40 overflow-y-auto space-y-0.5 mt-1">
+                                  {filters.filterName && (
+                                    <button className="w-full text-left text-xs px-2 py-1 rounded hover:bg-secondary text-destructive" onClick={() => setFilters({ ...filters, filterName: "" })}>
+                                      ✕ 清除篩選
+                                    </button>
+                                  )}
+                                  {uniqueNames
+                                    .filter(n => !filters.filterName || n.toLowerCase().includes(filters.filterName.toLowerCase()))
+                                    .slice(0, 20)
+                                    .map(name => (
+                                      <button key={name} className="w-full text-left text-xs px-2 py-1 rounded hover:bg-secondary truncate" onClick={() => setFilters({ ...filters, filterName: name })}>
+                                        {name}
+                                      </button>
+                                    ))}
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </th>
+                        <th className="text-left p-2">電話</th>
+                        {/* Service filter popover */}
+                        <th className="text-left p-2">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <button className={cn("flex items-center gap-1 hover:text-foreground transition-colors", filters.filterService && "text-primary font-semibold")}>
+                                服務 <ChevronDown className="w-3 h-3" />
+                                {filters.filterService && <span className="text-xs bg-primary/10 text-primary rounded px-1 max-w-[80px] truncate">{filters.filterService}</span>}
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-52 p-2" align="start">
+                              <div className="space-y-1">
+                                {filters.filterService && (
+                                  <button className="w-full text-left text-xs px-2 py-1 rounded hover:bg-secondary text-destructive" onClick={() => setFilters({ ...filters, filterService: "" })}>
+                                    ✕ 清除篩選
+                                  </button>
+                                )}
+                                <div className="max-h-48 overflow-y-auto space-y-0.5">
+                                  {uniqueServices.map(svc => (
+                                    <button
+                                      key={svc}
+                                      className={cn("w-full text-left text-xs px-2 py-1 rounded hover:bg-secondary truncate", filters.filterService === svc && "bg-primary/10 text-primary font-medium")}
+                                      onClick={() => setFilters({ ...filters, filterService: filters.filterService === svc ? "" : svc })}
+                                    >
+                                      {svc}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </th>
+                        <th className="text-left p-2">加購</th>
+                        {([
+                          { field: "duration" as SortField, label: "時長" },
+                          { field: "total_price" as SortField, label: "金額" },
+                        ] as const).map(({ field, label }) => (
+                          <th key={label} className="text-left p-2">
+                            <button
+                              className="flex items-center gap-1 hover:text-foreground transition-colors"
+                              onClick={() => {
+                                if (filters.sortField === field) {
+                                  setFilters({ ...filters, sortDirection: filters.sortDirection === "asc" ? "desc" : "asc" });
+                                } else {
+                                  setFilters({ ...filters, sortField: field, sortDirection: "desc" });
+                                }
+                              }}
+                            >
+                              {label}
+                              {filters.sortField === field ? (
+                                filters.sortDirection === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                              ) : (
+                                <ArrowUpDown className="w-3 h-3 opacity-40" />
+                              )}
+                            </button>
                           </th>
                         ))}
                         {showCommissionCols && (
