@@ -824,22 +824,42 @@ export default function AdminPage() {
                 modifiers={{
                   holiday: holidays.filter(h => h.type === "整天公休").map(h => parseISO(h.date)),
                   partialHoliday: holidays.filter(h => h.type === "部分時段公休").map(h => parseISO(h.date)),
+                  pending: Array.from(pendingHolidayDates).map(d => parseISO(d)),
                 }}
                 modifiersStyles={{
                   holiday: { backgroundColor: "hsl(var(--destructive))", color: "hsl(var(--destructive-foreground))", borderRadius: "6px" },
                   partialHoliday: { backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))", borderRadius: "6px", border: "2px solid hsl(var(--destructive))" },
+                  pending: { backgroundColor: "hsl(var(--primary) / 0.2)", color: "hsl(var(--primary))", borderRadius: "6px", border: "2px dashed hsl(var(--primary))" },
                 }}
                 numberOfMonths={2}
               />
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-destructive" />
-                  <span>整天公休</span>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded bg-destructive" />
+                    <span>整天公休</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded bg-accent border-2 border-destructive" />
+                    <span>部分時段公休</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 rounded border-2 border-dashed border-primary bg-primary/20" />
+                    <span>待確認</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="w-3 h-3 rounded bg-accent border-2 border-destructive" />
-                  <span>部分時段公休</span>
-                </div>
+                {pendingHolidayDates.size > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">已選 {pendingHolidayDates.size} 天</span>
+                    <Button variant="outline" size="sm" onClick={() => setPendingHolidayDates(new Set())}>
+                      清除
+                    </Button>
+                    <Button size="sm" onClick={savePendingHolidays} disabled={isSavingBatch}>
+                      <Check className="w-4 h-4 mr-1" />
+                      {isSavingBatch ? "儲存中..." : "確認新增公休"}
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
