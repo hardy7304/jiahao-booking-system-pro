@@ -138,6 +138,7 @@ async function createHolidayEvent(accessToken: string, calendarId: string, holid
       start: { date: holiday.date },
       end: { date: endDate },
       colorId: "11", // red
+      reminders: { useDefault: false },
     };
   } else {
     // Partial day off
