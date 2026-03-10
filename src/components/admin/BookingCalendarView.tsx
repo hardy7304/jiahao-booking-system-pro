@@ -19,6 +19,7 @@ interface Booking {
   duration: number;
   total_price: number;
   cancelled_at: string | null;
+  cancel_reason: string | null;
   status: string | null;
 }
 
@@ -98,7 +99,17 @@ export default function BookingCalendarView({
     return activeBookings.filter((b) => b.date === dateStr).sort((a, b) => a.start_hour - b.start_hour);
   };
 
-  const selectedDayBookings = selectedDay ? getBookingsForDay(selectedDay) : [];
+  const getCancelledCountForDay = (day: Date) => {
+    const dateStr = format(day, "yyyy-MM-dd");
+    return bookings.filter((b) => b.date === dateStr && (b.cancelled_at || b.status === "cancelled")).length;
+  };
+
+  const getAllBookingsForDay = (day: Date) => {
+    const dateStr = format(day, "yyyy-MM-dd");
+    return bookings.filter((b) => b.date === dateStr).sort((a, b) => a.start_hour - b.start_hour);
+  };
+
+  const selectedDayBookings = selectedDay ? getAllBookingsForDay(selectedDay) : [];
 
   const padStart = (getDay(monthStart) + 6) % 7;
 
@@ -142,19 +153,26 @@ export default function BookingCalendarView({
           const isToday = isSameDay(day, new Date());
           const isHoliday = !!holidayMap[dateStr];
 
+          const cancelledCount = getCancelledCountForDay(day);
+
           return (
             <div
               key={dateStr}
               className={cn(
-                "border rounded-lg p-1 min-h-[80px] md:min-h-[100px] cursor-pointer transition-colors",
+                "border rounded-lg p-1 min-h-[80px] md:min-h-[100px] cursor-pointer transition-colors relative",
                 isToday && "border-primary border-2 bg-primary/5",
                 isHoliday && "bg-destructive/10 border-destructive/30",
                 !isToday && !isHoliday && "border-border hover:bg-secondary/30"
               )}
               onClick={() => setSelectedDay(day)}
             >
-              <div className={cn("text-xs font-medium text-center mb-0.5", isToday ? "text-primary font-bold" : "text-foreground")}>
-                {format(day, "d")}
+              <div className="flex items-center justify-center gap-0.5 mb-0.5">
+                <span className={cn("text-xs font-medium", isToday ? "text-primary font-bold" : "text-foreground")}>
+                  {format(day, "d")}
+                </span>
+                {cancelledCount > 0 && (
+                  <span className="text-[9px] text-muted-foreground leading-none">❌{cancelledCount}</span>
+                )}
               </div>
               {isHoliday && (
                 <div className="text-[10px] text-destructive font-medium text-center">公休</div>
@@ -208,22 +226,34 @@ export default function BookingCalendarView({
             {selectedDayBookings.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">當日無預約</div>
             ) : (
-              selectedDayBookings.map((b) => (
-                <div key={b.id} className={cn("p-3 rounded-lg border", blacklistedPhones?.has(b.phone) ? "bg-destructive/15 border-destructive/40" : getCategoryColor(b.service))}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium flex items-center gap-1">
-                      {blacklistedPhones?.has(b.phone) && <Ban className="w-3.5 h-3.5 text-destructive shrink-0" />}
-                      {b.start_time_str} {b.name}
-                    </span>
-                    <span className="text-sm font-medium">NT${b.total_price.toLocaleString()}</span>
+              selectedDayBookings.map((b) => {
+                const isCancelled = !!b.cancelled_at || b.status === "cancelled";
+                return (
+                  <div key={b.id} className={cn(
+                    "p-3 rounded-lg border",
+                    isCancelled && "opacity-40 bg-muted/30 border-border line-through decoration-muted-foreground/40",
+                    !isCancelled && blacklistedPhones?.has(b.phone) && "bg-destructive/15 border-destructive/40",
+                    !isCancelled && !blacklistedPhones?.has(b.phone) && getCategoryColor(b.service)
+                  )}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium flex items-center gap-1">
+                        {blacklistedPhones?.has(b.phone) && <Ban className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                        {b.start_time_str} {b.name}
+                        {isCancelled && <Badge variant="outline" className="text-[10px] px-1 py-0 ml-1 no-underline border-muted text-muted-foreground">已取消</Badge>}
+                      </span>
+                      <span className="text-sm font-medium">NT${b.total_price.toLocaleString()}</span>
+                    </div>
+                    <div className="text-xs mt-1">{b.service}</div>
+                    {b.addons && b.addons.length > 0 && (
+                      <div className="text-xs mt-0.5 opacity-75">加購：{b.addons.join(", ")}</div>
+                    )}
+                    <div className="text-xs mt-1 opacity-75">📞 {b.phone} · {b.duration}分鐘</div>
+                    {isCancelled && b.cancel_reason && (
+                      <div className="text-xs mt-1 text-muted-foreground no-underline" style={{ textDecoration: 'none' }}>取消原因：{b.cancel_reason}</div>
+                    )}
                   </div>
-                  <div className="text-xs mt-1">{b.service}</div>
-                  {b.addons && b.addons.length > 0 && (
-                    <div className="text-xs mt-0.5 opacity-75">加購：{b.addons.join(", ")}</div>
-                  )}
-                  <div className="text-xs mt-1 opacity-75">📞 {b.phone} · {b.duration}分鐘</div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </SheetContent>
