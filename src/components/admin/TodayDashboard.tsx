@@ -108,7 +108,7 @@ export default function TodayDashboard({
   const activeBookings = dayBookings.filter((b) => !b.cancelled_at && b.status !== "cancelled");
   const cancelledCount = dayBookings.filter((b) => b.cancelled_at || b.status === "cancelled").length;
 
-  const completedBookings = dayBookings.filter((b) => b.status === "completed");
+  const completedBookings = activeBookings.filter((b) => b.status === "completed");
   const dayRevenue = completedBookings.reduce((sum, b) => sum + b.total_price, 0);
 
   const currentHourRaw = now.getHours() + now.getMinutes() / 60;
