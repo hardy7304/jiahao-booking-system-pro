@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatHourToTime, generateTimeSlots } from "@/lib/services";
 import { adminApi } from "@/lib/adminApi";
@@ -712,8 +712,11 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredBookings.map((b) => (
-                        <tr key={b.id} className={cn("border-b border-border hover:bg-secondary/50", (b.cancelled_at || b.status === "cancelled") && "opacity-50", !b.cancelled_at && b.status !== "cancelled" && blacklistedPhones.has(b.phone) && "bg-destructive/10")}>
+                      {filteredBookings.map((b) => {
+                        const isCancelled = !!b.cancelled_at || b.status === "cancelled";
+                        return (
+                        <React.Fragment key={b.id}>
+                        <tr className={cn("border-b border-border hover:bg-secondary/50", isCancelled && "opacity-50", !isCancelled && blacklistedPhones.has(b.phone) && "bg-destructive/10")}>
                           <td className="p-2 whitespace-nowrap text-xs">{new Date(b.order_time).toLocaleString("zh-TW")}</td>
                           <td className="p-2 whitespace-nowrap">{b.date}</td>
                           <td className="p-2">{b.start_time_str}</td>
@@ -755,7 +758,7 @@ export default function AdminPage() {
                               <Button variant="ghost" size="sm" title="編輯" onClick={() => openEditBooking(b)}>
                                 <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                               </Button>
-                              {b.cancelled_at || b.status === "cancelled" ? (
+                              {isCancelled ? (
                                 <>
                                   <Button variant="ghost" size="sm" onClick={() => restoreBooking(b.id)} title="復原">
                                     <RotateCcw className="w-3.5 h-3.5 text-primary" />
@@ -795,7 +798,16 @@ export default function AdminPage() {
                             </div>
                           </td>
                         </tr>
-                      ))}
+                        {isCancelled && b.cancel_reason && (
+                          <tr className="border-b border-border opacity-50">
+                            <td colSpan={showCommissionCols ? 14 : 12} className="px-2 py-1">
+                              <span className="text-xs text-destructive">⚠️ 取消原因：{b.cancel_reason}</span>
+                            </td>
+                          </tr>
+                        )}
+                        </React.Fragment>
+                        );
+                      })}
                       {filteredBookings.length === 0 && (
                         <tr><td colSpan={showCommissionCols ? 14 : 12} className="text-center text-muted-foreground p-8">沒有符合條件的預約</td></tr>
                       )}
@@ -804,7 +816,18 @@ export default function AdminPage() {
                 </div>
               </>
             ) : (
-              <BookingCalendarView bookings={bookings} holidays={holidays} blacklistedPhones={blacklistedPhones} />
+              <BookingCalendarView
+                bookings={bookings}
+                holidays={holidays}
+                blacklistedPhones={blacklistedPhones}
+                onEdit={openEditBooking}
+                onComplete={completeBooking}
+                onUncomplete={uncompleteBooking}
+                onCancel={(id, reason) => softDeleteBooking(id, reason)}
+                onRestore={restoreBooking}
+                onNote={(id, note) => { setNoteBookingId(id); setNoteText(note || ""); }}
+                allBookings={bookings}
+              />
             )}
           </TabsContent>
 
