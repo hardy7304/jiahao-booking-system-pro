@@ -35,7 +35,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 
-const ADMIN_PASSWORD = "bulaosong2024";
+const DEFAULT_ADMIN_PASSWORD = "bulaosong2024";
 
 interface Booking {
   id: string;
@@ -128,13 +128,24 @@ export default function AdminPage() {
   const [bufferInput, setBufferInput] = useState("10");
   const [freeAddonInput, setFreeAddonInput] = useState("10");
   const [preBlockInput, setPreBlockInput] = useState("60");
+  const [adminPasswordInput, setAdminPasswordInput] = useState("");
+  const [adminPasswordFromDb, setAdminPasswordFromDb] = useState(DEFAULT_ADMIN_PASSWORD);
 
   // Services & addons list for manual booking
   const [servicesList, setServicesList] = useState<any[]>([]);
   const [addonsList, setAddonsList] = useState<any[]>([]);
 
+  // Load admin password from DB
+  useEffect(() => {
+    const loadPassword = async () => {
+      const { data } = await supabase.from("system_config").select("value").eq("key", "admin_password").single();
+      if (data?.value) setAdminPasswordFromDb(data.value);
+    };
+    loadPassword();
+  }, []);
+
   const handleLogin = () => {
-    if (password === ADMIN_PASSWORD) {
+    if (password === adminPasswordFromDb) {
       setAuthenticated(true);
       sessionStorage.setItem("admin_auth", "true");
     } else {
@@ -298,6 +309,12 @@ export default function AdminPage() {
       free_addon_duration: parseInt(freeAddonInput) || 10,
       pre_block_minutes: parseInt(preBlockInput) || 60,
     });
+    // Save admin password if changed
+    if (adminPasswordInput.trim()) {
+      await supabase.from("system_config").upsert({ key: "admin_password", value: adminPasswordInput.trim() } as any);
+      setAdminPasswordFromDb(adminPasswordInput.trim());
+      setAdminPasswordInput("");
+    }
     setShowSettings(false);
     toast.success("已儲存設定");
   };
@@ -871,6 +888,18 @@ export default function AdminPage() {
               />
               <p className="text-xs text-muted-foreground">
                 此內容會顯示在客人加入 Google 日曆時的事件描述底部
+              </p>
+            </div>
+            <div className="border-t border-border pt-4 space-y-2">
+              <Label className="text-sm font-medium">修改管理員密碼</Label>
+              <Input
+                type="password"
+                value={adminPasswordInput}
+                onChange={(e) => setAdminPasswordInput(e.target.value)}
+                placeholder="留空則不修改"
+              />
+              <p className="text-xs text-muted-foreground">
+                輸入新密碼後儲存即可變更，留空則維持原密碼
               </p>
             </div>
           </div>
