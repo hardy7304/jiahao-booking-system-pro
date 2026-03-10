@@ -14,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, Users, RefreshCw, AlertTriangle, Ban, Star, Tag, StickyNote, Plus, X, ChevronDown, ChevronRight, Shield, CalendarDays, Clock, CheckCircle2, XCircle, DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, Minus, Download } from "lucide-react";
+import { Search, Users, RefreshCw, AlertTriangle, Ban, Star, Tag, StickyNote, Plus, X, ChevronDown, ChevronRight, Shield, CalendarDays, Clock, CheckCircle2, XCircle, DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, Minus, Download, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { toast } from "sonner";
 import { format, subMonths } from "date-fns";
 
@@ -71,6 +71,11 @@ export default function CustomerTracking() {
   const [search, setSearch] = useState("");
   const [filterTag, setFilterTag] = useState<string>("all");
   const [filterBlacklist, setFilterBlacklist] = useState<string>("all");
+  const [sortField, setSortField] = useState<"spending" | "visits" | "lastVisit" | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  // Spending data for sorting
+  const [spendingByPhone, setSpendingByPhone] = useState<Map<string, number>>(new Map());
 
   // Tags & notes state
   const [allTags, setAllTags] = useState<CustomerTag[]>([]);
@@ -87,14 +92,21 @@ export default function CustomerTracking() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [{ data: c }, { data: t }, { data: n }] = await Promise.all([
+    const [{ data: c }, { data: t }, { data: n }, { data: bk }] = await Promise.all([
       supabase.from("customers").select("*").order("updated_at", { ascending: false }),
       supabase.from("customer_tags").select("*"),
       supabase.from("customer_notes").select("*").order("created_at", { ascending: false }),
+      supabase.from("bookings").select("phone, total_price, status"),
     ]);
     if (c) setCustomers(c as Customer[]);
     if (t) setAllTags(t as CustomerTag[]);
     if (n) setAllNotes(n as CustomerNote[]);
+    // Build spending map
+    const sMap = new Map<string, number>();
+    (bk || []).forEach((b: any) => {
+      if (b.status === "completed") sMap.set(b.phone, (sMap.get(b.phone) || 0) + (b.total_price || 0));
+    });
+    setSpendingByPhone(sMap);
     setLoading(false);
   }, []);
 
@@ -150,6 +162,29 @@ export default function CustomerTracking() {
       if (!tags.some(t => t.tag === filterTag)) return false;
     }
     return true;
+  });
+
+  // Sorting
+  const toggleSort = (field: "spending" | "visits" | "lastVisit") => {
+    if (sortField === field) {
+      setSortDir(prev => prev === "desc" ? "asc" : "desc");
+    } else {
+      setSortField(field);
+      setSortDir("desc");
+    }
+  };
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (!sortField) return 0;
+    const dir = sortDir === "desc" ? -1 : 1;
+    if (sortField === "visits") return (a.visit_count - b.visit_count) * dir;
+    if (sortField === "spending") return ((spendingByPhone.get(a.phone) || 0) - (spendingByPhone.get(b.phone) || 0)) * dir;
+    if (sortField === "lastVisit") {
+      const da = a.last_visit_date || "";
+      const db = b.last_visit_date || "";
+      return da.localeCompare(db) * dir;
+    }
+    return 0;
   });
 
   // Tag actions
@@ -321,7 +356,7 @@ export default function CustomerTracking() {
         <div className="space-y-2">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           {search || filterTag !== "all" || filterBlacklist !== "all" ? "找不到符合的客戶" : "尚無客戶資料，點擊「從預約同步」匯入"}
         </div>
@@ -333,14 +368,30 @@ export default function CustomerTracking() {
                 <th className="text-left p-3">姓名</th>
                 <th className="text-left p-3">電話</th>
                 <th className="text-center p-3">分級</th>
-                <th className="text-center p-3">來訪</th>
+                <th className="text-center p-3 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("visits")}>
+                  <div className="flex items-center justify-center gap-1">
+                    來訪
+                    {sortField === "visits" ? (sortDir === "desc" ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
                 <th className="text-center p-3">爽約</th>
+                <th className="text-center p-3 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("spending")}>
+                  <div className="flex items-center justify-center gap-1">
+                    消費
+                    {sortField === "spending" ? (sortDir === "desc" ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
                 <th className="text-left p-3">標籤</th>
-                <th className="text-left p-3">最後造訪</th>
+                <th className="text-left p-3 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("lastVisit")}>
+                  <div className="flex items-center gap-1">
+                    最後造訪
+                    {sortField === "lastVisit" ? (sortDir === "desc" ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(c => {
+              {sorted.map(c => {
                 const tier = getAutoTier(c.visit_count);
                 const tags = customerTags(c.id);
                 return (
@@ -365,6 +416,9 @@ export default function CustomerTracking() {
                           <AlertTriangle className="w-3 h-3" />{c.no_show_count}
                         </Badge>
                       ) : <span className="text-muted-foreground">0</span>}
+                    </td>
+                    <td className="p-3 text-center text-muted-foreground">
+                      ${(spendingByPhone.get(c.phone) || 0).toLocaleString()}
                     </td>
                     <td className="p-3">
                       <div className="flex flex-wrap gap-1">
