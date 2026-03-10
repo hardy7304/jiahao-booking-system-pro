@@ -121,7 +121,7 @@ export default function TodayDashboard({
 
   const isHolidayOnDate = holidays.some((h) => h.date === viewDateStr && h.type === "整天公休");
   const totalSlots = 24;
-  const bookedSlots = dayBookings.length;
+  const bookedSlots = activeBookings.length;
   const availableSlots = isHolidayOnDate ? 0 : Math.max(0, totalSlots - bookedSlots);
   const completedCount = completedBookings.length;
 
