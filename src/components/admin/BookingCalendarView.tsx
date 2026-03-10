@@ -177,7 +177,7 @@ export default function BookingCalendarView({
               {/* Mobile: show dots */}
               <div className="md:hidden flex flex-wrap gap-0.5 justify-center mt-0.5">
                 {dayBookings.slice(0, 5).map((b) => (
-                  <div key={b.id} className={cn("w-2 h-2 rounded-full", getCategoryDot(b.service))} />
+                  <div key={b.id} className={cn("w-2 h-2 rounded-full", blacklistedPhones?.has(b.phone) ? "bg-destructive ring-1 ring-destructive/50" : getCategoryDot(b.service))} />
                 ))}
                 {dayBookings.length > 5 && (
                   <span className="text-[9px] text-muted-foreground">+{dayBookings.length - 5}</span>
