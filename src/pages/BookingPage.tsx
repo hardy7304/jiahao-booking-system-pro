@@ -390,18 +390,23 @@ export default function BookingPage() {
               ) : availableSlots.length === 0 ? (
                 <p className="text-sm text-destructive">該日無可用時段</p>
               ) : (
-                <div className="grid grid-cols-4 gap-2">
-                  {availableSlots.map(slot => (
-                    <Button
-                      key={slot}
-                      variant={selectedSlot === slot ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setSelectedSlot(slot)}
-                      className="text-xs"
-                    >
-                      {formatHourToTime(slot)}
-                    </Button>
-                  ))}
+                <div>
+                  {availableSlots.some(s => s >= 24) && (
+                    <p className="text-xs text-amber-600 mb-2">⚠️ 00:00～02:00 時段為當天深夜（隔日凌晨），非次日白天</p>
+                  )}
+                  <div className="grid grid-cols-4 gap-2">
+                    {availableSlots.map(slot => (
+                      <Button
+                        key={slot}
+                        variant={selectedSlot === slot ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedSlot(slot)}
+                        className={`text-xs ${slot >= 24 ? "border-amber-400 text-amber-700" : ""}`}
+                      >
+                        {formatHourToTime(slot)}{slot >= 24 ? " 🌙" : ""}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
