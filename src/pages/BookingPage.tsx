@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatHourToTime } from "@/lib/services";
 import { getAvailableSlots, generateGoogleCalendarLink } from "@/lib/timeUtils";
@@ -41,6 +42,7 @@ interface DbAddon {
 }
 
 export default function BookingPage() {
+  const navigate = useNavigate();
   const { notes: calendarNotes } = useCalendarNotes();
   const { info: shopInfo } = useShopInfo();
   const { settings: bookingSettings } = useBookingSettings();
@@ -419,7 +421,13 @@ export default function BookingPage() {
           )}
         </div>
 
-        <div className="text-center mt-6 space-y-1">
+        <div className="text-center mt-6 space-y-2">
+          <button
+            onClick={() => navigate("/my-bookings")}
+            className="text-sm text-primary underline underline-offset-4 hover:text-primary/80"
+          >
+            查詢 / 取消我的預約
+          </button>
           <p className="text-xs text-muted-foreground">營業時間：14:00 ~ 02:00（隔日）</p>
           <p className="text-xs text-muted-foreground">{shopInfo.store_address}</p>
         </div>
