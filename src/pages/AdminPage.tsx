@@ -786,7 +786,7 @@ export default function AdminPage() {
                 </div>
               </>
             ) : (
-              <BookingCalendarView bookings={bookings} holidays={holidays} />
+              <BookingCalendarView bookings={bookings} holidays={holidays} blacklistedPhones={blacklistedPhones} />
             )}
           </TabsContent>
 

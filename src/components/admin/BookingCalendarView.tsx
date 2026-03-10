@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, addMonths, subMonths, isSameDay, getDay } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -70,9 +70,11 @@ function getShortService(serviceName: string): string {
 export default function BookingCalendarView({
   bookings,
   holidays,
+  blacklistedPhones,
 }: {
   bookings: Booking[];
   holidays: Holiday[];
+  blacklistedPhones?: Set<string>;
 }) {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
@@ -162,8 +164,9 @@ export default function BookingCalendarView({
                 {dayBookings.slice(0, 3).map((b) => (
                   <div
                     key={b.id}
-                    className={cn("text-[10px] px-1 py-0.5 rounded truncate border", getCategoryColor(b.service))}
+                    className={cn("text-[10px] px-1 py-0.5 rounded truncate border flex items-center gap-0.5", getCategoryColor(b.service), blacklistedPhones?.has(b.phone) && "!bg-destructive/20 !border-destructive/40 !text-destructive")}
                   >
+                    {blacklistedPhones?.has(b.phone) && <Ban className="w-2.5 h-2.5 shrink-0" />}
                     {b.start_time_str} {b.name} - {getShortService(b.service)}
                   </div>
                 ))}
@@ -174,7 +177,7 @@ export default function BookingCalendarView({
               {/* Mobile: show dots */}
               <div className="md:hidden flex flex-wrap gap-0.5 justify-center mt-0.5">
                 {dayBookings.slice(0, 5).map((b) => (
-                  <div key={b.id} className={cn("w-2 h-2 rounded-full", getCategoryDot(b.service))} />
+                  <div key={b.id} className={cn("w-2 h-2 rounded-full", blacklistedPhones?.has(b.phone) ? "bg-destructive ring-1 ring-destructive/50" : getCategoryDot(b.service))} />
                 ))}
                 {dayBookings.length > 5 && (
                   <span className="text-[9px] text-muted-foreground">+{dayBookings.length - 5}</span>
@@ -206,9 +209,12 @@ export default function BookingCalendarView({
               <div className="text-center text-muted-foreground py-8">當日無預約</div>
             ) : (
               selectedDayBookings.map((b) => (
-                <div key={b.id} className={cn("p-3 rounded-lg border", getCategoryColor(b.service))}>
+                <div key={b.id} className={cn("p-3 rounded-lg border", blacklistedPhones?.has(b.phone) ? "bg-destructive/15 border-destructive/40" : getCategoryColor(b.service))}>
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{b.start_time_str} {b.name}</span>
+                    <span className="font-medium flex items-center gap-1">
+                      {blacklistedPhones?.has(b.phone) && <Ban className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                      {b.start_time_str} {b.name}
+                    </span>
                     <span className="text-sm font-medium">NT${b.total_price.toLocaleString()}</span>
                   </div>
                   <div className="text-xs mt-1">{b.service}</div>
