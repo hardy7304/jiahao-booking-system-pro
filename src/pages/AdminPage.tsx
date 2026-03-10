@@ -142,6 +142,10 @@ export default function AdminPage() {
   const [holidayDialogEnd, setHolidayDialogEnd] = useState("");
   const [holidayDialogNote, setHolidayDialogNote] = useState("");
 
+  // Batch pending holidays (dates toggled but not yet saved)
+  const [pendingHolidayDates, setPendingHolidayDates] = useState<Set<string>>(new Set());
+  const [isSavingBatch, setIsSavingBatch] = useState(false);
+
   // Services & addons list for manual booking
   const [servicesList, setServicesList] = useState<any[]>([]);
   const [addonsList, setAddonsList] = useState<any[]>([]);
