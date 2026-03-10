@@ -164,6 +164,29 @@ export default function CustomerTracking() {
     return true;
   });
 
+  // Sorting
+  const toggleSort = (field: "spending" | "visits" | "lastVisit") => {
+    if (sortField === field) {
+      setSortDir(prev => prev === "desc" ? "asc" : "desc");
+    } else {
+      setSortField(field);
+      setSortDir("desc");
+    }
+  };
+
+  const sorted = [...filtered].sort((a, b) => {
+    if (!sortField) return 0;
+    const dir = sortDir === "desc" ? -1 : 1;
+    if (sortField === "visits") return (a.visit_count - b.visit_count) * dir;
+    if (sortField === "spending") return ((spendingByPhone.get(a.phone) || 0) - (spendingByPhone.get(b.phone) || 0)) * dir;
+    if (sortField === "lastVisit") {
+      const da = a.last_visit_date || "";
+      const db = b.last_visit_date || "";
+      return da.localeCompare(db) * dir;
+    }
+    return 0;
+  });
+
   // Tag actions
   const addTag = async (customerId: string, tag: string) => {
     if (!tag.trim()) return;
