@@ -200,23 +200,28 @@ export default function BookingPage() {
         const err = await resp.json();
         toast.error(err.error || "預約失敗，請稍後再試");
       } else {
-      setSuccess({
-        ...bookingData,
-        calendarLink: generateGoogleCalendarLink({
-          date: dateStr,
-          start_hour: selectedSlot,
-          duration: totalDuration,
-          service: selectedService.name,
-          name: name.trim(),
-          phone: phone.trim(),
-          addons: allAddons,
-          total_price: totalPrice,
-          calendarNotes,
-          storeName: shopInfo.store_name,
-          therapistName: shopInfo.therapist_name,
-          storeLocation: shopInfo.store_location,
-        }),
-      });
+        setSuccess({
+          ...bookingData,
+          start_time_str: formatHourToTime(selectedSlot),
+          calendarLink: generateGoogleCalendarLink({
+            date: dateStr,
+            start_hour: selectedSlot,
+            duration: totalDuration,
+            service: selectedService.name,
+            name: name.trim(),
+            phone: phone.trim(),
+            addons: allAddons,
+            total_price: totalPrice,
+            calendarNotes,
+            storeName: shopInfo.store_name,
+            therapistName: shopInfo.therapist_name,
+            storeLocation: shopInfo.store_location,
+          }),
+        });
+      }
+    } catch {
+      setLoading(false);
+      toast.error("預約失敗，請稍後再試");
     }
   };
 
