@@ -481,6 +481,66 @@ export default function CustomerTracking() {
                       </div>
                     )}
                   </div>
+
+                  {/* Booking History Timeline */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-primary" />
+                      <Label className="font-semibold">預約歷史</Label>
+                      <Badge variant="secondary" className="text-xs">{customerBookings.length} 筆</Badge>
+                    </div>
+                    {loadingBookings ? (
+                      <div className="space-y-2">
+                        {[1, 2].map(i => <Skeleton key={i} className="h-12 w-full rounded" />)}
+                      </div>
+                    ) : customerBookings.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-3">尚無預約紀錄</p>
+                    ) : (
+                      <div className="relative space-y-0 max-h-[300px] overflow-y-auto">
+                        {customerBookings.map((b, idx) => {
+                          const isCompleted = b.status === "completed";
+                          const isCancelled = b.status === "cancelled";
+                          const isNoShow = isCancelled && b.cancel_reason?.includes("爽約");
+                          return (
+                            <div key={b.id} className="flex gap-3 pb-3">
+                              {/* Timeline line */}
+                              <div className="flex flex-col items-center">
+                                <div className={`w-3 h-3 rounded-full shrink-0 mt-1 ${
+                                  isNoShow ? "bg-destructive" :
+                                  isCancelled ? "bg-muted-foreground" :
+                                  isCompleted ? "bg-green-500" :
+                                  "bg-primary"
+                                }`} />
+                                {idx < customerBookings.length - 1 && (
+                                  <div className="w-px flex-1 bg-border min-h-[20px]" />
+                                )}
+                              </div>
+                              {/* Content */}
+                              <div className="flex-1 text-sm pb-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium text-foreground">{b.date}</span>
+                                  <span className="text-muted-foreground">{b.start_time_str}</span>
+                                  {isCompleted && <Badge variant="outline" className="text-xs border-green-300 text-green-700">完成</Badge>}
+                                  {isNoShow && <Badge variant="destructive" className="text-xs">爽約</Badge>}
+                                  {isCancelled && !isNoShow && <Badge variant="outline" className="text-xs">取消</Badge>}
+                                  {!isCompleted && !isCancelled && <Badge variant="outline" className="text-xs border-primary text-primary">已確認</Badge>}
+                                </div>
+                                <div className="text-muted-foreground mt-0.5">
+                                  {b.service}
+                                  {b.addons && b.addons.length > 0 && ` + ${b.addons.join("、")}`}
+                                  <span className="ml-2">NT${b.total_price}</span>
+                                  {b.source === "admin" && <span className="ml-1 text-xs">(後台)</span>}
+                                </div>
+                                {b.cancel_reason && (
+                                  <p className="text-xs text-destructive mt-0.5">原因：{b.cancel_reason}</p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </>
             );
