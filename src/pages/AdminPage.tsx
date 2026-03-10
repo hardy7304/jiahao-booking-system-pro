@@ -135,8 +135,17 @@ export default function AdminPage() {
   const [servicesList, setServicesList] = useState<any[]>([]);
   const [addonsList, setAddonsList] = useState<any[]>([]);
 
+  // Load admin password from DB
+  useEffect(() => {
+    const loadPassword = async () => {
+      const { data } = await supabase.from("system_config").select("value").eq("key", "admin_password").single();
+      if (data?.value) setAdminPasswordFromDb(data.value);
+    };
+    loadPassword();
+  }, []);
+
   const handleLogin = () => {
-    if (password === ADMIN_PASSWORD) {
+    if (password === adminPasswordFromDb) {
       setAuthenticated(true);
       sessionStorage.setItem("admin_auth", "true");
     } else {
