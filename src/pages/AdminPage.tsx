@@ -331,6 +331,13 @@ export default function AdminPage() {
       const q = filters.search.toLowerCase();
       result = result.filter((b) => b.name.toLowerCase().includes(q) || b.phone.includes(q));
     }
+    if (filters.filterName) {
+      const q = filters.filterName.toLowerCase();
+      result = result.filter((b) => b.name.toLowerCase().includes(q));
+    }
+    if (filters.filterService) {
+      result = result.filter((b) => b.service === filters.filterService);
+    }
     if (filters.dateFrom) {
       const from = format(filters.dateFrom, "yyyy-MM-dd");
       result = result.filter((b) => b.date >= from);
