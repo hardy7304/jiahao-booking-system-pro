@@ -14,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, Users, RefreshCw, AlertTriangle, Ban, Star, Tag, StickyNote, Plus, X, ChevronDown, ChevronRight, Shield, CalendarDays, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Search, Users, RefreshCw, AlertTriangle, Ban, Star, Tag, StickyNote, Plus, X, ChevronDown, ChevronRight, Shield, CalendarDays, Clock, CheckCircle2, XCircle, DollarSign, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -355,13 +355,53 @@ export default function CustomerTracking() {
                 </DialogHeader>
 
                 <div className="space-y-5">
-                  {/* Basic info */}
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div><span className="text-muted-foreground">電話：</span>{c.phone}</div>
-                    <div><span className="text-muted-foreground">來訪：</span>{c.visit_count} 次</div>
-                    <div><span className="text-muted-foreground">爽約：</span>{c.no_show_count} 次</div>
-                    <div><span className="text-muted-foreground">最後造訪：</span>{c.last_visit_date || "—"}</div>
-                  </div>
+                  {/* Basic info + Stats */}
+                  {(() => {
+                    const completed = customerBookings.filter(b => b.status === "completed");
+                    const totalSpent = completed.reduce((s, b) => s + b.total_price, 0);
+                    const avgSpent = completed.length > 0 ? Math.round(totalSpent / completed.length) : 0;
+                    // Most frequent service
+                    const svcCount = new Map<string, number>();
+                    completed.forEach(b => svcCount.set(b.service, (svcCount.get(b.service) || 0) + 1));
+                    const topService = [...svcCount.entries()].sort((a, b) => b[1] - a[1])[0];
+
+                    return (
+                      <>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div><span className="text-muted-foreground">電話：</span>{c.phone}</div>
+                          <div><span className="text-muted-foreground">來訪：</span>{c.visit_count} 次</div>
+                          <div><span className="text-muted-foreground">爽約：</span>{c.no_show_count} 次</div>
+                          <div><span className="text-muted-foreground">最後造訪：</span>{c.last_visit_date || "—"}</div>
+                        </div>
+
+                        {completed.length > 0 && (
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="bg-muted rounded-lg p-3 text-center">
+                              <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1">
+                                <DollarSign className="w-3 h-3" /> 總消費
+                              </div>
+                              <div className="font-bold text-foreground">NT${totalSpent.toLocaleString()}</div>
+                            </div>
+                            <div className="bg-muted rounded-lg p-3 text-center">
+                              <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1">
+                                <TrendingUp className="w-3 h-3" /> 平均消費
+                              </div>
+                              <div className="font-bold text-foreground">NT${avgSpent.toLocaleString()}</div>
+                            </div>
+                            <div className="bg-muted rounded-lg p-3 text-center">
+                              <div className="flex items-center justify-center gap-1 text-muted-foreground text-xs mb-1">
+                                <Star className="w-3 h-3" /> 最常預約
+                              </div>
+                              <div className="font-bold text-foreground text-xs truncate">
+                                {topService ? `${topService[0]}` : "—"}
+                              </div>
+                              {topService && <div className="text-xs text-muted-foreground">{topService[1]} 次</div>}
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Blacklist */}
                   <div className="p-3 rounded-lg border border-border space-y-3">
