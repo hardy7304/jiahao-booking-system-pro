@@ -98,7 +98,17 @@ export default function BookingCalendarView({
     return activeBookings.filter((b) => b.date === dateStr).sort((a, b) => a.start_hour - b.start_hour);
   };
 
-  const selectedDayBookings = selectedDay ? getBookingsForDay(selectedDay) : [];
+  const getCancelledCountForDay = (day: Date) => {
+    const dateStr = format(day, "yyyy-MM-dd");
+    return bookings.filter((b) => b.date === dateStr && (b.cancelled_at || b.status === "cancelled")).length;
+  };
+
+  const getAllBookingsForDay = (day: Date) => {
+    const dateStr = format(day, "yyyy-MM-dd");
+    return bookings.filter((b) => b.date === dateStr).sort((a, b) => a.start_hour - b.start_hour);
+  };
+
+  const selectedDayBookings = selectedDay ? getAllBookingsForDay(selectedDay) : [];
 
   const padStart = (getDay(monthStart) + 6) % 7;
 
