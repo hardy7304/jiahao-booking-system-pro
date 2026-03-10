@@ -1,12 +1,13 @@
 import { useState, useEffect, useMemo } from "react";
 import { format, addDays, isToday } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { Clock, CalendarDays, DollarSign, AlertTriangle, Briefcase, Building2, Wallet, ChevronLeft, ChevronRight, CalendarIcon, Ban } from "lucide-react";
+import { Clock, CalendarDays, DollarSign, AlertTriangle, Briefcase, Building2, Wallet, ChevronLeft, ChevronRight, CalendarIcon, Ban, Check, X, Pencil, Undo2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { formatHourToTime } from "@/lib/services";
 
@@ -65,16 +66,26 @@ export default function TodayDashboard({
   loading,
   commission,
   blacklistedPhones,
+  onComplete,
+  onUncomplete,
+  onCancel,
+  onEdit,
 }: {
   bookings: Booking[];
   holidays: Holiday[];
   loading: boolean;
   commission?: CommissionHelpers;
   blacklistedPhones?: Set<string>;
+  onComplete?: (id: string) => void;
+  onUncomplete?: (id: string) => void;
+  onCancel?: (id: string, reason: string) => void;
+  onEdit?: (booking: Booking) => void;
 }) {
   const [now, setNow] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
@@ -366,6 +377,45 @@ export default function TodayDashboard({
                       <Badge className="bg-primary text-primary-foreground text-xs shrink-0 animate-pulse">
                         進行中
                       </Badge>
+                    )}
+                  </div>
+                  {/* Quick action buttons */}
+                  <div className="flex items-center gap-1.5 mt-2 ml-[68px]">
+                    {b.status !== "completed" ? (
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-emerald-600 border-emerald-300 hover:bg-emerald-50" onClick={() => onComplete?.(b.id)}>
+                        <Check className="w-3 h-3" /> 完成
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-muted-foreground" onClick={() => onUncomplete?.(b.id)}>
+                        <Undo2 className="w-3 h-3" /> 改回確認
+                      </Button>
+                    )}
+                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => onEdit?.(b)}>
+                      <Pencil className="w-3 h-3" /> 編輯
+                    </Button>
+                    {cancellingId === b.id ? (
+                      <div className="flex items-center gap-1">
+                        <Input
+                          placeholder="取消原因"
+                          value={cancelReason}
+                          onChange={(e) => setCancelReason(e.target.value)}
+                          className="h-7 text-xs w-28"
+                        />
+                        <Button size="sm" variant="destructive" className="h-7 text-xs px-2" onClick={() => {
+                          onCancel?.(b.id, cancelReason || "管理員取消");
+                          setCancellingId(null);
+                          setCancelReason("");
+                        }}>
+                          確認
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => { setCancellingId(null); setCancelReason(""); }}>
+                          取消
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setCancellingId(b.id)}>
+                        <X className="w-3 h-3" /> 取消預約
+                      </Button>
                     )}
                   </div>
                   {commission && base !== null && (
