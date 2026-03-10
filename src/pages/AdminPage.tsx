@@ -172,7 +172,7 @@ export default function AdminPage() {
       const fetchCalendarId = async () => {
         try {
           const res = await adminApi("config.get_calendar_id");
-          if (res.calendar_id) setGoogleCalendarId(res.calendar_id);
+          if (res.calendar_id) setGoogleCalendarId(res.calendar_id.trim());
         } catch {}
       };
       fetchCalendarId();
