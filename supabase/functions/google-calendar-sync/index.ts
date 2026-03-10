@@ -65,10 +65,18 @@ async function getAccessToken(email: string, privateKey: string): Promise<string
 
 // --- Google Calendar API helpers ---
 function formatHourToTimeISO(date: string, hour: number): string {
-  const displayHour = hour >= 24 ? hour - 24 : hour;
+  let actualDate = date;
+  let displayHour = hour;
+  if (hour >= 24) {
+    // Cross-midnight: add 1 day to the date
+    const d = new Date(date);
+    d.setDate(d.getDate() + 1);
+    actualDate = d.toISOString().split("T")[0];
+    displayHour = hour - 24;
+  }
   const h = Math.floor(displayHour);
   const m = Math.round((displayHour % 1) * 60);
-  return `${date}T${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:00`;
+  return `${actualDate}T${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:00`;
 }
 
 interface BookingData {
