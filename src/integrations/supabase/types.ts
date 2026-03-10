@@ -122,10 +122,71 @@ export type Database = {
         }
         Relationships: []
       }
-      customers: {
+      customer_notes: {
+        Row: {
+          content: string
+          created_at: string | null
+          customer_id: string
+          id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          customer_id: string
+          id?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_notes_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customer_tags: {
         Row: {
           created_at: string | null
+          customer_id: string
           id: string
+          tag: string
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          id?: string
+          tag: string
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          id?: string
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_tags_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      customers: {
+        Row: {
+          blacklist_action: string
+          blacklist_reason: string | null
+          created_at: string | null
+          id: string
+          is_blacklisted: boolean
           last_visit_date: string | null
           name: string
           no_show_count: number
@@ -134,8 +195,11 @@ export type Database = {
           visit_count: number
         }
         Insert: {
+          blacklist_action?: string
+          blacklist_reason?: string | null
           created_at?: string | null
           id?: string
+          is_blacklisted?: boolean
           last_visit_date?: string | null
           name?: string
           no_show_count?: number
@@ -144,8 +208,11 @@ export type Database = {
           visit_count?: number
         }
         Update: {
+          blacklist_action?: string
+          blacklist_reason?: string | null
           created_at?: string | null
           id?: string
+          is_blacklisted?: boolean
           last_visit_date?: string | null
           name?: string
           no_show_count?: number
