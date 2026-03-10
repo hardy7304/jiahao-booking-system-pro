@@ -305,7 +305,7 @@ export default function TodayDashboard({
             📋 {isViewingToday ? "今日" : format(selectedDate, "M/d", { locale: zhTW })} 預約時程
           </h2>
           {isViewingToday && (() => {
-            const overdueCount = dayBookings.filter(b => 
+            const overdueCount = activeBookings.filter(b => 
               b.status !== "completed" && 
               b.start_hour + b.duration / 60 < adjustedCurrentHour
             ).length;
@@ -317,7 +317,12 @@ export default function TodayDashboard({
           })()}
           {completedCount > 0 && (
             <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-600 bg-emerald-50">
-              ✅ {completedCount}/{dayBookings.length}
+              ✅ {completedCount}/{activeBookings.length}
+            </Badge>
+          )}
+          {cancelledCount > 0 && (
+            <Badge variant="outline" className="text-xs border-muted text-muted-foreground">
+              ❌ 取消 {cancelledCount}
             </Badge>
           )}
         </div>
