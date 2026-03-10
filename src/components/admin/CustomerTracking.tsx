@@ -24,6 +24,7 @@ interface Customer {
   name: string;
   visit_count: number;
   no_show_count: number;
+  cancel_count: number;
   last_visit_date: string | null;
   created_at: string;
   is_blacklisted: boolean;
