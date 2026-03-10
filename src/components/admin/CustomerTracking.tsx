@@ -207,12 +207,22 @@ export default function CustomerTracking() {
     toast.success(enable ? "已加入黑名單" : "已解除黑名單");
   };
 
-  const openDetail = (c: Customer) => {
+  const openDetail = async (c: Customer) => {
     setSelectedCustomer(c);
     setBlacklistReason(c.blacklist_reason || "");
     setBlacklistAction(c.blacklist_action || "warn");
     setNewTag("");
     setNewNote("");
+    // Fetch booking history
+    setLoadingBookings(true);
+    const { data } = await supabase
+      .from("bookings")
+      .select("id, date, start_time_str, service, addons, status, total_price, cancel_reason, source")
+      .eq("phone", c.phone)
+      .order("date", { ascending: false })
+      .order("start_hour", { ascending: false });
+    setCustomerBookings((data as BookingRecord[]) || []);
+    setLoadingBookings(false);
   };
 
   return (
