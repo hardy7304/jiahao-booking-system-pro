@@ -138,10 +138,12 @@ export default function CustomerTracking() {
       }
 
       for (const [phone, stats] of phoneMap) {
-        await supabase.from("customers").upsert({
-          phone, name: stats.name, visit_count: stats.visit_count,
-          no_show_count: stats.no_show_count, cancel_count: stats.cancel_count, last_visit_date: stats.last_visit_date,
-        } as any, { onConflict: "phone" });
+        await adminApi("customer.upsert", {
+          customer: {
+            phone, name: stats.name, visit_count: stats.visit_count,
+            no_show_count: stats.no_show_count, cancel_count: stats.cancel_count, last_visit_date: stats.last_visit_date,
+          },
+        });
       }
     }
     await fetchAll();
