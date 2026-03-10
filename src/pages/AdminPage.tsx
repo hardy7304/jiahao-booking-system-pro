@@ -11,7 +11,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings, Pencil, Undo2, ArrowUpDown, ArrowUp, ArrowDown, Filter, ChevronDown, ChevronRight } from "lucide-react";
+import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings, Pencil, Undo2, ArrowUpDown, ArrowUp, ArrowDown, Filter, ChevronDown, ChevronRight, Ban } from "lucide-react";
 import ServiceManagement from "@/components/ServiceManagement";
 import TodayDashboard from "@/components/admin/TodayDashboard";
 import BookingCalendarView from "@/components/admin/BookingCalendarView";
@@ -150,6 +150,9 @@ export default function AdminPage() {
   const [servicesList, setServicesList] = useState<any[]>([]);
   const [addonsList, setAddonsList] = useState<any[]>([]);
 
+  // Blacklisted phones
+  const [blacklistedPhones, setBlacklistedPhones] = useState<Set<string>>(new Set());
+
   // Load admin password from DB
   useEffect(() => {
     const loadPassword = async () => {
@@ -193,13 +196,19 @@ export default function AdminPage() {
     if (addonData) setAddonsList(addonData);
   }, []);
 
+  const fetchBlacklist = useCallback(async () => {
+    const { data } = await supabase.from("customers").select("phone").eq("is_blacklisted", true);
+    if (data) setBlacklistedPhones(new Set(data.map((c: any) => c.phone)));
+  }, []);
+
   useEffect(() => {
     if (authenticated) {
       fetchBookings();
       fetchHolidays();
       fetchServices();
+      fetchBlacklist();
     }
-  }, [authenticated, fetchBookings, fetchHolidays, fetchServices]);
+  }, [authenticated, fetchBookings, fetchHolidays, fetchServices, fetchBlacklist]);
 
   // CRUD actions
   const softDeleteBooking = async (id: string, reason: string) => {
@@ -520,7 +529,7 @@ export default function AdminPage() {
 
           {/* TODAY */}
           <TabsContent value="today" className="mt-4">
-            <TodayDashboard bookings={bookings} holidays={holidays} loading={loading} commission={commission} />
+            <TodayDashboard bookings={bookings} holidays={holidays} loading={loading} commission={commission} blacklistedPhones={blacklistedPhones} />
           </TabsContent>
 
           {/* BOOKINGS */}
@@ -690,7 +699,12 @@ export default function AdminPage() {
                           <td className="p-2 whitespace-nowrap text-xs">{new Date(b.order_time).toLocaleString("zh-TW")}</td>
                           <td className="p-2 whitespace-nowrap">{b.date}</td>
                           <td className="p-2">{b.start_time_str}</td>
-                          <td className="p-2">{b.name}</td>
+                          <td className="p-2">
+                            <span className="flex items-center gap-1">
+                              {blacklistedPhones.has(b.phone) && <span title="黑名單客戶"><Ban className="w-3.5 h-3.5 text-destructive shrink-0" /></span>}
+                              {b.name}
+                            </span>
+                          </td>
                           <td className="p-2">{b.phone}</td>
                           <td className="p-2 max-w-[140px] truncate">{b.service}</td>
                           <td className="p-2 max-w-[100px] truncate">{b.addons?.join(", ") || "-"}</td>

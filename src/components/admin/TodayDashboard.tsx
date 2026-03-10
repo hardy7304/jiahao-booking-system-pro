@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { format, addDays, isToday } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { Clock, CalendarDays, DollarSign, AlertTriangle, Briefcase, Building2, Wallet, ChevronLeft, ChevronRight, CalendarIcon } from "lucide-react";
+import { Clock, CalendarDays, DollarSign, AlertTriangle, Briefcase, Building2, Wallet, ChevronLeft, ChevronRight, CalendarIcon, Ban } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -64,11 +64,13 @@ export default function TodayDashboard({
   holidays,
   loading,
   commission,
+  blacklistedPhones,
 }: {
   bookings: Booking[];
   holidays: Holiday[];
   loading: boolean;
   commission?: CommissionHelpers;
+  blacklistedPhones?: Set<string>;
 }) {
   const [now, setNow] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -223,7 +225,8 @@ export default function TodayDashboard({
           </div>
           {nextBooking ? (
             <>
-              <div className="text-lg font-bold text-foreground truncate">
+              <div className="text-lg font-bold text-foreground truncate flex items-center gap-1">
+                {blacklistedPhones?.has(nextBooking.phone) && <span title="黑名單客戶"><Ban className="w-4 h-4 text-destructive shrink-0" /></span>}
                 {nextBooking.name} {nextBooking.start_time_str}
               </div>
               <div className="text-xs text-primary font-medium">
@@ -320,7 +323,10 @@ export default function TodayDashboard({
                       {b.duration}分
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-foreground truncate">{b.name}</div>
+                      <div className="font-medium text-foreground truncate flex items-center gap-1">
+                        {blacklistedPhones?.has(b.phone) && <span title="黑名單客戶"><Ban className="w-3.5 h-3.5 text-destructive shrink-0" /></span>}
+                        {b.name}
+                      </div>
                       <div className="text-xs text-muted-foreground truncate">{b.service}</div>
                     </div>
                     <div className="text-sm font-medium text-primary shrink-0">
