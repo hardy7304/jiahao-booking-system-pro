@@ -35,7 +35,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 
-const ADMIN_PASSWORD = "bulaosong2024";
+const DEFAULT_ADMIN_PASSWORD = "bulaosong2024";
 
 interface Booking {
   id: string;
