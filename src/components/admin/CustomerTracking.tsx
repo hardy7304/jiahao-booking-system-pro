@@ -444,8 +444,10 @@ export default function CustomerTracking() {
                             </div>
                           );
                         })()}
+                      </>
+                    );
+                  })()}
 
-                  {/* Blacklist */}
                   <div className="p-3 rounded-lg border border-border space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
