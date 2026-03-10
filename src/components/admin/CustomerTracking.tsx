@@ -376,6 +376,7 @@ export default function CustomerTracking() {
                   </div>
                 </th>
                 <th className="text-center p-3">爽約</th>
+                <th className="text-center p-3">取消</th>
                 <th className="text-center p-3 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("spending")}>
                   <div className="flex items-center justify-center gap-1">
                     消費
