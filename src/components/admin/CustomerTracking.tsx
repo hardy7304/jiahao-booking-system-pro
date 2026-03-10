@@ -56,6 +56,8 @@ interface BookingRecord {
   total_price: number;
   cancel_reason: string | null;
   source: string | null;
+  name: string;
+  phone: string;
 }
 
 const PRESET_TAGS = ["VIP", "常客", "新客", "敏感肌", "偏好重手", "偏好輕柔", "肩頸問題", "腰部問題"];
@@ -91,6 +93,7 @@ export default function CustomerTracking() {
   const [blacklistAction, setBlacklistAction] = useState("warn");
   const [customerBookings, setCustomerBookings] = useState<BookingRecord[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
+  const [bookingFilter, setBookingFilter] = useState<"all" | "cancelled" | "completed">("all");
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -253,11 +256,12 @@ export default function CustomerTracking() {
     setBlacklistAction(c.blacklist_action || "warn");
     setNewTag("");
     setNewNote("");
+    setBookingFilter("all");
     // Fetch booking history
     setLoadingBookings(true);
     const { data } = await supabase
       .from("bookings")
-      .select("id, date, start_time_str, service, addons, status, total_price, cancel_reason, source")
+      .select("id, date, start_time_str, service, addons, status, total_price, cancel_reason, source, name, phone")
       .eq("phone", c.phone)
       .order("date", { ascending: false })
       .order("start_hour", { ascending: false });
@@ -486,7 +490,15 @@ export default function CustomerTracking() {
                           <div><span className="text-muted-foreground">電話：</span>{c.phone}</div>
                           <div><span className="text-muted-foreground">來訪：</span>{c.visit_count} 次</div>
                           <div><span className="text-muted-foreground">爽約：</span>{c.no_show_count} 次</div>
-                          <div><span className="text-muted-foreground">取消：</span>{c.cancel_count || 0} 次</div>
+                          <div>
+                            <span className="text-muted-foreground">取消：</span>
+                            <button
+                              className={`font-medium underline-offset-2 ${(c.cancel_count || 0) > 0 ? "text-destructive underline cursor-pointer hover:text-destructive/80" : ""}`}
+                              onClick={() => { if ((c.cancel_count || 0) > 0) setBookingFilter(bookingFilter === "cancelled" ? "all" : "cancelled"); }}
+                            >
+                              {c.cancel_count || 0} 次
+                            </button>
+                          </div>
                           <div><span className="text-muted-foreground">最後造訪：</span>{c.last_visit_date || "—"}</div>
                         </div>
 
@@ -684,10 +696,15 @@ export default function CustomerTracking() {
 
                   {/* Booking History Timeline */}
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <CalendarDays className="w-4 h-4 text-primary" />
                       <Label className="font-semibold">預約歷史</Label>
                       <Badge variant="secondary" className="text-xs">{customerBookings.length} 筆</Badge>
+                      {bookingFilter !== "all" && (
+                        <Badge variant="destructive" className="text-xs cursor-pointer" onClick={() => setBookingFilter("all")}>
+                          篩選：{bookingFilter === "cancelled" ? "取消" : "完成"} ✕
+                        </Badge>
+                      )}
                     </div>
                     {loadingBookings ? (
                       <div className="space-y-2">
@@ -697,7 +714,7 @@ export default function CustomerTracking() {
                       <p className="text-sm text-muted-foreground text-center py-3">尚無預約紀錄</p>
                     ) : (
                       <div className="relative space-y-0 max-h-[300px] overflow-y-auto">
-                        {customerBookings.map((b, idx) => {
+                        {customerBookings.filter(b => bookingFilter === "all" || b.status === bookingFilter).map((b, idx) => {
                           const isCompleted = b.status === "completed";
                           const isCancelled = b.status === "cancelled";
                           const isNoShow = isCancelled && b.cancel_reason?.includes("爽約");

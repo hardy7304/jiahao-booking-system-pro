@@ -1,13 +1,16 @@
 import { useState, useMemo } from "react";
 import { format, subDays, parseISO, startOfMonth, endOfMonth, isWithinInterval, getDay, subMonths, differenceInDays } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase, CalendarIcon, TrendingUp, BarChart3, Receipt, Droplets, XCircle } from "lucide-react";
+import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase, CalendarIcon, TrendingUp, BarChart3, Receipt, Droplets, XCircle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { adminApi } from "@/lib/adminApi";
+import { toast } from "sonner";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, Legend,
@@ -26,6 +29,7 @@ interface Booking {
   duration: number;
   total_price: number;
   cancelled_at: string | null;
+  cancel_reason: string | null;
   status: string | null;
   oil_bonus: number;
 }
@@ -62,6 +66,8 @@ export default function StatsDashboard({
   const [customTo, setCustomTo] = useState<Date>(endOfMonth(now));
   const [fromOpen, setFromOpen] = useState(false);
   const [toOpen, setToOpen] = useState(false);
+  const [showCancelled, setShowCancelled] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const { rangeStart, rangeEnd, rangeLabel } = useMemo(() => {
     switch (preset) {
@@ -85,12 +91,13 @@ export default function StatsDashboard({
   }, [preset, customFrom, customTo]);
 
   const active = bookings.filter((b) => b.status === "completed");
-  const cancelledInRange = useMemo(() => {
+  const cancelledBookingsInRange = useMemo(() => {
     return bookings.filter((b) => b.status === "cancelled" && (() => {
       const d = parseISO(b.date);
       return isWithinInterval(d, { start: rangeStart, end: rangeEnd });
-    })()).length;
+    })());
   }, [bookings, rangeStart, rangeEnd]);
+  const cancelledInRange = cancelledBookingsInRange.length;
 
   const rangeBookings = useMemo(() => {
     return active.filter((b) => {
@@ -324,7 +331,11 @@ export default function StatsDashboard({
         <SummaryCard icon={<TrendingUp className="w-4 h-4" />} label="日均營收" value={`NT$${Math.round(rangeRevenue / rangeDays).toLocaleString()}`} valueClass="text-primary" />
         <SummaryCard icon={<BarChart3 className="w-4 h-4" />} label="日均預約數" value={`${(rangeCount / rangeDays).toFixed(1)} 筆`} />
         <SummaryCard icon={<Receipt className="w-4 h-4" />} label="客單價" value={`NT$${rangeCount > 0 ? Math.round(rangeRevenue / rangeCount).toLocaleString() : 0}`} valueClass="text-primary" />
-        <SummaryCard icon={<XCircle className="w-4 h-4" />} label="取消預約" value={`${cancelledInRange} 筆`} valueClass="text-destructive" />
+        <div className="bg-card rounded-xl shadow p-4 cursor-pointer hover:ring-2 hover:ring-destructive/30 transition-all" onClick={() => setShowCancelled(true)}>
+          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1"><XCircle className="w-4 h-4" />取消預約</div>
+          <div className="text-2xl font-bold text-destructive">{cancelledInRange} 筆</div>
+          <div className="text-xs text-muted-foreground mt-1">點擊查看詳情</div>
+        </div>
       </div>
 
       {/* Commission summary */}
@@ -510,7 +521,7 @@ export default function StatsDashboard({
         </div>
       </div>
 
-      {/* SECTION F: Export */}
+      {/* SECTION F: Export + Sync */}
       <div className="bg-card rounded-xl shadow p-4 flex flex-wrap gap-3">
         <Button variant="outline" onClick={exportBookingsCSV}>
           <Download className="w-4 h-4 mr-1" /> 匯出{rangeLabel}報表 CSV
@@ -518,7 +529,48 @@ export default function StatsDashboard({
         <Button variant="outline" onClick={exportCustomersCSV}>
           <Download className="w-4 h-4 mr-1" /> 匯出客戶名單 CSV
         </Button>
+        <Button variant="outline" disabled={syncing} onClick={async () => {
+          setSyncing(true);
+          try {
+            const res = await adminApi("calendar.full_sync");
+            toast.success(`同步完成：新增 ${res.synced} 筆、移除 ${res.deleted} 筆`);
+          } catch (e: any) {
+            toast.error(`同步失敗：${e.message}`);
+          } finally {
+            setSyncing(false);
+          }
+        }}>
+          <RefreshCw className={`w-4 h-4 mr-1 ${syncing ? "animate-spin" : ""}`} /> {syncing ? "同步中..." : "一鍵同步日曆"}
+        </Button>
       </div>
+
+      {/* Cancelled Bookings Dialog */}
+      <Dialog open={showCancelled} onOpenChange={setShowCancelled}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>❌ 取消預約（{rangeLabel}：{cancelledInRange} 筆）</DialogTitle>
+          </DialogHeader>
+          {cancelledBookingsInRange.length === 0 ? (
+            <p className="text-muted-foreground text-center py-4">無取消預約</p>
+          ) : (
+            <div className="space-y-2">
+              {cancelledBookingsInRange.map(b => (
+                <div key={b.id} className="p-3 rounded-lg border border-border space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-foreground">{b.name}</span>
+                    <span className="text-xs text-muted-foreground">{b.date} {b.start_time_str}</span>
+                  </div>
+                  <div className="text-sm text-muted-foreground">{b.service} · NT${b.total_price}</div>
+                  {b.cancel_reason && (
+                    <div className="text-xs text-destructive">原因：{b.cancel_reason}</div>
+                  )}
+                  <div className="text-xs text-muted-foreground">📞 {b.phone}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

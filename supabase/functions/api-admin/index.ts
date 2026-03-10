@@ -108,6 +108,14 @@ Deno.serve(async (req) => {
       case "booking.create_manual": {
         const { data: inserted, error } = await supabase.from("bookings").insert(data.booking).select().single();
         if (error) throw error;
+        // Sync to Google Calendar
+        try {
+          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/google-calendar-sync`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+            body: JSON.stringify({ action: "create", booking: inserted }),
+          });
+        } catch (e) { console.error("Calendar sync error on manual create:", e); }
         result = { success: true, booking: inserted };
         break;
       }
@@ -238,6 +246,60 @@ Deno.serve(async (req) => {
           });
           if (error) throw error;
         }
+        break;
+      }
+
+      // ===== Calendar Full Sync =====
+      case "calendar.full_sync": {
+        const syncUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/google-calendar-sync`;
+        const syncHeaders = { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` };
+        let synced = 0;
+        let deleted = 0;
+        let errors: string[] = [];
+
+        // 1. Sync all active bookings without google_calendar_event_id
+        const { data: unsyncedBookings } = await supabase
+          .from("bookings")
+          .select("*")
+          .is("google_calendar_event_id", null)
+          .in("status", ["confirmed", "completed"]);
+
+        for (const bk of (unsyncedBookings || [])) {
+          try {
+            await fetch(syncUrl, { method: "POST", headers: syncHeaders, body: JSON.stringify({ action: "create", booking: bk }) });
+            synced++;
+          } catch (e) { errors.push(`Booking ${bk.id}: ${(e as Error).message}`); }
+        }
+
+        // 2. Delete calendar events for cancelled bookings that still have event IDs
+        const { data: cancelledWithEvents } = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("status", "cancelled")
+          .not("google_calendar_event_id", "is", null);
+
+        for (const bk of (cancelledWithEvents || [])) {
+          try {
+            await fetch(syncUrl, { method: "POST", headers: syncHeaders, body: JSON.stringify({ action: "cancel", booking: bk }) });
+            await supabase.from("bookings").update({ google_calendar_event_id: null }).eq("id", bk.id);
+            deleted++;
+          } catch (e) { errors.push(`Cancel sync ${bk.id}: ${(e as Error).message}`); }
+        }
+
+        // 3. Sync holidays without event IDs
+        const { data: unsyncedHolidays } = await supabase
+          .from("holidays")
+          .select("*")
+          .is("google_calendar_event_id", null);
+
+        for (const h of (unsyncedHolidays || [])) {
+          try {
+            await fetch(syncUrl, { method: "POST", headers: syncHeaders, body: JSON.stringify({ action: "create_holiday", holiday: h }) });
+            synced++;
+          } catch (e) { errors.push(`Holiday ${h.id}: ${(e as Error).message}`); }
+        }
+
+        result = { success: true, synced, deleted, errors: errors.length > 0 ? errors : undefined };
         break;
       }
 
