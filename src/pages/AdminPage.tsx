@@ -167,6 +167,7 @@ export default function AdminPage() {
     if (password === adminPasswordFromDb) {
       setAuthenticated(true);
       sessionStorage.setItem("admin_auth", "true");
+      sessionStorage.setItem("admin_password", password);
     } else {
       toast.error("密碼錯誤");
     }
