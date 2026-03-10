@@ -44,6 +44,18 @@ interface CustomerNote {
   created_at: string;
 }
 
+interface BookingRecord {
+  id: string;
+  date: string;
+  start_time_str: string;
+  service: string;
+  addons: string[];
+  status: string | null;
+  total_price: number;
+  cancel_reason: string | null;
+  source: string | null;
+}
+
 const PRESET_TAGS = ["VIP", "常客", "新客", "敏感肌", "偏好重手", "偏好輕柔", "肩頸問題", "腰部問題"];
 
 function getAutoTier(visitCount: number): { label: string; color: string } {
