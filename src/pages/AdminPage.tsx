@@ -446,15 +446,39 @@ export default function AdminPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border text-muted-foreground">
-                        <th className="text-left p-2">下單時間</th>
-                        <th className="text-left p-2">日期</th>
-                        <th className="text-left p-2">時段</th>
-                        <th className="text-left p-2">姓名</th>
-                        <th className="text-left p-2">電話</th>
-                        <th className="text-left p-2">服務</th>
-                        <th className="text-left p-2">加購</th>
-                        <th className="text-left p-2">時長</th>
-                        <th className="text-left p-2">金額</th>
+                        {([
+                          { field: "order_time" as SortField, label: "下單時間" },
+                          { field: "date" as SortField, label: "日期" },
+                          { field: null, label: "時段" },
+                          { field: "name" as SortField, label: "姓名" },
+                          { field: null, label: "電話" },
+                          { field: "service" as SortField, label: "服務" },
+                          { field: null, label: "加購" },
+                          { field: "duration" as SortField, label: "時長" },
+                          { field: "total_price" as SortField, label: "金額" },
+                        ] as const).map(({ field, label }) => (
+                          <th key={label} className="text-left p-2">
+                            {field ? (
+                              <button
+                                className="flex items-center gap-1 hover:text-foreground transition-colors"
+                                onClick={() => {
+                                  if (filters.sortField === field) {
+                                    setFilters({ ...filters, sortDirection: filters.sortDirection === "asc" ? "desc" : "asc" });
+                                  } else {
+                                    setFilters({ ...filters, sortField: field, sortDirection: "desc" });
+                                  }
+                                }}
+                              >
+                                {label}
+                                {filters.sortField === field ? (
+                                  filters.sortDirection === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                                ) : (
+                                  <ArrowUpDown className="w-3 h-3 opacity-40" />
+                                )}
+                              </button>
+                            ) : label}
+                          </th>
+                        ))}
                         {showCommissionCols && (
                           <>
                             <th className="text-left p-2">公司差價</th>
