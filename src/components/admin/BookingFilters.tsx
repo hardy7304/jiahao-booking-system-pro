@@ -8,7 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
-export type SortField = "order_time" | "date" | "total_price" | "duration" | "name" | "service";
+export type SortField = "order_time" | "date" | "total_price" | "duration";
 export type SortDirection = "asc" | "desc";
 
 export interface BookingFilters {
