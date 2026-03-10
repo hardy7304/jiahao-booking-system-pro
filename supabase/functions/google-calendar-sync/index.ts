@@ -195,6 +195,11 @@ Deno.serve(async (req) => {
       throw new Error("Missing Google Calendar configuration secrets");
     }
 
+    // Debug: log key format info
+    console.log("Private key length:", privateKey.length);
+    console.log("Key starts with:", privateKey.substring(0, 40));
+    console.log("Key ends with:", privateKey.substring(privateKey.length - 40));
+
     // Handle escaped newlines in private key
     const formattedKey = privateKey.replace(/\\n/g, "\n");
 
