@@ -309,6 +309,12 @@ export default function AdminPage() {
       free_addon_duration: parseInt(freeAddonInput) || 10,
       pre_block_minutes: parseInt(preBlockInput) || 60,
     });
+    // Save admin password if changed
+    if (adminPasswordInput.trim()) {
+      await supabase.from("system_config").upsert({ key: "admin_password", value: adminPasswordInput.trim() } as any);
+      setAdminPasswordFromDb(adminPasswordInput.trim());
+      setAdminPasswordInput("");
+    }
     setShowSettings(false);
     toast.success("已儲存設定");
   };
