@@ -14,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, Users, RefreshCw, AlertTriangle, Ban, Star, Tag, StickyNote, Plus, X, ChevronDown, ChevronRight, Shield, CalendarDays, Clock, CheckCircle2, XCircle, DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { Search, Users, RefreshCw, AlertTriangle, Ban, Star, Tag, StickyNote, Plus, X, ChevronDown, ChevronRight, Shield, CalendarDays, Clock, CheckCircle2, XCircle, DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, Minus, Download } from "lucide-react";
 import { toast } from "sonner";
 import { format, subMonths } from "date-fns";
 
@@ -225,6 +225,49 @@ export default function CustomerTracking() {
     setLoadingBookings(false);
   };
 
+  const exportCsv = async () => {
+    // Fetch all bookings for stats
+    const { data: allBookings } = await supabase
+      .from("bookings")
+      .select("phone, service, total_price, status, date");
+
+    const bookingsByPhone = new Map<string, typeof allBookings>();
+    (allBookings || []).forEach((b: any) => {
+      const list = bookingsByPhone.get(b.phone) || [];
+      list.push(b);
+      bookingsByPhone.set(b.phone, list);
+    });
+
+    const header = ["姓名", "電話", "等級", "來店次數", "爽約次數", "最後來訪", "總消費", "平均消費", "最常預約服務", "標籤", "黑名單"];
+    const rows = customers.map(c => {
+      const tier = getAutoTier(c.visit_count);
+      const tags = customerTags(c.id).map(t => t.tag).join("、");
+      const completed = (bookingsByPhone.get(c.phone) || []).filter((b: any) => b.status === "completed");
+      const totalSpent = completed.reduce((s: number, b: any) => s + (b.total_price || 0), 0);
+      const avgSpent = completed.length > 0 ? Math.round(totalSpent / completed.length) : 0;
+      const svcCount = new Map<string, number>();
+      completed.forEach((b: any) => svcCount.set(b.service, (svcCount.get(b.service) || 0) + 1));
+      const topSvc = [...svcCount.entries()].sort((a, b) => b[1] - a[1])[0];
+
+      return [
+        c.name, c.phone, tier.label, c.visit_count, c.no_show_count,
+        c.last_visit_date || "", totalSpent, avgSpent,
+        topSvc ? `${topSvc[0]}(${topSvc[1]}次)` : "",
+        tags, c.is_blacklisted ? "是" : "否",
+      ];
+    });
+
+    const csvContent = "\uFEFF" + [header, ...rows].map(r => r.map(v => `"${v}"`).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `客戶統計_${format(new Date(), "yyyyMMdd")}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("CSV 已匯出");
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -234,9 +277,14 @@ export default function CustomerTracking() {
           <h2 className="font-semibold text-foreground">客戶追蹤</h2>
           <Badge variant="secondary">{customers.length} 位客戶</Badge>
         </div>
-        <Button variant="outline" size="sm" onClick={seedFromBookings}>
-          <RefreshCw className="w-4 h-4 mr-1" /> 從預約同步
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={exportCsv}>
+            <Download className="w-4 h-4 mr-1" /> 匯出 CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={seedFromBookings}>
+            <RefreshCw className="w-4 h-4 mr-1" /> 從預約同步
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
