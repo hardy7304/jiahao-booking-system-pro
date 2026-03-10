@@ -399,9 +399,51 @@ export default function CustomerTracking() {
                             </div>
                           </div>
                         )}
-                      </>
-                    );
-                  })()}
+
+                        {/* Spending trend: recent 3 months vs before */}
+                        {(() => {
+                          const threeMonthsAgo = format(subMonths(new Date(), 3), "yyyy-MM-dd");
+                          const recent = completed.filter(b => b.date >= threeMonthsAgo);
+                          const older = completed.filter(b => b.date < threeMonthsAgo);
+                          const recentAvg = recent.length > 0 ? Math.round(recent.reduce((s, b) => s + b.total_price, 0) / recent.length) : null;
+                          const olderAvg = older.length > 0 ? Math.round(older.reduce((s, b) => s + b.total_price, 0) / older.length) : null;
+
+                          if (recentAvg === null && olderAvg === null) return null;
+
+                          const diff = recentAvg !== null && olderAvg !== null ? recentAvg - olderAvg : null;
+                          const pct = diff !== null && olderAvg > 0 ? Math.round((diff / olderAvg) * 100) : null;
+
+                          return (
+                            <div className="p-3 rounded-lg border border-border text-sm">
+                              <div className="flex items-center gap-1 text-muted-foreground text-xs mb-2">
+                                <TrendingUp className="w-3 h-3" /> 消費趨勢
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <div className="text-xs text-muted-foreground">近 3 個月均消</div>
+                                  <div className="font-bold text-foreground">
+                                    {recentAvg !== null ? `NT$${recentAvg.toLocaleString()}` : "—"}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">{recent.length} 筆</div>
+                                </div>
+                                <div>
+                                  <div className="text-xs text-muted-foreground">3 個月前均消</div>
+                                  <div className="font-bold text-foreground">
+                                    {olderAvg !== null ? `NT$${olderAvg.toLocaleString()}` : "—"}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground">{older.length} 筆</div>
+                                </div>
+                              </div>
+                              {diff !== null && (
+                                <div className={`mt-2 flex items-center gap-1 text-sm font-medium ${diff > 0 ? "text-green-600" : diff < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                                  {diff > 0 ? <ArrowUpRight className="w-4 h-4" /> : diff < 0 ? <ArrowDownRight className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                                  {diff > 0 ? "+" : ""}{diff.toLocaleString()} 元
+                                  {pct !== null && <span className="text-xs">({diff > 0 ? "+" : ""}{pct}%)</span>}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                   {/* Blacklist */}
                   <div className="p-3 rounded-lg border border-border space-y-3">
