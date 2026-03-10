@@ -303,6 +303,12 @@ Deno.serve(async (req) => {
         break;
       }
 
+      case "config.get_calendar_id": {
+        const calId = Deno.env.get("GOOGLE_CALENDAR_ID") || "";
+        result = { success: true, calendar_id: calId };
+        break;
+      }
+
       default:
         return jsonResponse({ error: "Unknown action" }, 400);
     }

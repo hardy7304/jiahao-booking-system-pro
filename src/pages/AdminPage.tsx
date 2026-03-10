@@ -154,14 +154,30 @@ export default function AdminPage() {
   // Blacklisted phones
   const [blacklistedPhones, setBlacklistedPhones] = useState<Set<string>>(new Set());
 
-  // Load admin password from DB
+  // Google Calendar embed
+  const [googleCalendarId, setGoogleCalendarId] = useState<string>("");
+  const [showGoogleCalendar, setShowGoogleCalendar] = useState(false);
+
+  // Load admin password from DB & Google Calendar ID
   useEffect(() => {
-    const loadPassword = async () => {
+    const loadConfig = async () => {
       const { data } = await supabase.from("system_config").select("value").eq("key", "admin_password").single();
       if (data?.value) setAdminPasswordFromDb(data.value);
     };
-    loadPassword();
+    loadConfig();
   }, []);
+
+  useEffect(() => {
+    if (authenticated) {
+      const fetchCalendarId = async () => {
+        try {
+          const res = await adminApi("config.get_calendar_id");
+          if (res.calendar_id) setGoogleCalendarId(res.calendar_id);
+        } catch {}
+      };
+      fetchCalendarId();
+    }
+  }, [authenticated]);
 
   const handleLogin = () => {
     if (password === adminPasswordFromDb) {
@@ -917,6 +933,31 @@ export default function AdminPage() {
                 )}
               </div>
             </div>
+
+            {/* Google Calendar embed */}
+            {googleCalendarId && (
+              <Collapsible open={showGoogleCalendar} onOpenChange={setShowGoogleCalendar}>
+                <div className="bg-card rounded-xl shadow">
+                  <CollapsibleTrigger className="flex items-center justify-between w-full p-4">
+                    <h2 className="font-semibold text-foreground">📆 Google 日曆即時檢視</h2>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-90" />
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="px-4 pb-4">
+                    <div className="rounded-lg overflow-hidden border border-border">
+                      <iframe
+                        src={`https://calendar.google.com/calendar/embed?src=${encodeURIComponent(googleCalendarId)}&ctz=Asia/Taipei&mode=WEEK&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0&showTz=0`}
+                        className="w-full border-0"
+                        style={{ height: "600px" }}
+                        title="Google Calendar"
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      此為 Google 日曆即時內容，可確認預約與公休是否已正確同步
+                    </p>
+                  </CollapsibleContent>
+                </div>
+              </Collapsible>
+            )}
 
             {/* Manual add - collapsible */}
             <Collapsible>
