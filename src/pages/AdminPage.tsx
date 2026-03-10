@@ -1241,6 +1241,78 @@ export default function AdminPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Holiday day-click dialog */}
+      <Dialog open={!!holidayClickedDate} onOpenChange={(open) => !open && setHolidayClickedDate(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>📅 {holidayClickedDate} 公休管理</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            {/* Show existing holidays for this date */}
+            {holidays.filter(h => h.date === holidayClickedDate).length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">已設定的公休：</Label>
+                {holidays.filter(h => h.date === holidayClickedDate).map(h => (
+                  <div key={h.id} className="flex items-center justify-between bg-secondary/50 rounded-lg p-2">
+                    <div className="text-sm">
+                      <span className="font-medium">{h.type}</span>
+                      {h.type === "部分時段公休" && h.start_hour != null && (
+                        <span className="text-muted-foreground ml-2">{formatHourToTime(h.start_hour)} ~ {formatHourToTime(h.end_hour!)}</span>
+                      )}
+                      {h.note && <span className="text-muted-foreground ml-2">({h.note})</span>}
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={() => { deleteHoliday(h.id); }}>
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add new holiday for this date */}
+            <div className="border-t border-border pt-3 space-y-3">
+              <Label className="text-sm font-medium">新增公休：</Label>
+              <Select value={holidayDialogType} onValueChange={(v) => setHolidayDialogType(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="整天公休">整天公休</SelectItem>
+                  <SelectItem value="部分時段公休">部分時段公休</SelectItem>
+                </SelectContent>
+              </Select>
+              {holidayDialogType === "部分時段公休" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">開始</Label>
+                    <Select value={holidayDialogStart} onValueChange={setHolidayDialogStart}>
+                      <SelectTrigger><SelectValue placeholder="選擇" /></SelectTrigger>
+                      <SelectContent>
+                        {timeSlots.map((s) => (
+                          <SelectItem key={s} value={s.toString()}>{formatHourToTime(s)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">結束</Label>
+                    <Select value={holidayDialogEnd} onValueChange={setHolidayDialogEnd}>
+                      <SelectTrigger><SelectValue placeholder="選擇" /></SelectTrigger>
+                      <SelectContent>
+                        {timeSlots.map((s) => (
+                          <SelectItem key={s} value={s.toString()}>{formatHourToTime(s)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+              <Input value={holidayDialogNote} onChange={(e) => setHolidayDialogNote(e.target.value)} placeholder="備註（選填）" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHolidayClickedDate(null)}>關閉</Button>
+            <Button onClick={addHolidayFromDialog}>新增公休</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
