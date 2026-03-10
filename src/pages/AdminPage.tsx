@@ -212,38 +212,38 @@ export default function AdminPage() {
     }
   }, [authenticated, fetchBookings, fetchHolidays, fetchServices, fetchBlacklist]);
 
-  // CRUD actions
+  // CRUD actions via Edge Function
   const softDeleteBooking = async (id: string, reason: string) => {
-    await supabase.from("bookings").update({
-      cancelled_at: new Date().toISOString(), status: "cancelled", cancel_reason: reason,
-    } as any).eq("id", id);
-    setCancellingId(null);
-    fetchBookings();
-    toast.success("已取消預約");
+    try {
+      await adminApi("booking.cancel", { id, reason });
+      setCancellingId(null);
+      fetchBookings();
+      toast.success("已取消預約");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const restoreBooking = async (id: string) => {
-    await supabase.from("bookings").update({
-      cancelled_at: null, status: "confirmed", cancel_reason: null,
-    } as any).eq("id", id);
-    fetchBookings();
-    toast.success("已復原預約");
+    try {
+      await adminApi("booking.restore", { id });
+      fetchBookings();
+      toast.success("已復原預約");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const completeBooking = async (id: string) => {
-    await supabase.from("bookings").update({
-      status: "completed", completed_at: new Date().toISOString(),
-    } as any).eq("id", id);
-    fetchBookings();
-    toast.success("已標記完成");
+    try {
+      await adminApi("booking.complete", { id });
+      fetchBookings();
+      toast.success("已標記完成");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const uncompleteBooking = async (id: string) => {
-    await supabase.from("bookings").update({
-      status: "confirmed", completed_at: null,
-    } as any).eq("id", id);
-    fetchBookings();
-    toast.success("已改回確認狀態");
+    try {
+      await adminApi("booking.uncomplete", { id });
+      fetchBookings();
+      toast.success("已改回確認狀態");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const openEditBooking = (b: Booking) => {
@@ -257,32 +257,40 @@ export default function AdminPage() {
 
   const saveEditBooking = async () => {
     if (!editingBooking) return;
-    const { error } = await supabase.from("bookings").update({
-      name: editForm.name, phone: editForm.phone, service: editForm.service,
-      date: editForm.date, start_hour: editForm.start_hour,
-      start_time_str: formatHourToTime(editForm.start_hour),
-      duration: editForm.duration, total_price: editForm.total_price,
-      addons: editForm.addons, source: editForm.source, oil_bonus: editForm.oil_bonus,
-    } as any).eq("id", editingBooking.id);
-    if (error) { toast.error("更新失敗"); return; }
-    setEditingBooking(null);
-    fetchBookings();
-    toast.success("已更新預約");
+    try {
+      await adminApi("booking.update", {
+        id: editingBooking.id,
+        updates: {
+          name: editForm.name, phone: editForm.phone, service: editForm.service,
+          date: editForm.date, start_hour: editForm.start_hour,
+          start_time_str: formatHourToTime(editForm.start_hour),
+          duration: editForm.duration, total_price: editForm.total_price,
+          addons: editForm.addons, source: editForm.source, oil_bonus: editForm.oil_bonus,
+        },
+      });
+      setEditingBooking(null);
+      fetchBookings();
+      toast.success("已更新預約");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const permanentDeleteBooking = async (id: string) => {
-    await supabase.from("bookings").delete().eq("id", id);
-    fetchBookings();
-    toast.success("已永久刪除");
+    try {
+      await adminApi("booking.delete", { id });
+      fetchBookings();
+      toast.success("已永久刪除");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const saveNote = async () => {
     if (!noteBookingId) return;
-    await supabase.from("bookings").update({ admin_note: noteText } as any).eq("id", noteBookingId);
-    setNoteBookingId(null);
-    setNoteText("");
-    fetchBookings();
-    toast.success("已儲存備註");
+    try {
+      await adminApi("booking.note", { id: noteBookingId, note: noteText });
+      setNoteBookingId(null);
+      setNoteText("");
+      fetchBookings();
+      toast.success("已儲存備註");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const syncHolidayToCalendar = async (holiday: any, action: "create_holiday" | "delete_holiday") => {
