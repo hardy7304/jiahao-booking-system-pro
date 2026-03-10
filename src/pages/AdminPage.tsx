@@ -133,6 +133,13 @@ export default function AdminPage() {
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
   const [adminPasswordFromDb, setAdminPasswordFromDb] = useState(DEFAULT_ADMIN_PASSWORD);
 
+  // Holiday calendar click dialog
+  const [holidayClickedDate, setHolidayClickedDate] = useState<string | null>(null);
+  const [holidayDialogType, setHolidayDialogType] = useState<"整天公休" | "部分時段公休">("整天公休");
+  const [holidayDialogStart, setHolidayDialogStart] = useState("");
+  const [holidayDialogEnd, setHolidayDialogEnd] = useState("");
+  const [holidayDialogNote, setHolidayDialogNote] = useState("");
+
   // Services & addons list for manual booking
   const [servicesList, setServicesList] = useState<any[]>([]);
   const [addonsList, setAddonsList] = useState<any[]>([]);
