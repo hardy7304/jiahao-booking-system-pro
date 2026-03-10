@@ -482,6 +482,7 @@ export default function CustomerTracking() {
                           <div><span className="text-muted-foreground">電話：</span>{c.phone}</div>
                           <div><span className="text-muted-foreground">來訪：</span>{c.visit_count} 次</div>
                           <div><span className="text-muted-foreground">爽約：</span>{c.no_show_count} 次</div>
+                          <div><span className="text-muted-foreground">取消：</span>{c.cancel_count || 0} 次</div>
                           <div><span className="text-muted-foreground">最後造訪：</span>{c.last_visit_date || "—"}</div>
                         </div>
 
