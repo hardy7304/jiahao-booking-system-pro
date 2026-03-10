@@ -108,6 +108,14 @@ Deno.serve(async (req) => {
       case "booking.create_manual": {
         const { data: inserted, error } = await supabase.from("bookings").insert(data.booking).select().single();
         if (error) throw error;
+        // Sync to Google Calendar
+        try {
+          await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/google-calendar-sync`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+            body: JSON.stringify({ action: "create", booking: inserted }),
+          });
+        } catch (e) { console.error("Calendar sync error on manual create:", e); }
         result = { success: true, booking: inserted };
         break;
       }
