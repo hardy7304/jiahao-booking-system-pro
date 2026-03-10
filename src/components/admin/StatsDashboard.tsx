@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, subDays, parseISO, startOfMonth, endOfMonth, isWithinInterval, getDay, subMonths, differenceInDays } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase, CalendarIcon, TrendingUp, BarChart3, Receipt } from "lucide-react";
+import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase, CalendarIcon, TrendingUp, BarChart3, Receipt, Droplets } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -138,16 +138,17 @@ export default function StatsDashboard({
 
   // SECTION B: Revenue trend (within selected range)
   const revenueTrend = useMemo(() => {
-    const data: { date: string; revenue: number; count: number; avg7?: number; therapist?: number; shop?: number }[] = [];
+    const data: { date: string; revenue: number; count: number; avg7?: number; therapist?: number; shop?: number; oilBonus?: number }[] = [];
     const days = Math.min(rangeDays, 90);
     for (let i = days - 1; i >= 0; i--) {
       const dateObj = subDays(rangeEnd, i);
       const d = format(dateObj, "yyyy-MM-dd");
       const dayBookings = active.filter((b) => b.date === d);
       const rev = dayBookings.reduce((s, b) => s + b.total_price, 0);
+      const oilB = dayBookings.reduce((s, b) => s + (b.oil_bonus || 0), 0);
       const ther = commission ? dayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service, b.addons) + (b.oil_bonus || 0), 0) : 0;
       const shop = commission ? dayBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service, b.addons), 0) : 0;
-      data.push({ date: format(dateObj, "M/d"), revenue: rev, count: dayBookings.length, therapist: ther, shop: shop });
+      data.push({ date: format(dateObj, "M/d"), revenue: rev, count: dayBookings.length, therapist: ther, shop: shop, oilBonus: oilB });
     }
     for (let i = 0; i < data.length; i++) {
       const start = Math.max(0, i - 6);
@@ -353,6 +354,27 @@ export default function StatsDashboard({
               }} />
               <Bar dataKey="therapist" stackId="a" fill="hsl(210, 70%, 55%)" name="therapist" />
               <Bar dataKey="shop" stackId="a" fill="hsl(30, 70%, 55%)" name="shop" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Oil Bonus trend chart */}
+      {revenueTrend.some((d) => (d.oilBonus || 0) > 0) && (
+        <div className="bg-card rounded-xl shadow p-4">
+          <h2 className="font-semibold text-foreground mb-1 flex items-center gap-2">
+            <Droplets className="w-4 h-4 text-emerald-600" /> 精油獎金趨勢（{rangeLabel}）
+          </h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            區間合計：NT${rangeOilBonus.toLocaleString()}
+          </p>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={revenueTrend}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} interval={4} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(val: number) => [`NT$${val.toLocaleString()}`, "精油獎金"]} />
+              <Bar dataKey="oilBonus" fill="hsl(145, 55%, 45%)" name="oilBonus" radius={[3, 3, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
