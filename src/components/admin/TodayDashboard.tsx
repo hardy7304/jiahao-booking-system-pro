@@ -405,43 +405,55 @@ export default function TodayDashboard({
                         進行中
                       </Badge>
                     )}
-                  </div>
-                  {/* Quick action buttons */}
-                  <div className="flex items-center gap-1.5 mt-2 ml-[68px]">
-                    {b.status !== "completed" ? (
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-emerald-600 border-emerald-300 hover:bg-emerald-50" onClick={() => onComplete?.(b.id)}>
-                        <Check className="w-3 h-3" /> 完成
-                      </Button>
-                    ) : (
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-muted-foreground" onClick={() => onUncomplete?.(b.id)}>
-                        <Undo2 className="w-3 h-3" /> 改回確認
-                      </Button>
-                    )}
-                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => onEdit?.(b)}>
-                      <Pencil className="w-3 h-3" /> 編輯
-                    </Button>
-                    {cancellingId === b.id ? (
-                      <div className="flex items-center gap-1">
-                        <Input
-                          placeholder="取消原因"
-                          value={cancelReason}
-                          onChange={(e) => setCancelReason(e.target.value)}
-                          className="h-7 text-xs w-28"
-                        />
-                        <Button size="sm" variant="destructive" className="h-7 text-xs px-2" onClick={() => setConfirmCancelOpen(true)}>
-                          確認取消
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => { setCancellingId(null); setCancelReason(""); }}>
-                          取消
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setCancellingId(b.id)}>
-                        <X className="w-3 h-3" /> 取消預約
-                      </Button>
+                    {isCancelled && (
+                      <Badge variant="outline" className="text-xs border-muted text-muted-foreground shrink-0">
+                        已取消
+                      </Badge>
                     )}
                   </div>
-                  {commission && base !== null && (
+                  {/* Quick action buttons - hide for cancelled */}
+                  {!isCancelled && (
+                    <div className="flex items-center gap-1.5 mt-2 ml-[68px]">
+                      {b.status !== "completed" ? (
+                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-emerald-600 border-emerald-300 hover:bg-emerald-50" onClick={() => onComplete?.(b.id)}>
+                          <Check className="w-3 h-3" /> 完成
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-muted-foreground" onClick={() => onUncomplete?.(b.id)}>
+                          <Undo2 className="w-3 h-3" /> 改回確認
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => onEdit?.(b)}>
+                        <Pencil className="w-3 h-3" /> 編輯
+                      </Button>
+                      {cancellingId === b.id ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            placeholder="取消原因"
+                            value={cancelReason}
+                            onChange={(e) => setCancelReason(e.target.value)}
+                            className="h-7 text-xs w-28"
+                          />
+                          <Button size="sm" variant="destructive" className="h-7 text-xs px-2" onClick={() => setConfirmCancelOpen(true)}>
+                            確認取消
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => { setCancellingId(null); setCancelReason(""); }}>
+                            取消
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setCancellingId(b.id)}>
+                          <X className="w-3 h-3" /> 取消預約
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  {isCancelled && b.cancel_reason && (
+                    <div className="mt-1 ml-[68px] text-xs text-muted-foreground">
+                      取消原因：{b.cancel_reason}
+                    </div>
+                  )}
+                  {!isCancelled && commission && base !== null && (
                     <div className="mt-1 ml-[68px] text-xs text-muted-foreground">
                       售價 NT${b.total_price.toLocaleString()} → <span className="text-destructive">差價 -NT${commission.getDeduction(b.service).toLocaleString()}</span> → 基底 NT${base.toLocaleString()} → <span className="text-blue-600 font-medium">師傅 NT${therapist!.toLocaleString()}</span>{(b.oil_bonus || 0) > 0 && <span className="text-emerald-600"> (含精油+{b.oil_bonus})</span>}
                     </div>
