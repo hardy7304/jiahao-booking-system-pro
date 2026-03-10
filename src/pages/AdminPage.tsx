@@ -743,13 +743,13 @@ export default function AdminPage() {
 
           {/* HOLIDAYS */}
           <TabsContent value="holidays" className="mt-4 space-y-4">
-            {/* Quick-add calendar */}
+            {/* Calendar view - always visible */}
             <div className="bg-card rounded-xl shadow p-4 space-y-3">
-              <h2 className="font-semibold text-foreground">📅 快速設定公休（點擊日期切換整天公休）</h2>
+              <h2 className="font-semibold text-foreground">📅 公休日曆（點擊日期管理公休）</h2>
               <Calendar
                 mode="multiple"
                 selected={holidays.filter(h => h.type === "整天公休").map(h => parseISO(h.date))}
-                onDayClick={(day) => quickAddFullDayHoliday(day)}
+                onDayClick={(day) => handleCalendarDayClick(day)}
                 className="rounded-md border pointer-events-auto"
                 modifiers={{
                   holiday: holidays.filter(h => h.type === "整天公休").map(h => parseISO(h.date)),
@@ -773,98 +773,117 @@ export default function AdminPage() {
               </div>
             </div>
 
-            <div className="bg-card rounded-xl shadow p-4 space-y-4">
-              <h2 className="font-semibold text-foreground">手動新增公休</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-sm">日期</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start", !hDate && "text-muted-foreground")}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {hDate ? format(hDate, "yyyy-MM-dd") : "選擇日期"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={hDate} onSelect={setHDate} className="p-3 pointer-events-auto" />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-sm">類型</Label>
-                  <Select value={hType} onValueChange={setHType}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="整天公休">整天公休</SelectItem>
-                      <SelectItem value="部分時段公休">部分時段公休</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {hType === "部分時段公休" && (
-                  <>
+            {/* Manual add - collapsible */}
+            <Collapsible>
+              <div className="bg-card rounded-xl shadow">
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-4">
+                  <h2 className="font-semibold text-foreground">➕ 手動新增公休</h2>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-90" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="px-4 pb-4 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-1">
-                      <Label className="text-sm">開始時間</Label>
-                      <Select value={hStart} onValueChange={setHStart}>
-                        <SelectTrigger><SelectValue placeholder="選擇" /></SelectTrigger>
+                      <Label className="text-sm">日期</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className={cn("w-full justify-start", !hDate && "text-muted-foreground")}>
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {hDate ? format(hDate, "yyyy-MM-dd") : "選擇日期"}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar mode="single" selected={hDate} onSelect={setHDate} className="p-3 pointer-events-auto" />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-sm">類型</Label>
+                      <Select value={hType} onValueChange={setHType}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {timeSlots.map((s) => (
-                            <SelectItem key={s} value={s.toString()}>{formatHourToTime(s)}</SelectItem>
-                          ))}
+                          <SelectItem value="整天公休">整天公休</SelectItem>
+                          <SelectItem value="部分時段公休">部分時段公休</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-sm">結束時間</Label>
-                      <Select value={hEnd} onValueChange={setHEnd}>
-                        <SelectTrigger><SelectValue placeholder="選擇" /></SelectTrigger>
-                        <SelectContent>
-                          {timeSlots.map((s) => (
-                            <SelectItem key={s} value={s.toString()}>{formatHourToTime(s)}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    {hType === "部分時段公休" && (
+                      <>
+                        <div className="space-y-1">
+                          <Label className="text-sm">開始時間</Label>
+                          <Select value={hStart} onValueChange={setHStart}>
+                            <SelectTrigger><SelectValue placeholder="選擇" /></SelectTrigger>
+                            <SelectContent>
+                              {timeSlots.map((s) => (
+                                <SelectItem key={s} value={s.toString()}>{formatHourToTime(s)}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-sm">結束時間</Label>
+                          <Select value={hEnd} onValueChange={setHEnd}>
+                            <SelectTrigger><SelectValue placeholder="選擇" /></SelectTrigger>
+                            <SelectContent>
+                              {timeSlots.map((s) => (
+                                <SelectItem key={s} value={s.toString()}>{formatHourToTime(s)}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </>
+                    )}
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label className="text-sm">備註</Label>
+                      <Input value={hNote} onChange={(e) => setHNote(e.target.value)} placeholder="選填" />
                     </div>
-                  </>
-                )}
-                <div className="space-y-1 sm:col-span-2">
-                  <Label className="text-sm">備註</Label>
-                  <Input value={hNote} onChange={(e) => setHNote(e.target.value)} placeholder="選填" />
-                </div>
+                  </div>
+                  <Button onClick={addHoliday}>新增公休</Button>
+                </CollapsibleContent>
               </div>
-              <Button onClick={addHoliday}>新增公休</Button>
-            </div>
+            </Collapsible>
 
-            <div className="bg-card rounded-xl shadow p-4 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground">
-                    <th className="text-left p-2">日期</th>
-                    <th className="text-left p-2">類型</th>
-                    <th className="text-left p-2">時段</th>
-                    <th className="text-left p-2">備註</th>
-                    <th className="p-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {holidays.map((h) => (
-                    <tr key={h.id} className="border-b border-border">
-                      <td className="p-2">{h.date}</td>
-                      <td className="p-2">{h.type}</td>
-                      <td className="p-2">{h.type === "部分時段公休" && h.start_hour != null ? `${formatHourToTime(h.start_hour)} ~ ${formatHourToTime(h.end_hour!)}` : "-"}</td>
-                      <td className="p-2">{h.note || "-"}</td>
-                      <td className="p-2">
-                        <Button variant="ghost" size="sm" onClick={() => deleteHoliday(h.id)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                  {holidays.length === 0 && (
-                    <tr><td colSpan={5} className="text-center text-muted-foreground p-8">尚無公休設定</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+            {/* Holiday list - collapsible */}
+            <Collapsible>
+              <div className="bg-card rounded-xl shadow">
+                <CollapsibleTrigger className="flex items-center justify-between w-full p-4">
+                  <h2 className="font-semibold text-foreground">📋 公休列表（{holidays.length} 筆）</h2>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-90" />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="px-4 pb-4">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-muted-foreground">
+                          <th className="text-left p-2">日期</th>
+                          <th className="text-left p-2">類型</th>
+                          <th className="text-left p-2">時段</th>
+                          <th className="text-left p-2">備註</th>
+                          <th className="p-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {holidays.map((h) => (
+                          <tr key={h.id} className="border-b border-border">
+                            <td className="p-2">{h.date}</td>
+                            <td className="p-2">{h.type}</td>
+                            <td className="p-2">{h.type === "部分時段公休" && h.start_hour != null ? `${formatHourToTime(h.start_hour)} ~ ${formatHourToTime(h.end_hour!)}` : "-"}</td>
+                            <td className="p-2">{h.note || "-"}</td>
+                            <td className="p-2">
+                              <Button variant="ghost" size="sm" onClick={() => deleteHoliday(h.id)}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                        {holidays.length === 0 && (
+                          <tr><td colSpan={5} className="text-center text-muted-foreground p-8">尚無公休設定</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
           </TabsContent>
 
           {/* SERVICES */}
