@@ -695,7 +695,7 @@ export default function AdminPage() {
                     </thead>
                     <tbody>
                       {filteredBookings.map((b) => (
-                        <tr key={b.id} className={cn("border-b border-border hover:bg-secondary/50", (b.cancelled_at || b.status === "cancelled") && "opacity-50")}>
+                        <tr key={b.id} className={cn("border-b border-border hover:bg-secondary/50", (b.cancelled_at || b.status === "cancelled") && "opacity-50", !b.cancelled_at && b.status !== "cancelled" && blacklistedPhones.has(b.phone) && "bg-destructive/10")}>
                           <td className="p-2 whitespace-nowrap text-xs">{new Date(b.order_time).toLocaleString("zh-TW")}</td>
                           <td className="p-2 whitespace-nowrap">{b.date}</td>
                           <td className="p-2">{b.start_time_str}</td>
