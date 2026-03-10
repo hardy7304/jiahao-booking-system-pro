@@ -368,8 +368,6 @@ export default function AdminPage() {
         case "date": return dir * (a.date.localeCompare(b.date) || (a.start_hour - b.start_hour));
         case "total_price": return dir * (a.total_price - b.total_price);
         case "duration": return dir * (a.duration - b.duration);
-        case "name": return dir * a.name.localeCompare(b.name, "zh-TW");
-        case "service": return dir * a.service.localeCompare(b.service, "zh-TW");
         default: return 0;
       }
     });
