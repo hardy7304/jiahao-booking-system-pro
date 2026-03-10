@@ -359,10 +359,16 @@ export default function TodayDashboard({
                         ✅ 完成
                       </Badge>
                     )}
-                    {isOverdue && (
-                      <Badge variant="outline" className="text-xs border-orange-400 text-orange-600 bg-orange-50 shrink-0 animate-pulse">
-                        ⚠️ 待完成
-                      </Badge>
+                    {isOverdue && onMarkComplete && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs h-6 px-2 border-orange-400 text-orange-600 bg-orange-50 hover:bg-emerald-100 hover:text-emerald-700 hover:border-emerald-300 shrink-0 animate-pulse hover:animate-none"
+                        onClick={() => onMarkComplete(b.id)}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-0.5" />
+                        標記完成
+                      </Button>
                     )}
                     {isCurrent && (
                       <Badge className="bg-primary text-primary-foreground text-xs shrink-0 animate-pulse">
