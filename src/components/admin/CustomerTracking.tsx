@@ -256,6 +256,7 @@ export default function CustomerTracking() {
     setBlacklistAction(c.blacklist_action || "warn");
     setNewTag("");
     setNewNote("");
+    setBookingFilter("all");
     // Fetch booking history
     setLoadingBookings(true);
     const { data } = await supabase
