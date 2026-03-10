@@ -152,11 +152,13 @@ export default function BookingCalendarView({
           const isToday = isSameDay(day, new Date());
           const isHoliday = !!holidayMap[dateStr];
 
+          const cancelledCount = getCancelledCountForDay(day);
+
           return (
             <div
               key={dateStr}
               className={cn(
-                "border rounded-lg p-1 min-h-[80px] md:min-h-[100px] cursor-pointer transition-colors",
+                "border rounded-lg p-1 min-h-[80px] md:min-h-[100px] cursor-pointer transition-colors relative",
                 isToday && "border-primary border-2 bg-primary/5",
                 isHoliday && "bg-destructive/10 border-destructive/30",
                 !isToday && !isHoliday && "border-border hover:bg-secondary/30"
