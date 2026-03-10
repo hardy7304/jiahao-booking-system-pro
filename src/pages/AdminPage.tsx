@@ -529,7 +529,7 @@ export default function AdminPage() {
 
           {/* TODAY */}
           <TabsContent value="today" className="mt-4">
-            <TodayDashboard bookings={bookings} holidays={holidays} loading={loading} commission={commission} blacklistedPhones={blacklistedPhones} onMarkComplete={completeBooking} />
+            <TodayDashboard bookings={bookings} holidays={holidays} loading={loading} commission={commission} blacklistedPhones={blacklistedPhones} />
           </TabsContent>
 
           {/* BOOKINGS */}

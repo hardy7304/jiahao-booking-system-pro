@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { format, addDays, isToday } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { Clock, CalendarDays, DollarSign, AlertTriangle, Briefcase, Building2, Wallet, ChevronLeft, ChevronRight, CalendarIcon, Ban, CheckCircle2 } from "lucide-react";
+import { Clock, CalendarDays, DollarSign, AlertTriangle, Briefcase, Building2, Wallet, ChevronLeft, ChevronRight, CalendarIcon, Ban } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -65,14 +65,12 @@ export default function TodayDashboard({
   loading,
   commission,
   blacklistedPhones,
-  onMarkComplete,
 }: {
   bookings: Booking[];
   holidays: Holiday[];
   loading: boolean;
   commission?: CommissionHelpers;
   blacklistedPhones?: Set<string>;
-  onMarkComplete?: (id: string) => void;
 }) {
   const [now, setNow] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -359,16 +357,10 @@ export default function TodayDashboard({
                         ✅ 完成
                       </Badge>
                     )}
-                    {isOverdue && onMarkComplete && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-xs h-6 px-2 border-orange-400 text-orange-600 bg-orange-50 hover:bg-emerald-100 hover:text-emerald-700 hover:border-emerald-300 shrink-0 animate-pulse hover:animate-none"
-                        onClick={() => onMarkComplete(b.id)}
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5 mr-0.5" />
-                        標記完成
-                      </Button>
+                    {isOverdue && (
+                      <Badge variant="outline" className="text-xs border-orange-400 text-orange-600 bg-orange-50 shrink-0 animate-pulse">
+                        ⚠️ 待完成
+                      </Badge>
                     )}
                     {isCurrent && (
                       <Badge className="bg-primary text-primary-foreground text-xs shrink-0 animate-pulse">
