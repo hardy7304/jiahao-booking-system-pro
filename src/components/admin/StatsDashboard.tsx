@@ -1,7 +1,16 @@
 import { useState, useMemo } from "react";
 import { format, subDays, parseISO, startOfMonth, endOfMonth, isWithinInterval, getDay, subMonths, differenceInDays } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase, CalendarIcon, TrendingUp, BarChart3, Receipt, Droplets, XCircle } from "lucide-react";
+import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase, CalendarIcon, TrendingUp, BarChart3, Receipt, Droplets, XCircle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
+import { adminApi } from "@/lib/adminApi";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
