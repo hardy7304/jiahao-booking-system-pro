@@ -277,7 +277,7 @@ export default function CustomerTracking() {
       bookingsByPhone.set(b.phone, list);
     });
 
-    const header = ["姓名", "電話", "等級", "來店次數", "爽約次數", "最後來訪", "總消費", "平均消費", "最常預約服務", "標籤", "黑名單"];
+    const header = ["姓名", "電話", "等級", "來店次數", "爽約次數", "取消次數", "最後來訪", "總消費", "平均消費", "最常預約服務", "標籤", "黑名單"];
     const rows = customers.map(c => {
       const tier = getAutoTier(c.visit_count);
       const tags = customerTags(c.id).map(t => t.tag).join("、");
@@ -289,7 +289,7 @@ export default function CustomerTracking() {
       const topSvc = [...svcCount.entries()].sort((a, b) => b[1] - a[1])[0];
 
       return [
-        c.name, c.phone, tier.label, c.visit_count, c.no_show_count,
+        c.name, c.phone, tier.label, c.visit_count, c.no_show_count, c.cancel_count || 0,
         c.last_visit_date || "", totalSpent, avgSpent,
         topSvc ? `${topSvc[0]}(${topSvc[1]}次)` : "",
         tags, c.is_blacklisted ? "是" : "否",
