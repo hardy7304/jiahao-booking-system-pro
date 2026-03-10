@@ -128,6 +128,8 @@ export default function AdminPage() {
   const [bufferInput, setBufferInput] = useState("10");
   const [freeAddonInput, setFreeAddonInput] = useState("10");
   const [preBlockInput, setPreBlockInput] = useState("60");
+  const [adminPasswordInput, setAdminPasswordInput] = useState("");
+  const [adminPasswordFromDb, setAdminPasswordFromDb] = useState(DEFAULT_ADMIN_PASSWORD);
 
   // Services & addons list for manual booking
   const [servicesList, setServicesList] = useState<any[]>([]);
