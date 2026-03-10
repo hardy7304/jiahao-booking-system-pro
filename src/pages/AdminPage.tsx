@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatHourToTime, generateTimeSlots } from "@/lib/services";
 import { adminApi } from "@/lib/adminApi";
