@@ -71,6 +71,8 @@ export default function StatsDashboard({
   const [customTo, setCustomTo] = useState<Date>(endOfMonth(now));
   const [fromOpen, setFromOpen] = useState(false);
   const [toOpen, setToOpen] = useState(false);
+  const [showCancelled, setShowCancelled] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const { rangeStart, rangeEnd, rangeLabel } = useMemo(() => {
     switch (preset) {
