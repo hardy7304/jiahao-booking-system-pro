@@ -180,23 +180,26 @@ export default function BookingPage() {
     const bookingData = {
       date: dateStr,
       start_hour: selectedSlot,
-      start_time_str: formatHourToTime(selectedSlot),
       name: name.trim(),
       phone: phone.trim(),
       service: selectedService.name,
       addons: allAddons,
       duration: totalDuration,
       total_price: totalPrice,
-      source: 'customer',
     };
 
-    const { error } = await supabase.from('bookings').insert(bookingData);
-    setLoading(false);
-
-    if (error) {
-      toast.error("預約失敗，請稍後再試");
-      console.error(error);
-    } else {
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const resp = await fetch(`${supabaseUrl}/functions/v1/api-booking`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bookingData),
+      });
+      setLoading(false);
+      if (!resp.ok) {
+        const err = await resp.json();
+        toast.error(err.error || "預約失敗，請稍後再試");
+      } else {
       setSuccess({
         ...bookingData,
         calendarLink: generateGoogleCalendarLink({
