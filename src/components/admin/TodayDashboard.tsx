@@ -24,6 +24,7 @@ interface Booking {
   duration: number;
   total_price: number;
   cancelled_at: string | null;
+  cancel_reason: string | null;
   status: string | null;
   oil_bonus: number;
 }
@@ -100,12 +101,15 @@ export default function TodayDashboard({
   const dayBookings = useMemo(
     () =>
       bookings
-        .filter((b) => b.date === viewDateStr && !b.cancelled_at && b.status !== "cancelled")
+        .filter((b) => b.date === viewDateStr)
         .sort((a, b) => a.start_hour - b.start_hour),
     [bookings, viewDateStr]
   );
 
-  const completedBookings = dayBookings.filter((b) => b.status === "completed");
+  const activeBookings = dayBookings.filter((b) => !b.cancelled_at && b.status !== "cancelled");
+  const cancelledCount = dayBookings.filter((b) => b.cancelled_at || b.status === "cancelled").length;
+
+  const completedBookings = activeBookings.filter((b) => b.status === "completed");
   const dayRevenue = completedBookings.reduce((sum, b) => sum + b.total_price, 0);
 
   const currentHourRaw = now.getHours() + now.getMinutes() / 60;
@@ -118,7 +122,7 @@ export default function TodayDashboard({
 
   const isHolidayOnDate = holidays.some((h) => h.date === viewDateStr && h.type === "整天公休");
   const totalSlots = 24;
-  const bookedSlots = dayBookings.length;
+  const bookedSlots = activeBookings.length;
   const availableSlots = isHolidayOnDate ? 0 : Math.max(0, totalSlots - bookedSlots);
   const completedCount = completedBookings.length;
 
@@ -302,7 +306,7 @@ export default function TodayDashboard({
             📋 {isViewingToday ? "今日" : format(selectedDate, "M/d", { locale: zhTW })} 預約時程
           </h2>
           {isViewingToday && (() => {
-            const overdueCount = dayBookings.filter(b => 
+            const overdueCount = activeBookings.filter(b => 
               b.status !== "completed" && 
               b.start_hour + b.duration / 60 < adjustedCurrentHour
             ).length;
@@ -314,7 +318,12 @@ export default function TodayDashboard({
           })()}
           {completedCount > 0 && (
             <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-600 bg-emerald-50">
-              ✅ {completedCount}/{dayBookings.length}
+              ✅ {completedCount}/{activeBookings.length}
+            </Badge>
+          )}
+          {cancelledCount > 0 && (
+            <Badge variant="outline" className="text-xs border-muted text-muted-foreground">
+              ❌ 取消 {cancelledCount}
             </Badge>
           )}
         </div>
@@ -327,13 +336,15 @@ export default function TodayDashboard({
             {dayBookings.map((b) => {
               const cat = getCategoryFromService(b.service);
               const colorClass = SERVICE_COLORS[cat] || SERVICE_COLORS.foot;
+              const isCancelled = !!b.cancelled_at || b.status === "cancelled";
               const endHour = b.start_hour + b.duration / 60;
               const isPast = isViewingToday && b.start_hour < adjustedCurrentHour;
               const isCurrent =
                 isViewingToday &&
+                !isCancelled &&
                 b.start_hour <= adjustedCurrentHour &&
                 endHour > adjustedCurrentHour;
-              const isOverdue = isViewingToday && b.status !== "completed" && endHour < adjustedCurrentHour;
+              const isOverdue = isViewingToday && !isCancelled && b.status !== "completed" && endHour < adjustedCurrentHour;
 
               const base = commission ? commission.calcBase(b.total_price, b.service, b.addons) : null;
               const therapist = commission ? commission.calcTherapist(b.total_price, b.service, b.addons) + (b.oil_bonus || 0) : null;
@@ -343,10 +354,11 @@ export default function TodayDashboard({
                   key={b.id}
                   className={cn(
                     "p-3 rounded-lg border transition-colors",
-                    isCurrent && "border-primary bg-primary/5 ring-2 ring-primary/20",
-                    isOverdue && "border-orange-400 bg-orange-50/80 ring-1 ring-orange-200",
-                    !isCurrent && !isOverdue && isPast && "border-border opacity-60",
-                    !isCurrent && !isOverdue && !isPast && "border-border hover:bg-secondary/30"
+                    isCancelled && "opacity-40 border-border bg-muted/30 line-through decoration-muted-foreground/40",
+                    !isCancelled && isCurrent && "border-primary bg-primary/5 ring-2 ring-primary/20",
+                    !isCancelled && isOverdue && "border-orange-400 bg-orange-50/80 ring-1 ring-orange-200",
+                    !isCancelled && !isCurrent && !isOverdue && isPast && "border-border opacity-60",
+                    !isCancelled && !isCurrent && !isOverdue && !isPast && "border-border hover:bg-secondary/30"
                   )}
                 >
                   <div className="flex items-center gap-3">
@@ -394,43 +406,55 @@ export default function TodayDashboard({
                         進行中
                       </Badge>
                     )}
-                  </div>
-                  {/* Quick action buttons */}
-                  <div className="flex items-center gap-1.5 mt-2 ml-[68px]">
-                    {b.status !== "completed" ? (
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-emerald-600 border-emerald-300 hover:bg-emerald-50" onClick={() => onComplete?.(b.id)}>
-                        <Check className="w-3 h-3" /> 完成
-                      </Button>
-                    ) : (
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-muted-foreground" onClick={() => onUncomplete?.(b.id)}>
-                        <Undo2 className="w-3 h-3" /> 改回確認
-                      </Button>
-                    )}
-                    <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => onEdit?.(b)}>
-                      <Pencil className="w-3 h-3" /> 編輯
-                    </Button>
-                    {cancellingId === b.id ? (
-                      <div className="flex items-center gap-1">
-                        <Input
-                          placeholder="取消原因"
-                          value={cancelReason}
-                          onChange={(e) => setCancelReason(e.target.value)}
-                          className="h-7 text-xs w-28"
-                        />
-                        <Button size="sm" variant="destructive" className="h-7 text-xs px-2" onClick={() => setConfirmCancelOpen(true)}>
-                          確認取消
-                        </Button>
-                        <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => { setCancellingId(null); setCancelReason(""); }}>
-                          取消
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setCancellingId(b.id)}>
-                        <X className="w-3 h-3" /> 取消預約
-                      </Button>
+                    {isCancelled && (
+                      <Badge variant="outline" className="text-xs border-muted text-muted-foreground shrink-0">
+                        已取消
+                      </Badge>
                     )}
                   </div>
-                  {commission && base !== null && (
+                  {/* Quick action buttons - hide for cancelled */}
+                  {!isCancelled && (
+                    <div className="flex items-center gap-1.5 mt-2 ml-[68px]">
+                      {b.status !== "completed" ? (
+                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-emerald-600 border-emerald-300 hover:bg-emerald-50" onClick={() => onComplete?.(b.id)}>
+                          <Check className="w-3 h-3" /> 完成
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-muted-foreground" onClick={() => onUncomplete?.(b.id)}>
+                          <Undo2 className="w-3 h-3" /> 改回確認
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => onEdit?.(b)}>
+                        <Pencil className="w-3 h-3" /> 編輯
+                      </Button>
+                      {cancellingId === b.id ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            placeholder="取消原因"
+                            value={cancelReason}
+                            onChange={(e) => setCancelReason(e.target.value)}
+                            className="h-7 text-xs w-28"
+                          />
+                          <Button size="sm" variant="destructive" className="h-7 text-xs px-2" onClick={() => setConfirmCancelOpen(true)}>
+                            確認取消
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => { setCancellingId(null); setCancelReason(""); }}>
+                            取消
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/10" onClick={() => setCancellingId(b.id)}>
+                          <X className="w-3 h-3" /> 取消預約
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  {isCancelled && b.cancel_reason && (
+                    <div className="mt-1 ml-[68px] text-xs text-muted-foreground">
+                      取消原因：{b.cancel_reason}
+                    </div>
+                  )}
+                  {!isCancelled && commission && base !== null && (
                     <div className="mt-1 ml-[68px] text-xs text-muted-foreground">
                       售價 NT${b.total_price.toLocaleString()} → <span className="text-destructive">差價 -NT${commission.getDeduction(b.service).toLocaleString()}</span> → 基底 NT${base.toLocaleString()} → <span className="text-blue-600 font-medium">師傅 NT${therapist!.toLocaleString()}</span>{(b.oil_bonus || 0) > 0 && <span className="text-emerald-600"> (含精油+{b.oil_bonus})</span>}
                     </div>

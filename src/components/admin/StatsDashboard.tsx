@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { format, subDays, parseISO, startOfMonth, endOfMonth, isWithinInterval, getDay, subMonths, differenceInDays } from "date-fns";
 import { zhTW } from "date-fns/locale";
-import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase, CalendarIcon, TrendingUp, BarChart3, Receipt, Droplets } from "lucide-react";
+import { DollarSign, CalendarDays, Users, RotateCcw, Download, Wallet, Building2, Briefcase, CalendarIcon, TrendingUp, BarChart3, Receipt, Droplets, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -85,6 +85,12 @@ export default function StatsDashboard({
   }, [preset, customFrom, customTo]);
 
   const active = bookings.filter((b) => b.status === "completed");
+  const cancelledInRange = useMemo(() => {
+    return bookings.filter((b) => b.status === "cancelled" && (() => {
+      const d = parseISO(b.date);
+      return isWithinInterval(d, { start: rangeStart, end: rangeEnd });
+    })()).length;
+  }, [bookings, rangeStart, rangeEnd]);
 
   const rangeBookings = useMemo(() => {
     return active.filter((b) => {
@@ -314,10 +320,11 @@ export default function StatsDashboard({
       </div>
 
       {/* Daily averages */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <SummaryCard icon={<TrendingUp className="w-4 h-4" />} label="日均營收" value={`NT$${Math.round(rangeRevenue / rangeDays).toLocaleString()}`} valueClass="text-primary" />
         <SummaryCard icon={<BarChart3 className="w-4 h-4" />} label="日均預約數" value={`${(rangeCount / rangeDays).toFixed(1)} 筆`} />
         <SummaryCard icon={<Receipt className="w-4 h-4" />} label="客單價" value={`NT$${rangeCount > 0 ? Math.round(rangeRevenue / rangeCount).toLocaleString() : 0}`} valueClass="text-primary" />
+        <SummaryCard icon={<XCircle className="w-4 h-4" />} label="取消預約" value={`${cancelledInRange} 筆`} valueClass="text-destructive" />
       </div>
 
       {/* Commission summary */}

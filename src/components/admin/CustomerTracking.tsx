@@ -24,6 +24,7 @@ interface Customer {
   name: string;
   visit_count: number;
   no_show_count: number;
+  cancel_count: number;
   last_visit_date: string | null;
   created_at: string;
   is_blacklisted: boolean;
@@ -118,16 +119,19 @@ export default function CustomerTracking() {
 
     if (bookings && bookings.length > 0) {
       const phoneMap = new Map<string, {
-        name: string; visit_count: number; no_show_count: number; last_visit_date: string | null;
+        name: string; visit_count: number; no_show_count: number; cancel_count: number; last_visit_date: string | null;
       }>();
 
       for (const b of bookings) {
-        const existing = phoneMap.get(b.phone) || { name: b.name, visit_count: 0, no_show_count: 0, last_visit_date: null };
+        const existing = phoneMap.get(b.phone) || { name: b.name, visit_count: 0, no_show_count: 0, cancel_count: 0, last_visit_date: null };
         if (b.status === "completed") {
           existing.visit_count++;
           if (!existing.last_visit_date || b.date > existing.last_visit_date) existing.last_visit_date = b.date;
         }
-        if (b.status === "cancelled" && b.cancel_reason?.includes("爽約")) existing.no_show_count++;
+        if (b.status === "cancelled") {
+          existing.cancel_count++;
+          if (b.cancel_reason?.includes("爽約")) existing.no_show_count++;
+        }
         existing.name = b.name;
         phoneMap.set(b.phone, existing);
       }
@@ -135,7 +139,7 @@ export default function CustomerTracking() {
       for (const [phone, stats] of phoneMap) {
         await supabase.from("customers").upsert({
           phone, name: stats.name, visit_count: stats.visit_count,
-          no_show_count: stats.no_show_count, last_visit_date: stats.last_visit_date,
+          no_show_count: stats.no_show_count, cancel_count: stats.cancel_count, last_visit_date: stats.last_visit_date,
         } as any, { onConflict: "phone" });
       }
     }
@@ -273,7 +277,7 @@ export default function CustomerTracking() {
       bookingsByPhone.set(b.phone, list);
     });
 
-    const header = ["姓名", "電話", "等級", "來店次數", "爽約次數", "最後來訪", "總消費", "平均消費", "最常預約服務", "標籤", "黑名單"];
+    const header = ["姓名", "電話", "等級", "來店次數", "爽約次數", "取消次數", "最後來訪", "總消費", "平均消費", "最常預約服務", "標籤", "黑名單"];
     const rows = customers.map(c => {
       const tier = getAutoTier(c.visit_count);
       const tags = customerTags(c.id).map(t => t.tag).join("、");
@@ -285,7 +289,7 @@ export default function CustomerTracking() {
       const topSvc = [...svcCount.entries()].sort((a, b) => b[1] - a[1])[0];
 
       return [
-        c.name, c.phone, tier.label, c.visit_count, c.no_show_count,
+        c.name, c.phone, tier.label, c.visit_count, c.no_show_count, c.cancel_count || 0,
         c.last_visit_date || "", totalSpent, avgSpent,
         topSvc ? `${topSvc[0]}(${topSvc[1]}次)` : "",
         tags, c.is_blacklisted ? "是" : "否",
@@ -375,6 +379,7 @@ export default function CustomerTracking() {
                   </div>
                 </th>
                 <th className="text-center p-3">爽約</th>
+                <th className="text-center p-3">取消</th>
                 <th className="text-center p-3 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("spending")}>
                   <div className="flex items-center justify-center gap-1">
                     消費
@@ -414,6 +419,13 @@ export default function CustomerTracking() {
                       {c.no_show_count > 0 ? (
                         <Badge variant="destructive" className="gap-1">
                           <AlertTriangle className="w-3 h-3" />{c.no_show_count}
+                        </Badge>
+                      ) : <span className="text-muted-foreground">0</span>}
+                    </td>
+                    <td className="p-3 text-center">
+                      {(c.cancel_count || 0) > 0 ? (
+                        <Badge variant="outline" className="gap-1 text-muted-foreground">
+                          {c.cancel_count}
                         </Badge>
                       ) : <span className="text-muted-foreground">0</span>}
                     </td>
@@ -473,6 +485,7 @@ export default function CustomerTracking() {
                           <div><span className="text-muted-foreground">電話：</span>{c.phone}</div>
                           <div><span className="text-muted-foreground">來訪：</span>{c.visit_count} 次</div>
                           <div><span className="text-muted-foreground">爽約：</span>{c.no_show_count} 次</div>
+                          <div><span className="text-muted-foreground">取消：</span>{c.cancel_count || 0} 次</div>
                           <div><span className="text-muted-foreground">最後造訪：</span>{c.last_visit_date || "—"}</div>
                         </div>
 
