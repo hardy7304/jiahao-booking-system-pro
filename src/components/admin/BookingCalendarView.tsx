@@ -70,9 +70,11 @@ function getShortService(serviceName: string): string {
 export default function BookingCalendarView({
   bookings,
   holidays,
+  blacklistedPhones,
 }: {
   bookings: Booking[];
   holidays: Holiday[];
+  blacklistedPhones?: Set<string>;
 }) {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
