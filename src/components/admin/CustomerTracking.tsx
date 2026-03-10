@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Search, Users, RefreshCw, AlertTriangle, Ban, Star, Tag, StickyNote, Plus, X, ChevronDown, ChevronRight, Shield, CalendarDays, Clock, CheckCircle2, XCircle, DollarSign, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, subMonths } from "date-fns";
 
 interface Customer {
   id: string;
