@@ -92,14 +92,21 @@ export default function CustomerTracking() {
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [{ data: c }, { data: t }, { data: n }] = await Promise.all([
+    const [{ data: c }, { data: t }, { data: n }, { data: bk }] = await Promise.all([
       supabase.from("customers").select("*").order("updated_at", { ascending: false }),
       supabase.from("customer_tags").select("*"),
       supabase.from("customer_notes").select("*").order("created_at", { ascending: false }),
+      supabase.from("bookings").select("phone, total_price, status"),
     ]);
     if (c) setCustomers(c as Customer[]);
     if (t) setAllTags(t as CustomerTag[]);
     if (n) setAllNotes(n as CustomerNote[]);
+    // Build spending map
+    const sMap = new Map<string, number>();
+    (bk || []).forEach((b: any) => {
+      if (b.status === "completed") sMap.set(b.phone, (sMap.get(b.phone) || 0) + (b.total_price || 0));
+    });
+    setSpendingByPhone(sMap);
     setLoading(false);
   }, []);
 
