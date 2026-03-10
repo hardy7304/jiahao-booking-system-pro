@@ -17,11 +17,19 @@ function base64urlEncode(data: Uint8Array): string {
 }
 
 function pemToArrayBuffer(pem: string): ArrayBuffer {
-  const b64 = pem
+  // Handle various PEM formats: literal \n, actual newlines, spaces
+  let cleaned = pem
+    .replace(/\\n/g, "\n")
     .replace(/-----BEGIN PRIVATE KEY-----/g, "")
     .replace(/-----END PRIVATE KEY-----/g, "")
-    .replace(/\s/g, "");
-  const binary = atob(b64);
+    .replace(/[\s\r\n]/g, "");
+  
+  // Pad base64 if needed
+  while (cleaned.length % 4 !== 0) {
+    cleaned += "=";
+  }
+  
+  const binary = atob(cleaned);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
   return bytes.buffer;
@@ -187,8 +195,10 @@ Deno.serve(async (req) => {
       throw new Error("Missing Google Calendar configuration secrets");
     }
 
-    // Handle escaped newlines in private key
-    const formattedKey = privateKey.replace(/\\n/g, "\n");
+    console.log("Service account email:", email);
+    console.log("Calendar ID:", calendarId);
+    // Strip surrounding quotes if present, then handle escaped newlines
+    let formattedKey = privateKey.replace(/^["']|["']$/g, "").replace(/\\n/g, "\n");
 
     const body = await req.json();
     const { action, booking } = body;
