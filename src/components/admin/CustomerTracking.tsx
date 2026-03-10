@@ -419,6 +419,13 @@ export default function CustomerTracking() {
                         </Badge>
                       ) : <span className="text-muted-foreground">0</span>}
                     </td>
+                    <td className="p-3 text-center">
+                      {(c.cancel_count || 0) > 0 ? (
+                        <Badge variant="outline" className="gap-1 text-muted-foreground">
+                          {c.cancel_count}
+                        </Badge>
+                      ) : <span className="text-muted-foreground">0</span>}
+                    </td>
                     <td className="p-3 text-center text-muted-foreground">
                       ${(spendingByPhone.get(c.phone) || 0).toLocaleString()}
                     </td>
