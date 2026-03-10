@@ -154,14 +154,30 @@ export default function AdminPage() {
   // Blacklisted phones
   const [blacklistedPhones, setBlacklistedPhones] = useState<Set<string>>(new Set());
 
-  // Load admin password from DB
+  // Google Calendar embed
+  const [googleCalendarId, setGoogleCalendarId] = useState<string>("");
+  const [showGoogleCalendar, setShowGoogleCalendar] = useState(false);
+
+  // Load admin password from DB & Google Calendar ID
   useEffect(() => {
-    const loadPassword = async () => {
+    const loadConfig = async () => {
       const { data } = await supabase.from("system_config").select("value").eq("key", "admin_password").single();
       if (data?.value) setAdminPasswordFromDb(data.value);
     };
-    loadPassword();
+    loadConfig();
   }, []);
+
+  useEffect(() => {
+    if (authenticated) {
+      const fetchCalendarId = async () => {
+        try {
+          const res = await adminApi("config.get_calendar_id");
+          if (res.calendar_id) setGoogleCalendarId(res.calendar_id);
+        } catch {}
+      };
+      fetchCalendarId();
+    }
+  }, [authenticated]);
 
   const handleLogin = () => {
     if (password === adminPasswordFromDb) {
