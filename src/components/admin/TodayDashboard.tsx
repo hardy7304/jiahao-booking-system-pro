@@ -24,6 +24,7 @@ interface Booking {
   duration: number;
   total_price: number;
   cancelled_at: string | null;
+  cancel_reason: string | null;
   status: string | null;
   oil_bonus: number;
 }
