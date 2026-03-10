@@ -65,12 +65,14 @@ export default function TodayDashboard({
   loading,
   commission,
   blacklistedPhones,
+  onMarkComplete,
 }: {
   bookings: Booking[];
   holidays: Holiday[];
   loading: boolean;
   commission?: CommissionHelpers;
   blacklistedPhones?: Set<string>;
+  onMarkComplete?: (id: string) => void;
 }) {
   const [now, setNow] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
