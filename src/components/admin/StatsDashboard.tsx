@@ -561,8 +561,8 @@ export default function StatsDashboard({
                     <span className="text-xs text-muted-foreground">{b.date} {b.start_time_str}</span>
                   </div>
                   <div className="text-sm text-muted-foreground">{b.service} · NT${b.total_price}</div>
-                  {(b as any).cancel_reason && (
-                    <div className="text-xs text-destructive">原因：{(b as any).cancel_reason}</div>
+                  {b.cancel_reason && (
+                    <div className="text-xs text-destructive">原因：{b.cancel_reason}</div>
                   )}
                   <div className="text-xs text-muted-foreground">📞 {b.phone}</div>
                 </div>
