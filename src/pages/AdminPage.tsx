@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { formatHourToTime, generateTimeSlots } from "@/lib/services";
+import { adminApi } from "@/lib/adminApi";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -166,6 +167,7 @@ export default function AdminPage() {
     if (password === adminPasswordFromDb) {
       setAuthenticated(true);
       sessionStorage.setItem("admin_auth", "true");
+      sessionStorage.setItem("admin_password", password);
     } else {
       toast.error("密碼錯誤");
     }
@@ -210,38 +212,38 @@ export default function AdminPage() {
     }
   }, [authenticated, fetchBookings, fetchHolidays, fetchServices, fetchBlacklist]);
 
-  // CRUD actions
+  // CRUD actions via Edge Function
   const softDeleteBooking = async (id: string, reason: string) => {
-    await supabase.from("bookings").update({
-      cancelled_at: new Date().toISOString(), status: "cancelled", cancel_reason: reason,
-    } as any).eq("id", id);
-    setCancellingId(null);
-    fetchBookings();
-    toast.success("已取消預約");
+    try {
+      await adminApi("booking.cancel", { id, reason });
+      setCancellingId(null);
+      fetchBookings();
+      toast.success("已取消預約");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const restoreBooking = async (id: string) => {
-    await supabase.from("bookings").update({
-      cancelled_at: null, status: "confirmed", cancel_reason: null,
-    } as any).eq("id", id);
-    fetchBookings();
-    toast.success("已復原預約");
+    try {
+      await adminApi("booking.restore", { id });
+      fetchBookings();
+      toast.success("已復原預約");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const completeBooking = async (id: string) => {
-    await supabase.from("bookings").update({
-      status: "completed", completed_at: new Date().toISOString(),
-    } as any).eq("id", id);
-    fetchBookings();
-    toast.success("已標記完成");
+    try {
+      await adminApi("booking.complete", { id });
+      fetchBookings();
+      toast.success("已標記完成");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const uncompleteBooking = async (id: string) => {
-    await supabase.from("bookings").update({
-      status: "confirmed", completed_at: null,
-    } as any).eq("id", id);
-    fetchBookings();
-    toast.success("已改回確認狀態");
+    try {
+      await adminApi("booking.uncomplete", { id });
+      fetchBookings();
+      toast.success("已改回確認狀態");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const openEditBooking = (b: Booking) => {
@@ -255,72 +257,65 @@ export default function AdminPage() {
 
   const saveEditBooking = async () => {
     if (!editingBooking) return;
-    const { error } = await supabase.from("bookings").update({
-      name: editForm.name, phone: editForm.phone, service: editForm.service,
-      date: editForm.date, start_hour: editForm.start_hour,
-      start_time_str: formatHourToTime(editForm.start_hour),
-      duration: editForm.duration, total_price: editForm.total_price,
-      addons: editForm.addons, source: editForm.source, oil_bonus: editForm.oil_bonus,
-    } as any).eq("id", editingBooking.id);
-    if (error) { toast.error("更新失敗"); return; }
-    setEditingBooking(null);
-    fetchBookings();
-    toast.success("已更新預約");
+    try {
+      await adminApi("booking.update", {
+        id: editingBooking.id,
+        updates: {
+          name: editForm.name, phone: editForm.phone, service: editForm.service,
+          date: editForm.date, start_hour: editForm.start_hour,
+          start_time_str: formatHourToTime(editForm.start_hour),
+          duration: editForm.duration, total_price: editForm.total_price,
+          addons: editForm.addons, source: editForm.source, oil_bonus: editForm.oil_bonus,
+        },
+      });
+      setEditingBooking(null);
+      fetchBookings();
+      toast.success("已更新預約");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const permanentDeleteBooking = async (id: string) => {
-    await supabase.from("bookings").delete().eq("id", id);
-    fetchBookings();
-    toast.success("已永久刪除");
+    try {
+      await adminApi("booking.delete", { id });
+      fetchBookings();
+      toast.success("已永久刪除");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const saveNote = async () => {
     if (!noteBookingId) return;
-    await supabase.from("bookings").update({ admin_note: noteText } as any).eq("id", noteBookingId);
-    setNoteBookingId(null);
-    setNoteText("");
-    fetchBookings();
-    toast.success("已儲存備註");
-  };
-
-  const syncHolidayToCalendar = async (holiday: any, action: "create_holiday" | "delete_holiday") => {
     try {
-      const resp = await fetch(
-        `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/google-calendar-sync`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-          body: JSON.stringify({ action, holiday }),
-        }
-      );
-      if (!resp.ok) console.error("Holiday sync failed:", await resp.text());
-    } catch (err) {
-      console.error("Holiday sync error:", err);
-    }
+      await adminApi("booking.note", { id: noteBookingId, note: noteText });
+      setNoteBookingId(null);
+      setNoteText("");
+      fetchBookings();
+      toast.success("已儲存備註");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const deleteHoliday = async (id: string) => {
-    const holiday = holidays.find(h => h.id === id);
-    await supabase.from("holidays").delete().eq("id", id);
-    if (holiday) syncHolidayToCalendar(holiday, "delete_holiday");
-    fetchHolidays();
-    toast.success("已刪除公休");
+    try {
+      await adminApi("holiday.delete", { id });
+      fetchHolidays();
+      toast.success("已刪除公休");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const addHoliday = async () => {
     if (!hDate) { toast.error("請選擇日期"); return; }
-    const data: any = { date: format(hDate, "yyyy-MM-dd"), type: hType, note: hNote || null };
+    const holiday: any = { date: format(hDate, "yyyy-MM-dd"), type: hType, note: hNote || null };
     if (hType === "部分時段公休") {
       if (!hStart || !hEnd) { toast.error("請選擇時段"); return; }
-      data.start_hour = parseFloat(hStart);
-      data.end_hour = parseFloat(hEnd);
+      holiday.start_hour = parseFloat(hStart);
+      holiday.end_hour = parseFloat(hEnd);
     }
-    const { data: inserted } = await supabase.from("holidays").insert(data).select().single();
-    if (inserted) syncHolidayToCalendar(inserted, "create_holiday");
-    fetchHolidays();
-    setHDate(undefined);
-    setHNote("");
-    toast.success("已新增公休");
+    try {
+      await adminApi("holiday.create", { holiday });
+      fetchHolidays();
+      setHDate(undefined);
+      setHNote("");
+      toast.success("已新增公休");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const handleCalendarDayClick = (day: Date) => {
@@ -351,22 +346,15 @@ export default function AdminPage() {
     if (pendingHolidayDates.size === 0) return;
     setIsSavingBatch(true);
     try {
-      const rows = Array.from(pendingHolidayDates).map(date => ({
+      const holidays = Array.from(pendingHolidayDates).map(date => ({
         date, type: "整天公休" as const, note: null,
       }));
-      const { data: inserted } = await supabase.from("holidays").insert(rows).select();
-      if (inserted && inserted.length > 0) {
-        // Batch sync to Google Calendar
-        for (const h of inserted) {
-          await syncHolidayToCalendar(h, "create_holiday");
-        }
-      }
+      await adminApi("holiday.create_batch", { holidays });
       setPendingHolidayDates(new Set());
       fetchHolidays();
-      toast.success(`已新增 ${rows.length} 筆公休`);
-    } catch (err) {
-      toast.error("批次新增失敗");
-      console.error(err);
+      toast.success(`已新增 ${holidays.length} 筆公休`);
+    } catch (err: any) {
+      toast.error(err.message || "批次新增失敗");
     } finally {
       setIsSavingBatch(false);
     }
@@ -374,17 +362,18 @@ export default function AdminPage() {
 
   const addHolidayFromDialog = async () => {
     if (!holidayClickedDate) return;
-    const data: any = { date: holidayClickedDate, type: holidayDialogType, note: holidayDialogNote || null };
+    const holiday: any = { date: holidayClickedDate, type: holidayDialogType, note: holidayDialogNote || null };
     if (holidayDialogType === "部分時段公休") {
       if (!holidayDialogStart || !holidayDialogEnd) { toast.error("請選擇時段"); return; }
-      data.start_hour = parseFloat(holidayDialogStart);
-      data.end_hour = parseFloat(holidayDialogEnd);
+      holiday.start_hour = parseFloat(holidayDialogStart);
+      holiday.end_hour = parseFloat(holidayDialogEnd);
     }
-    const { data: inserted } = await supabase.from("holidays").insert(data).select().single();
-    if (inserted) syncHolidayToCalendar(inserted, "create_holiday");
-    fetchHolidays();
-    setHolidayClickedDate(null);
-    toast.success("已新增公休");
+    try {
+      await adminApi("holiday.create", { holiday });
+      fetchHolidays();
+      setHolidayClickedDate(null);
+      toast.success("已新增公休");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const createManualBooking = async () => {
@@ -392,38 +381,52 @@ export default function AdminPage() {
       toast.error("請填寫所有必填欄位");
       return;
     }
-    await supabase.from("bookings").insert({
-      name: manualForm.name, phone: manualForm.phone, service: manualForm.service,
-      date: manualForm.date, start_hour: manualForm.start_hour,
-      start_time_str: formatHourToTime(manualForm.start_hour),
-      duration: manualForm.duration, total_price: manualForm.total_price,
-      addons: manualForm.addons, status: "confirmed", source: manualForm.source,
-    } as any);
-    setShowManualBooking(false);
-    setManualForm({ name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [], source: "admin" });
-    fetchBookings();
-    toast.success("已新增預約");
+    try {
+      await adminApi("booking.create_manual", {
+        booking: {
+          name: manualForm.name, phone: manualForm.phone, service: manualForm.service,
+          date: manualForm.date, start_hour: manualForm.start_hour,
+          start_time_str: formatHourToTime(manualForm.start_hour),
+          duration: manualForm.duration, total_price: manualForm.total_price,
+          addons: manualForm.addons, status: "confirmed", source: manualForm.source,
+        },
+      });
+      setShowManualBooking(false);
+      setManualForm({ name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [], source: "admin" });
+      fetchBookings();
+      toast.success("已新增預約");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const saveSettings = async () => {
     const rate = parseInt(rateInput) / 100;
     if (rate <= 0 || rate >= 1) { toast.error("請輸入 1~99 的數值"); return; }
-    await commission.updateRate(rate);
-    await calendarNotesHook.updateNotes(calendarNotesInput);
-    await shopInfoHook.updateInfo(shopInfoInput);
-    await bookingSettingsHook.updateSettings({
-      buffer_minutes: parseInt(bufferInput) || 10,
-      free_addon_duration: parseInt(freeAddonInput) || 10,
-      pre_block_minutes: parseInt(preBlockInput) || 60,
-    });
-    // Save admin password if changed
-    if (adminPasswordInput.trim()) {
-      await supabase.from("system_config").upsert({ key: "admin_password", value: adminPasswordInput.trim() } as any);
-      setAdminPasswordFromDb(adminPasswordInput.trim());
-      setAdminPasswordInput("");
-    }
-    setShowSettings(false);
-    toast.success("已儲存設定");
+    try {
+      const configs: { key: string; value: string }[] = [
+        { key: "commission_rate", value: rate.toString() },
+        { key: "calendar_notes", value: calendarNotesInput },
+        { key: "buffer_minutes", value: bufferInput },
+        { key: "free_addon_duration", value: freeAddonInput },
+        { key: "pre_block_minutes", value: preBlockInput },
+        ...Object.entries(shopInfoInput).map(([k, v]) => ({ key: k, value: v })),
+      ];
+      if (adminPasswordInput.trim()) {
+        configs.push({ key: "admin_password", value: adminPasswordInput.trim() });
+      }
+      await adminApi("config.update", { configs });
+      // Update local state
+      commission.refetch();
+      calendarNotesHook.refetch();
+      shopInfoHook.refetch();
+      bookingSettingsHook.refetch();
+      if (adminPasswordInput.trim()) {
+        setAdminPasswordFromDb(adminPasswordInput.trim());
+        sessionStorage.setItem("admin_password", adminPasswordInput.trim());
+        setAdminPasswordInput("");
+      }
+      setShowSettings(false);
+      toast.success("已儲存設定");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   // Filtered & sorted bookings

@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminApi } from "@/lib/adminApi";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -137,10 +138,12 @@ export default function CustomerTracking() {
       }
 
       for (const [phone, stats] of phoneMap) {
-        await supabase.from("customers").upsert({
-          phone, name: stats.name, visit_count: stats.visit_count,
-          no_show_count: stats.no_show_count, cancel_count: stats.cancel_count, last_visit_date: stats.last_visit_date,
-        } as any, { onConflict: "phone" });
+        await adminApi("customer.upsert", {
+          customer: {
+            phone, name: stats.name, visit_count: stats.visit_count,
+            no_show_count: stats.no_show_count, cancel_count: stats.cancel_count, last_visit_date: stats.last_visit_date,
+          },
+        });
       }
     }
     await fetchAll();
@@ -194,37 +197,35 @@ export default function CustomerTracking() {
   // Tag actions
   const addTag = async (customerId: string, tag: string) => {
     if (!tag.trim()) return;
-    const { error } = await supabase.from("customer_tags").insert({ customer_id: customerId, tag: tag.trim() } as any);
-    if (error) {
-      if (error.code === "23505") toast.error("此標籤已存在");
+    try {
+      const result = await adminApi("customer_tag.add", { tag: { customer_id: customerId, tag: tag.trim() } });
+      setAllTags(prev => [...prev, result.tag || { id: crypto.randomUUID(), customer_id: customerId, tag: tag.trim() }]);
+      setNewTag("");
+      toast.success(`已新增標籤「${tag.trim()}」`);
+    } catch (e: any) {
+      if (e.message?.includes("23505")) toast.error("此標籤已存在");
       else toast.error("新增失敗");
-      return;
     }
-    setAllTags(prev => [...prev, { id: crypto.randomUUID(), customer_id: customerId, tag: tag.trim() }]);
-    setNewTag("");
-    toast.success(`已新增標籤「${tag.trim()}」`);
   };
 
   const removeTag = async (tagId: string) => {
-    await supabase.from("customer_tags").delete().eq("id", tagId);
+    await adminApi("customer_tag.remove", { id: tagId });
     setAllTags(prev => prev.filter(t => t.id !== tagId));
   };
 
   // Note actions
   const addNote = async (customerId: string) => {
     if (!newNote.trim()) return;
-    const { data, error } = await supabase.from("customer_notes")
-      .insert({ customer_id: customerId, content: newNote.trim() } as any)
-      .select()
-      .single();
-    if (error) { toast.error("新增失敗"); return; }
-    if (data) setAllNotes(prev => [data as CustomerNote, ...prev]);
-    setNewNote("");
-    toast.success("備註已新增");
+    try {
+      const result = await adminApi("customer_note.add", { note: { customer_id: customerId, content: newNote.trim() } });
+      if (result.note) setAllNotes(prev => [result.note as CustomerNote, ...prev]);
+      setNewNote("");
+      toast.success("備註已新增");
+    } catch { toast.error("新增失敗"); }
   };
 
   const deleteNote = async (noteId: string) => {
-    await supabase.from("customer_notes").delete().eq("id", noteId);
+    await adminApi("customer_note.remove", { id: noteId });
     setAllNotes(prev => prev.filter(n => n.id !== noteId));
   };
 
@@ -238,7 +239,7 @@ export default function CustomerTracking() {
       updates.blacklist_reason = null;
       updates.blacklist_action = "warn";
     }
-    await supabase.from("customers").update(updates).eq("id", customer.id);
+    await adminApi("customer.update", { id: customer.id, updates });
     setCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, ...updates } : c));
     if (selectedCustomer?.id === customer.id) {
       setSelectedCustomer({ ...customer, ...updates });
