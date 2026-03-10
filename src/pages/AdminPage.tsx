@@ -529,7 +529,17 @@ export default function AdminPage() {
 
           {/* TODAY */}
           <TabsContent value="today" className="mt-4">
-            <TodayDashboard bookings={bookings} holidays={holidays} loading={loading} commission={commission} blacklistedPhones={blacklistedPhones} />
+            <TodayDashboard
+              bookings={bookings}
+              holidays={holidays}
+              loading={loading}
+              commission={commission}
+              blacklistedPhones={blacklistedPhones}
+              onComplete={completeBooking}
+              onUncomplete={uncompleteBooking}
+              onCancel={(id, reason) => softDeleteBooking(id, reason)}
+              onEdit={(b) => { openEditBooking(b as Booking); }}
+            />
           </TabsContent>
 
           {/* BOOKINGS */}
