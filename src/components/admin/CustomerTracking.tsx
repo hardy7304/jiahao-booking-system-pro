@@ -417,6 +417,9 @@ export default function CustomerTracking() {
                         </Badge>
                       ) : <span className="text-muted-foreground">0</span>}
                     </td>
+                    <td className="p-3 text-center text-muted-foreground">
+                      ${(spendingByPhone.get(c.phone) || 0).toLocaleString()}
+                    </td>
                     <td className="p-3">
                       <div className="flex flex-wrap gap-1">
                         {tags.slice(0, 3).map(t => (
