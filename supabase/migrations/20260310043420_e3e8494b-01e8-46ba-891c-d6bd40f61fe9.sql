@@ -1,0 +1,1 @@
+ALTER TABLE public.holidays ADD COLUMN google_calendar_event_id text;

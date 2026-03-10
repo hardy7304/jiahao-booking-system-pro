@@ -160,6 +160,7 @@ export type Database = {
           created_at: string
           date: string
           end_hour: number | null
+          google_calendar_event_id: string | null
           id: string
           note: string | null
           start_hour: number | null
@@ -169,6 +170,7 @@ export type Database = {
           created_at?: string
           date: string
           end_hour?: number | null
+          google_calendar_event_id?: string | null
           id?: string
           note?: string | null
           start_hour?: number | null
@@ -178,6 +180,7 @@ export type Database = {
           created_at?: string
           date?: string
           end_hour?: number | null
+          google_calendar_event_id?: string | null
           id?: string
           note?: string | null
           start_hour?: number | null

@@ -260,8 +260,26 @@ export default function AdminPage() {
     toast.success("已儲存備註");
   };
 
+  const syncHolidayToCalendar = async (holiday: any, action: "create_holiday" | "delete_holiday") => {
+    try {
+      const resp = await fetch(
+        `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/google-calendar-sync`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          body: JSON.stringify({ action, holiday }),
+        }
+      );
+      if (!resp.ok) console.error("Holiday sync failed:", await resp.text());
+    } catch (err) {
+      console.error("Holiday sync error:", err);
+    }
+  };
+
   const deleteHoliday = async (id: string) => {
+    const holiday = holidays.find(h => h.id === id);
     await supabase.from("holidays").delete().eq("id", id);
+    if (holiday) syncHolidayToCalendar(holiday, "delete_holiday");
     fetchHolidays();
     toast.success("已刪除公休");
   };
@@ -274,11 +292,31 @@ export default function AdminPage() {
       data.start_hour = parseFloat(hStart);
       data.end_hour = parseFloat(hEnd);
     }
-    await supabase.from("holidays").insert(data);
+    const { data: inserted } = await supabase.from("holidays").insert(data).select().single();
+    if (inserted) syncHolidayToCalendar(inserted, "create_holiday");
     fetchHolidays();
     setHDate(undefined);
     setHNote("");
     toast.success("已新增公休");
+  };
+
+  const quickAddFullDayHoliday = async (date: Date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    // Check if already a holiday
+    const existing = holidays.find(h => h.date === dateStr && h.type === "整天公休");
+    if (existing) {
+      // Remove it (toggle off)
+      await supabase.from("holidays").delete().eq("id", existing.id);
+      syncHolidayToCalendar(existing, "delete_holiday");
+      fetchHolidays();
+      toast.success("已取消公休");
+      return;
+    }
+    const data = { date: dateStr, type: "整天公休", note: null };
+    const { data: inserted } = await supabase.from("holidays").insert(data).select().single();
+    if (inserted) syncHolidayToCalendar(inserted, "create_holiday");
+    fetchHolidays();
+    toast.success(`已設定 ${dateStr} 為公休日`);
   };
 
   const createManualBooking = async () => {
@@ -681,8 +719,38 @@ export default function AdminPage() {
 
           {/* HOLIDAYS */}
           <TabsContent value="holidays" className="mt-4 space-y-4">
+            {/* Quick-add calendar */}
+            <div className="bg-card rounded-xl shadow p-4 space-y-3">
+              <h2 className="font-semibold text-foreground">📅 快速設定公休（點擊日期切換整天公休）</h2>
+              <Calendar
+                mode="multiple"
+                selected={holidays.filter(h => h.type === "整天公休").map(h => parseISO(h.date))}
+                onDayClick={(day) => quickAddFullDayHoliday(day)}
+                className="rounded-md border pointer-events-auto"
+                modifiers={{
+                  holiday: holidays.filter(h => h.type === "整天公休").map(h => parseISO(h.date)),
+                  partialHoliday: holidays.filter(h => h.type === "部分時段公休").map(h => parseISO(h.date)),
+                }}
+                modifiersStyles={{
+                  holiday: { backgroundColor: "hsl(var(--destructive))", color: "hsl(var(--destructive-foreground))", borderRadius: "6px" },
+                  partialHoliday: { backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))", borderRadius: "6px", border: "2px solid hsl(var(--destructive))" },
+                }}
+                numberOfMonths={2}
+              />
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded bg-destructive" />
+                  <span>整天公休</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded bg-accent border-2 border-destructive" />
+                  <span>部分時段公休</span>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-card rounded-xl shadow p-4 space-y-4">
-              <h2 className="font-semibold text-foreground">新增公休</h2>
+              <h2 className="font-semibold text-foreground">手動新增公休</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-sm">日期</Label>
