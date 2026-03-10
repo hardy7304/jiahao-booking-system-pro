@@ -890,6 +890,18 @@ export default function AdminPage() {
                 此內容會顯示在客人加入 Google 日曆時的事件描述底部
               </p>
             </div>
+            <div className="border-t border-border pt-4 space-y-2">
+              <Label className="text-sm font-medium">修改管理員密碼</Label>
+              <Input
+                type="password"
+                value={adminPasswordInput}
+                onChange={(e) => setAdminPasswordInput(e.target.value)}
+                placeholder="留空則不修改"
+              />
+              <p className="text-xs text-muted-foreground">
+                輸入新密碼後儲存即可變更，留空則維持原密碼
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSettings(false)}>取消</Button>
