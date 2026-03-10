@@ -10,13 +10,13 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings, Pencil, Undo2 } from "lucide-react";
+import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings, Pencil, Undo2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import ServiceManagement from "@/components/ServiceManagement";
 import TodayDashboard from "@/components/admin/TodayDashboard";
 import BookingCalendarView from "@/components/admin/BookingCalendarView";
 import StatsDashboard from "@/components/admin/StatsDashboard";
 import CustomerTracking from "@/components/admin/CustomerTracking";
-import BookingFiltersBar, { type BookingFilters } from "@/components/admin/BookingFilters";
+import BookingFiltersBar, { type BookingFilters, type SortField } from "@/components/admin/BookingFilters";
 import { useCommission } from "@/hooks/useCommission";
 import { useCalendarNotes } from "@/hooks/useCalendarNotes";
 import { useShopInfo } from "@/hooks/useShopInfo";
@@ -91,6 +91,7 @@ export default function AdminPage() {
   // Filters
   const [filters, setFilters] = useState<BookingFilters>({
     search: "", dateFrom: undefined, dateTo: undefined, category: "all", status: "all",
+    sortField: "order_time", sortDirection: "desc",
   });
 
   // Cancel dialog
@@ -319,7 +320,7 @@ export default function AdminPage() {
     toast.success("已儲存設定");
   };
 
-  // Filtered bookings
+  // Filtered & sorted bookings
   const filteredBookings = useMemo(() => {
     let result = [...bookings];
     if (filters.status === "active") result = result.filter((b) => !b.cancelled_at && b.status !== "cancelled");
@@ -341,14 +342,31 @@ export default function AdminPage() {
     if (filters.category !== "all") {
       result = result.filter((b) => {
         const s = b.service;
-        if (filters.category === "foot") return s.includes("腳底按摩");
-        if (filters.category === "body") return s.includes("全身指壓");
-        if (filters.category === "fascia") return s.includes("筋膜刀");
+        if (filters.category === "foot") return s.includes("腳底按摩") && !s.includes("筋膜刀");
+        if (filters.category === "body") return s.includes("全身指壓") && !s.includes("筋膜刀");
+        if (filters.category === "fascia_foot") return s.includes("筋膜刀") && s.includes("腳底");
+        if (filters.category === "fascia_body") return s.includes("筋膜刀") && s.includes("身體");
+        if (filters.category === "fascia_neck") return s.includes("筋膜刀") && s.includes("肩頸");
         if (filters.category === "package") return s.includes("套餐");
         if (filters.category === "combo") return s.includes("深層雙拼");
         return true;
       });
     }
+
+    // Sorting
+    const dir = filters.sortDirection === "asc" ? 1 : -1;
+    result.sort((a, b) => {
+      switch (filters.sortField) {
+        case "order_time": return dir * (new Date(a.order_time).getTime() - new Date(b.order_time).getTime());
+        case "date": return dir * (a.date.localeCompare(b.date) || (a.start_hour - b.start_hour));
+        case "total_price": return dir * (a.total_price - b.total_price);
+        case "duration": return dir * (a.duration - b.duration);
+        case "name": return dir * a.name.localeCompare(b.name, "zh-TW");
+        case "service": return dir * a.service.localeCompare(b.service, "zh-TW");
+        default: return 0;
+      }
+    });
+
     return result;
   }, [bookings, filters]);
 
@@ -428,15 +446,39 @@ export default function AdminPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border text-muted-foreground">
-                        <th className="text-left p-2">下單時間</th>
-                        <th className="text-left p-2">日期</th>
-                        <th className="text-left p-2">時段</th>
-                        <th className="text-left p-2">姓名</th>
-                        <th className="text-left p-2">電話</th>
-                        <th className="text-left p-2">服務</th>
-                        <th className="text-left p-2">加購</th>
-                        <th className="text-left p-2">時長</th>
-                        <th className="text-left p-2">金額</th>
+                        {([
+                          { field: "order_time" as SortField, label: "下單時間" },
+                          { field: "date" as SortField, label: "日期" },
+                          { field: null, label: "時段" },
+                          { field: "name" as SortField, label: "姓名" },
+                          { field: null, label: "電話" },
+                          { field: "service" as SortField, label: "服務" },
+                          { field: null, label: "加購" },
+                          { field: "duration" as SortField, label: "時長" },
+                          { field: "total_price" as SortField, label: "金額" },
+                        ] as const).map(({ field, label }) => (
+                          <th key={label} className="text-left p-2">
+                            {field ? (
+                              <button
+                                className="flex items-center gap-1 hover:text-foreground transition-colors"
+                                onClick={() => {
+                                  if (filters.sortField === field) {
+                                    setFilters({ ...filters, sortDirection: filters.sortDirection === "asc" ? "desc" : "asc" });
+                                  } else {
+                                    setFilters({ ...filters, sortField: field, sortDirection: "desc" });
+                                  }
+                                }}
+                              >
+                                {label}
+                                {filters.sortField === field ? (
+                                  filters.sortDirection === "asc" ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
+                                ) : (
+                                  <ArrowUpDown className="w-3 h-3 opacity-40" />
+                                )}
+                              </button>
+                            ) : label}
+                          </th>
+                        ))}
                         {showCommissionCols && (
                           <>
                             <th className="text-left p-2">公司差價</th>
