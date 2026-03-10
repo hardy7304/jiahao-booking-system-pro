@@ -164,8 +164,9 @@ export default function BookingCalendarView({
                 {dayBookings.slice(0, 3).map((b) => (
                   <div
                     key={b.id}
-                    className={cn("text-[10px] px-1 py-0.5 rounded truncate border", getCategoryColor(b.service))}
+                    className={cn("text-[10px] px-1 py-0.5 rounded truncate border flex items-center gap-0.5", getCategoryColor(b.service), blacklistedPhones?.has(b.phone) && "!bg-destructive/20 !border-destructive/40 !text-destructive")}
                   >
+                    {blacklistedPhones?.has(b.phone) && <Ban className="w-2.5 h-2.5 shrink-0" />}
                     {b.start_time_str} {b.name} - {getShortService(b.service)}
                   </div>
                 ))}
