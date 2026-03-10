@@ -99,20 +99,19 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
 
   // ===== Services CRUD =====
   const toggleServiceActive = async (s: ServiceRow) => {
-    await supabase.from("services").update({ is_active: !s.is_active } as any).eq("id", s.id);
+    await adminApi("service.update", { service: { id: s.id, is_active: !s.is_active } });
     fetchAll();
   };
 
   const deleteService = async (id: string) => {
-    await supabase.from("services").delete().eq("id", id);
+    await adminApi("service.delete", { id });
     fetchAll();
     toast.success("已刪除服務");
   };
 
   const saveEditService = async () => {
     if (!editingService) return;
-    const { id, ...rest } = editingService;
-    await supabase.from("services").update(rest as any).eq("id", id);
+    await adminApi("service.update", { service: editingService });
     setEditingService(null);
     fetchAll();
     toast.success("已更新服務");
@@ -121,7 +120,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
   const createService = async () => {
     if (!newService.name.trim()) { toast.error("請輸入服務名稱"); return; }
     const maxOrder = services.length > 0 ? Math.max(...services.map(s => s.sort_order)) + 1 : 0;
-    await supabase.from("services").insert({ ...newService, sort_order: maxOrder } as any);
+    await adminApi("service.create", { service: { ...newService, sort_order: maxOrder } });
     setShowServiceDialog(false);
     setNewService({ name: "", duration: 60, price: 1000, category: "foot", is_active: true, deduction: 0 });
     fetchAll();
@@ -129,7 +128,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
   };
 
   const updateDeduction = async (s: ServiceRow, val: number) => {
-    await supabase.from("services").update({ deduction: val } as any).eq("id", s.id);
+    await adminApi("service.update", { service: { id: s.id, deduction: val } });
     setServices(prev => prev.map(x => x.id === s.id ? { ...x, deduction: val } : x));
     toast.success(`已更新「${s.name}」差價為 NT$${val}`);
   };
@@ -137,11 +136,10 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
   const moveService = async (index: number, direction: -1 | 1) => {
     const target = index + direction;
     if (target < 0 || target >= services.length) return;
-    const updates = [
-      { id: services[index].id, sort_order: services[target].sort_order },
-      { id: services[target].id, sort_order: services[index].sort_order },
-    ];
-    await Promise.all(updates.map(u => supabase.from("services").update({ sort_order: u.sort_order } as any).eq("id", u.id)));
+    await Promise.all([
+      adminApi("service.update", { service: { id: services[index].id, sort_order: services[target].sort_order } }),
+      adminApi("service.update", { service: { id: services[target].id, sort_order: services[index].sort_order } }),
+    ]);
     fetchAll();
   };
 
