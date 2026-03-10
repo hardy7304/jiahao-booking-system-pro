@@ -52,6 +52,24 @@ Deno.serve(async (req) => {
 
       const { data, error } = await supabase.from("bookings").insert(bookingData).select().single();
       if (error) throw error;
+
+      // Sync to Google Calendar (fire-and-forget, don't block booking response)
+      try {
+        const syncResp = await fetch(
+          `${Deno.env.get("SUPABASE_URL")}/functions/v1/google-calendar-sync`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+            body: JSON.stringify({ action: "create", booking: data }),
+          }
+        );
+        if (!syncResp.ok) {
+          console.error("Google Calendar sync failed:", await syncResp.text());
+        }
+      } catch (syncErr) {
+        console.error("Google Calendar sync error:", syncErr);
+      }
+
       return new Response(JSON.stringify({ booking: data }), { status: 201, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
     }
 
