@@ -747,9 +747,44 @@ export default function AdminPage() {
           <TabsContent value="holidays" className="mt-4 space-y-4">
             {/* Calendar view - always visible */}
             <div className="bg-card rounded-xl shadow p-4 space-y-3">
-              <h2 className="font-semibold text-foreground">📅 公休日曆（點擊日期管理公休）</h2>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <h2 className="font-semibold text-foreground">📅 公休日曆（點擊日期管理公休）</h2>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={holidayCalendarMonth.getFullYear().toString()}
+                    onValueChange={(v) => setHolidayCalendarMonth(new Date(parseInt(v), holidayCalendarMonth.getMonth(), 1))}
+                  >
+                    <SelectTrigger className="w-[90px] h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 1 + i).map(y => (
+                        <SelectItem key={y} value={y.toString()}>{y} 年</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select
+                    value={holidayCalendarMonth.getMonth().toString()}
+                    onValueChange={(v) => setHolidayCalendarMonth(new Date(holidayCalendarMonth.getFullYear(), parseInt(v), 1))}
+                  >
+                    <SelectTrigger className="w-[80px] h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 12 }, (_, i) => (
+                        <SelectItem key={i} value={i.toString()}>{i + 1} 月</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setHolidayCalendarMonth(new Date())}>
+                    本月
+                  </Button>
+                </div>
+              </div>
               <Calendar
                 mode="multiple"
+                month={holidayCalendarMonth}
+                onMonthChange={setHolidayCalendarMonth}
                 selected={holidays.filter(h => h.type === "整天公休").map(h => parseISO(h.date))}
                 onDayClick={(day) => handleCalendarDayClick(day)}
                 className="rounded-md border pointer-events-auto"
