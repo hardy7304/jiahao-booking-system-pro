@@ -362,17 +362,18 @@ export default function AdminPage() {
 
   const addHolidayFromDialog = async () => {
     if (!holidayClickedDate) return;
-    const data: any = { date: holidayClickedDate, type: holidayDialogType, note: holidayDialogNote || null };
+    const holiday: any = { date: holidayClickedDate, type: holidayDialogType, note: holidayDialogNote || null };
     if (holidayDialogType === "部分時段公休") {
       if (!holidayDialogStart || !holidayDialogEnd) { toast.error("請選擇時段"); return; }
-      data.start_hour = parseFloat(holidayDialogStart);
-      data.end_hour = parseFloat(holidayDialogEnd);
+      holiday.start_hour = parseFloat(holidayDialogStart);
+      holiday.end_hour = parseFloat(holidayDialogEnd);
     }
-    const { data: inserted } = await supabase.from("holidays").insert(data).select().single();
-    if (inserted) syncHolidayToCalendar(inserted, "create_holiday");
-    fetchHolidays();
-    setHolidayClickedDate(null);
-    toast.success("已新增公休");
+    try {
+      await adminApi("holiday.create", { holiday });
+      fetchHolidays();
+      setHolidayClickedDate(null);
+      toast.success("已新增公休");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const createManualBooking = async () => {
