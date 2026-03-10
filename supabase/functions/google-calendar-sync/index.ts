@@ -195,6 +195,8 @@ Deno.serve(async (req) => {
       throw new Error("Missing Google Calendar configuration secrets");
     }
 
+    console.log("Service account email:", email);
+    console.log("Calendar ID:", calendarId);
     // Strip surrounding quotes if present, then handle escaped newlines
     let formattedKey = privateKey.replace(/^["']|["']$/g, "").replace(/\\n/g, "\n");
 
