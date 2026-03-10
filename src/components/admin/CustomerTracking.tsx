@@ -696,10 +696,15 @@ export default function CustomerTracking() {
 
                   {/* Booking History Timeline */}
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <CalendarDays className="w-4 h-4 text-primary" />
                       <Label className="font-semibold">預約歷史</Label>
                       <Badge variant="secondary" className="text-xs">{customerBookings.length} 筆</Badge>
+                      {bookingFilter !== "all" && (
+                        <Badge variant="destructive" className="text-xs cursor-pointer" onClick={() => setBookingFilter("all")}>
+                          篩選：{bookingFilter === "cancelled" ? "取消" : "完成"} ✕
+                        </Badge>
+                      )}
                     </div>
                     {loadingBookings ? (
                       <div className="space-y-2">
@@ -709,7 +714,7 @@ export default function CustomerTracking() {
                       <p className="text-sm text-muted-foreground text-center py-3">尚無預約紀錄</p>
                     ) : (
                       <div className="relative space-y-0 max-h-[300px] overflow-y-auto">
-                        {customerBookings.map((b, idx) => {
+                        {customerBookings.filter(b => bookingFilter === "all" || b.status === bookingFilter).map((b, idx) => {
                           const isCompleted = b.status === "completed";
                           const isCancelled = b.status === "cancelled";
                           const isNoShow = isCancelled && b.cancel_reason?.includes("爽約");
