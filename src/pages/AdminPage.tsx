@@ -318,19 +318,48 @@ export default function AdminPage() {
     const dateStr = format(day, "yyyy-MM-dd");
     const dayHolidays = holidays.filter(h => h.date === dateStr);
     if (dayHolidays.length > 0) {
-      // Open dialog showing existing holidays for this date
+      // Has existing holidays - open dialog to view/manage
       setHolidayClickedDate(dateStr);
       setHolidayDialogType("部分時段公休");
       setHolidayDialogStart("");
       setHolidayDialogEnd("");
       setHolidayDialogNote("");
     } else {
-      // No holidays, open dialog to add
-      setHolidayClickedDate(dateStr);
-      setHolidayDialogType("整天公休");
-      setHolidayDialogStart("");
-      setHolidayDialogEnd("");
-      setHolidayDialogNote("");
+      // No holidays - toggle in pending batch set
+      setPendingHolidayDates(prev => {
+        const next = new Set(prev);
+        if (next.has(dateStr)) {
+          next.delete(dateStr);
+        } else {
+          next.add(dateStr);
+        }
+        return next;
+      });
+    }
+  };
+
+  const savePendingHolidays = async () => {
+    if (pendingHolidayDates.size === 0) return;
+    setIsSavingBatch(true);
+    try {
+      const rows = Array.from(pendingHolidayDates).map(date => ({
+        date, type: "整天公休" as const, note: null,
+      }));
+      const { data: inserted } = await supabase.from("holidays").insert(rows).select();
+      if (inserted && inserted.length > 0) {
+        // Batch sync to Google Calendar
+        for (const h of inserted) {
+          await syncHolidayToCalendar(h, "create_holiday");
+        }
+      }
+      setPendingHolidayDates(new Set());
+      fetchHolidays();
+      toast.success(`已新增 ${rows.length} 筆公休`);
+    } catch (err) {
+      toast.error("批次新增失敗");
+      console.error(err);
+    } finally {
+      setIsSavingBatch(false);
     }
   };
 
