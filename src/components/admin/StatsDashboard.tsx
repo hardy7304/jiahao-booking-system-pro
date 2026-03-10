@@ -138,16 +138,17 @@ export default function StatsDashboard({
 
   // SECTION B: Revenue trend (within selected range)
   const revenueTrend = useMemo(() => {
-    const data: { date: string; revenue: number; count: number; avg7?: number; therapist?: number; shop?: number }[] = [];
+    const data: { date: string; revenue: number; count: number; avg7?: number; therapist?: number; shop?: number; oilBonus?: number }[] = [];
     const days = Math.min(rangeDays, 90);
     for (let i = days - 1; i >= 0; i--) {
       const dateObj = subDays(rangeEnd, i);
       const d = format(dateObj, "yyyy-MM-dd");
       const dayBookings = active.filter((b) => b.date === d);
       const rev = dayBookings.reduce((s, b) => s + b.total_price, 0);
+      const oilB = dayBookings.reduce((s, b) => s + (b.oil_bonus || 0), 0);
       const ther = commission ? dayBookings.reduce((s, b) => s + commission.calcTherapist(b.total_price, b.service, b.addons) + (b.oil_bonus || 0), 0) : 0;
       const shop = commission ? dayBookings.reduce((s, b) => s + commission.calcShop(b.total_price, b.service, b.addons), 0) : 0;
-      data.push({ date: format(dateObj, "M/d"), revenue: rev, count: dayBookings.length, therapist: ther, shop: shop });
+      data.push({ date: format(dateObj, "M/d"), revenue: rev, count: dayBookings.length, therapist: ther, shop: shop, oilBonus: oilB });
     }
     for (let i = 0; i < data.length; i++) {
       const start = Math.max(0, i - 6);
