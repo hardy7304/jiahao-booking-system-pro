@@ -719,8 +719,38 @@ export default function AdminPage() {
 
           {/* HOLIDAYS */}
           <TabsContent value="holidays" className="mt-4 space-y-4">
+            {/* Quick-add calendar */}
+            <div className="bg-card rounded-xl shadow p-4 space-y-3">
+              <h2 className="font-semibold text-foreground">📅 快速設定公休（點擊日期切換整天公休）</h2>
+              <Calendar
+                mode="multiple"
+                selected={holidays.filter(h => h.type === "整天公休").map(h => parseISO(h.date))}
+                onDayClick={(day) => quickAddFullDayHoliday(day)}
+                className="rounded-md border pointer-events-auto"
+                modifiers={{
+                  holiday: holidays.filter(h => h.type === "整天公休").map(h => parseISO(h.date)),
+                  partialHoliday: holidays.filter(h => h.type === "部分時段公休").map(h => parseISO(h.date)),
+                }}
+                modifiersStyles={{
+                  holiday: { backgroundColor: "hsl(var(--destructive))", color: "hsl(var(--destructive-foreground))", borderRadius: "6px" },
+                  partialHoliday: { backgroundColor: "hsl(var(--accent))", color: "hsl(var(--accent-foreground))", borderRadius: "6px", border: "2px solid hsl(var(--destructive))" },
+                }}
+                numberOfMonths={2}
+              />
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded bg-destructive" />
+                  <span>整天公休</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-3 h-3 rounded bg-accent border-2 border-destructive" />
+                  <span>部分時段公休</span>
+                </div>
+              </div>
+            </div>
+
             <div className="bg-card rounded-xl shadow p-4 space-y-4">
-              <h2 className="font-semibold text-foreground">新增公休</h2>
+              <h2 className="font-semibold text-foreground">手動新增公休</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <Label className="text-sm">日期</Label>
