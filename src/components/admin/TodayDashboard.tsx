@@ -87,6 +87,7 @@ export default function TodayDashboard({
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
