@@ -378,6 +378,7 @@ export default function StatsDashboard({
             </BarChart>
           </ResponsiveContainer>
         </div>
+      )}
 
       {/* SECTION B: Revenue trend */}
       <div className="bg-card rounded-xl shadow p-4">
