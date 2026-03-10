@@ -184,6 +184,7 @@ export type Database = {
         Row: {
           blacklist_action: string
           blacklist_reason: string | null
+          cancel_count: number
           created_at: string | null
           id: string
           is_blacklisted: boolean
@@ -197,6 +198,7 @@ export type Database = {
         Insert: {
           blacklist_action?: string
           blacklist_reason?: string | null
+          cancel_count?: number
           created_at?: string | null
           id?: string
           is_blacklisted?: boolean
@@ -210,6 +212,7 @@ export type Database = {
         Update: {
           blacklist_action?: string
           blacklist_reason?: string | null
+          cancel_count?: number
           created_at?: string | null
           id?: string
           is_blacklisted?: boolean
