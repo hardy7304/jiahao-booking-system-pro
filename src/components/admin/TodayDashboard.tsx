@@ -416,12 +416,8 @@ export default function TodayDashboard({
                           onChange={(e) => setCancelReason(e.target.value)}
                           className="h-7 text-xs w-28"
                         />
-                        <Button size="sm" variant="destructive" className="h-7 text-xs px-2" onClick={() => {
-                          onCancel?.(b.id, cancelReason || "管理員取消");
-                          setCancellingId(null);
-                          setCancelReason("");
-                        }}>
-                          確認
+                        <Button size="sm" variant="destructive" className="h-7 text-xs px-2" onClick={() => setConfirmCancelOpen(true)}>
+                          確認取消
                         </Button>
                         <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => { setCancellingId(null); setCancelReason(""); }}>
                           取消
