@@ -174,7 +174,12 @@ export default function AdminPage() {
   };
 
   useEffect(() => {
-    if (sessionStorage.getItem("admin_auth") === "true") setAuthenticated(true);
+    if (sessionStorage.getItem("admin_auth") === "true" && sessionStorage.getItem("admin_password")) {
+      setAuthenticated(true);
+    } else {
+      sessionStorage.removeItem("admin_auth");
+      sessionStorage.removeItem("admin_password");
+    }
   }, []);
 
   const fetchBookings = useCallback(async () => {
