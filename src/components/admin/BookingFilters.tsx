@@ -19,6 +19,8 @@ export interface BookingFilters {
   status: string;
   sortField: SortField;
   sortDirection: SortDirection;
+  filterName: string;
+  filterService: string;
 }
 
 const CATEGORY_OPTIONS = [

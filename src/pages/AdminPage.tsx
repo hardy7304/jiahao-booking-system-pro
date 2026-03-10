@@ -91,7 +91,7 @@ export default function AdminPage() {
   // Filters
   const [filters, setFilters] = useState<BookingFilters>({
     search: "", dateFrom: undefined, dateTo: undefined, category: "all", status: "all",
-    sortField: "order_time", sortDirection: "desc",
+    sortField: "order_time", sortDirection: "desc", filterName: "", filterService: "",
   });
 
   // Cancel dialog
