@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { formatHourToTime } from "@/lib/services";
 
@@ -86,6 +87,7 @@ export default function TodayDashboard({
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("");
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
@@ -143,6 +145,7 @@ export default function TodayDashboard({
   }
 
   return (
+    <>
     <div className="space-y-4">
       {/* Date navigation + live clock */}
       <div className="bg-card rounded-xl shadow p-4">
@@ -414,12 +417,8 @@ export default function TodayDashboard({
                           onChange={(e) => setCancelReason(e.target.value)}
                           className="h-7 text-xs w-28"
                         />
-                        <Button size="sm" variant="destructive" className="h-7 text-xs px-2" onClick={() => {
-                          onCancel?.(b.id, cancelReason || "管理員取消");
-                          setCancellingId(null);
-                          setCancelReason("");
-                        }}>
-                          確認
+                        <Button size="sm" variant="destructive" className="h-7 text-xs px-2" onClick={() => setConfirmCancelOpen(true)}>
+                          確認取消
                         </Button>
                         <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => { setCancellingId(null); setCancelReason(""); }}>
                           取消
@@ -443,5 +442,40 @@ export default function TodayDashboard({
         )}
       </div>
     </div>
+
+      <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>確認取消預約？</AlertDialogTitle>
+            <AlertDialogDescription>
+              {cancellingId && (() => {
+                const target = dayBookings.find(b => b.id === cancellingId);
+                return target ? `${target.name} - ${target.service}（${target.start_time_str}）` : "";
+              })()}
+              <br />
+              取消原因：{cancelReason || "管理員取消"}
+              <br /><br />
+              此操作無法復原，確定要取消這筆預約嗎？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmCancelOpen(false)}>返回</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (cancellingId) {
+                  onCancel?.(cancellingId, cancelReason || "管理員取消");
+                }
+                setConfirmCancelOpen(false);
+                setCancellingId(null);
+                setCancelReason("");
+              }}
+            >
+              確認取消
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
