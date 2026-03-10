@@ -293,44 +293,29 @@ export default function AdminPage() {
     } catch (e: any) { toast.error(e.message); }
   };
 
-  const syncHolidayToCalendar = async (holiday: any, action: "create_holiday" | "delete_holiday") => {
-    try {
-      const resp = await fetch(
-        `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/google-calendar-sync`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-          body: JSON.stringify({ action, holiday }),
-        }
-      );
-      if (!resp.ok) console.error("Holiday sync failed:", await resp.text());
-    } catch (err) {
-      console.error("Holiday sync error:", err);
-    }
-  };
-
   const deleteHoliday = async (id: string) => {
-    const holiday = holidays.find(h => h.id === id);
-    await supabase.from("holidays").delete().eq("id", id);
-    if (holiday) syncHolidayToCalendar(holiday, "delete_holiday");
-    fetchHolidays();
-    toast.success("已刪除公休");
+    try {
+      await adminApi("holiday.delete", { id });
+      fetchHolidays();
+      toast.success("已刪除公休");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const addHoliday = async () => {
     if (!hDate) { toast.error("請選擇日期"); return; }
-    const data: any = { date: format(hDate, "yyyy-MM-dd"), type: hType, note: hNote || null };
+    const holiday: any = { date: format(hDate, "yyyy-MM-dd"), type: hType, note: hNote || null };
     if (hType === "部分時段公休") {
       if (!hStart || !hEnd) { toast.error("請選擇時段"); return; }
-      data.start_hour = parseFloat(hStart);
-      data.end_hour = parseFloat(hEnd);
+      holiday.start_hour = parseFloat(hStart);
+      holiday.end_hour = parseFloat(hEnd);
     }
-    const { data: inserted } = await supabase.from("holidays").insert(data).select().single();
-    if (inserted) syncHolidayToCalendar(inserted, "create_holiday");
-    fetchHolidays();
-    setHDate(undefined);
-    setHNote("");
-    toast.success("已新增公休");
+    try {
+      await adminApi("holiday.create", { holiday });
+      fetchHolidays();
+      setHDate(undefined);
+      setHNote("");
+      toast.success("已新增公休");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const handleCalendarDayClick = (day: Date) => {
