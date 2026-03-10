@@ -476,6 +476,7 @@ export default function TodayDashboard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </AlertDialog>
+    </>
   );
 }
