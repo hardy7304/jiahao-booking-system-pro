@@ -150,6 +150,7 @@ async function createHolidayEvent(accessToken: string, calendarId: string, holid
       start: { dateTime: startTime, timeZone: "Asia/Taipei" },
       end: { dateTime: endTime, timeZone: "Asia/Taipei" },
       colorId: "11",
+      reminders: { useDefault: false },
     };
   }
   const resp = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
