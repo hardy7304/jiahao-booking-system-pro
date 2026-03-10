@@ -212,6 +212,7 @@ export default function BookingCalendarView({
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500" /> 全身指壓</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-orange-500" /> 筋膜刀</span>
         <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-purple-500" /> 套餐/雙拼</span>
+        <span className="flex items-center gap-1">❌ 已取消預約</span>
       </div>
 
       {/* Day drawer */}
