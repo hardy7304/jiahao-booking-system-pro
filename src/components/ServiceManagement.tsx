@@ -145,20 +145,19 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
 
   // ===== Addons CRUD =====
   const toggleAddonActive = async (a: AddonRow) => {
-    await supabase.from("addons").update({ is_active: !a.is_active } as any).eq("id", a.id);
+    await adminApi("addon.update", { addon: { id: a.id, is_active: !a.is_active } });
     fetchAll();
   };
 
   const deleteAddon = async (id: string) => {
-    await supabase.from("addons").delete().eq("id", id);
+    await adminApi("addon.delete", { id });
     fetchAll();
     toast.success("已刪除加購項目");
   };
 
   const saveEditAddon = async () => {
     if (!editingAddon) return;
-    const { id, ...rest } = editingAddon;
-    await supabase.from("addons").update(rest as any).eq("id", id);
+    await adminApi("addon.update", { addon: editingAddon });
     setEditingAddon(null);
     fetchAll();
     toast.success("已更新加購項目");
@@ -167,7 +166,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
   const createAddon = async () => {
     if (!newAddon.name.trim()) { toast.error("請輸入加購名稱"); return; }
     const maxOrder = addons.length > 0 ? Math.max(...addons.map(a => a.sort_order)) + 1 : 0;
-    await supabase.from("addons").insert({ ...newAddon, sort_order: maxOrder } as any);
+    await adminApi("addon.create", { addon: { ...newAddon, sort_order: maxOrder } });
     setShowAddonDialog(false);
     setNewAddon({ name: "", extra_duration: 0, extra_price: 0, deduction: 0, applicable_categories: [], addon_type: "加購", is_active: true });
     fetchAll();
@@ -177,11 +176,10 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
   const moveAddon = async (index: number, direction: -1 | 1) => {
     const target = index + direction;
     if (target < 0 || target >= addons.length) return;
-    const updates = [
-      { id: addons[index].id, sort_order: addons[target].sort_order },
-      { id: addons[target].id, sort_order: addons[index].sort_order },
-    ];
-    await Promise.all(updates.map(u => supabase.from("addons").update({ sort_order: u.sort_order } as any).eq("id", u.id)));
+    await Promise.all([
+      adminApi("addon.update", { addon: { id: addons[index].id, sort_order: addons[target].sort_order } }),
+      adminApi("addon.update", { addon: { id: addons[target].id, sort_order: addons[index].sort_order } }),
+    ]);
     fetchAll();
   };
 
