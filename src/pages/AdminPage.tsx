@@ -196,13 +196,19 @@ export default function AdminPage() {
     if (addonData) setAddonsList(addonData);
   }, []);
 
+  const fetchBlacklist = useCallback(async () => {
+    const { data } = await supabase.from("customers").select("phone").eq("is_blacklisted", true);
+    if (data) setBlacklistedPhones(new Set(data.map((c: any) => c.phone)));
+  }, []);
+
   useEffect(() => {
     if (authenticated) {
       fetchBookings();
       fetchHolidays();
       fetchServices();
+      fetchBlacklist();
     }
-  }, [authenticated, fetchBookings, fetchHolidays, fetchServices]);
+  }, [authenticated, fetchBookings, fetchHolidays, fetchServices, fetchBlacklist]);
 
   // CRUD actions
   const softDeleteBooking = async (id: string, reason: string) => {
