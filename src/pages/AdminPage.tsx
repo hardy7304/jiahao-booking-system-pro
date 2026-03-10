@@ -401,22 +401,32 @@ export default function AdminPage() {
   const saveSettings = async () => {
     const rate = parseInt(rateInput) / 100;
     if (rate <= 0 || rate >= 1) { toast.error("請輸入 1~99 的數值"); return; }
-    await commission.updateRate(rate);
-    await calendarNotesHook.updateNotes(calendarNotesInput);
-    await shopInfoHook.updateInfo(shopInfoInput);
-    await bookingSettingsHook.updateSettings({
-      buffer_minutes: parseInt(bufferInput) || 10,
-      free_addon_duration: parseInt(freeAddonInput) || 10,
-      pre_block_minutes: parseInt(preBlockInput) || 60,
-    });
-    // Save admin password if changed
-    if (adminPasswordInput.trim()) {
-      await supabase.from("system_config").upsert({ key: "admin_password", value: adminPasswordInput.trim() } as any);
-      setAdminPasswordFromDb(adminPasswordInput.trim());
-      setAdminPasswordInput("");
-    }
-    setShowSettings(false);
-    toast.success("已儲存設定");
+    try {
+      const configs: { key: string; value: string }[] = [
+        { key: "commission_rate", value: rate.toString() },
+        { key: "calendar_notes", value: calendarNotesInput },
+        { key: "buffer_minutes", value: bufferInput },
+        { key: "free_addon_duration", value: freeAddonInput },
+        { key: "pre_block_minutes", value: preBlockInput },
+        ...Object.entries(shopInfoInput).map(([k, v]) => ({ key: k, value: v })),
+      ];
+      if (adminPasswordInput.trim()) {
+        configs.push({ key: "admin_password", value: adminPasswordInput.trim() });
+      }
+      await adminApi("config.update", { configs });
+      // Update local state
+      commission.refetch();
+      calendarNotesHook.refetch();
+      shopInfoHook.refetch();
+      bookingSettingsHook.refetch();
+      if (adminPasswordInput.trim()) {
+        setAdminPasswordFromDb(adminPasswordInput.trim());
+        sessionStorage.setItem("admin_password", adminPasswordInput.trim());
+        setAdminPasswordInput("");
+      }
+      setShowSettings(false);
+      toast.success("已儲存設定");
+    } catch (e: any) { toast.error(e.message); }
   };
 
   // Filtered & sorted bookings
