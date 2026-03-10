@@ -63,6 +63,7 @@ export type Database = {
           created_at: string
           date: string
           duration: number
+          google_calendar_event_id: string | null
           id: string
           name: string
           oil_bonus: number
@@ -84,6 +85,7 @@ export type Database = {
           created_at?: string
           date: string
           duration: number
+          google_calendar_event_id?: string | null
           id?: string
           name: string
           oil_bonus?: number
@@ -105,6 +107,7 @@ export type Database = {
           created_at?: string
           date?: string
           duration?: number
+          google_calendar_event_id?: string | null
           id?: string
           name?: string
           oil_bonus?: number
