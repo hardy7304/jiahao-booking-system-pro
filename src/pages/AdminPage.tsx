@@ -308,23 +308,39 @@ export default function AdminPage() {
     toast.success("已新增公休");
   };
 
-  const quickAddFullDayHoliday = async (date: Date) => {
-    const dateStr = format(date, "yyyy-MM-dd");
-    // Check if already a holiday
-    const existing = holidays.find(h => h.date === dateStr && h.type === "整天公休");
-    if (existing) {
-      // Remove it (toggle off)
-      await supabase.from("holidays").delete().eq("id", existing.id);
-      syncHolidayToCalendar(existing, "delete_holiday");
-      fetchHolidays();
-      toast.success("已取消公休");
-      return;
+  const handleCalendarDayClick = (day: Date) => {
+    const dateStr = format(day, "yyyy-MM-dd");
+    const dayHolidays = holidays.filter(h => h.date === dateStr);
+    if (dayHolidays.length > 0) {
+      // Open dialog showing existing holidays for this date
+      setHolidayClickedDate(dateStr);
+      setHolidayDialogType("部分時段公休");
+      setHolidayDialogStart("");
+      setHolidayDialogEnd("");
+      setHolidayDialogNote("");
+    } else {
+      // No holidays, open dialog to add
+      setHolidayClickedDate(dateStr);
+      setHolidayDialogType("整天公休");
+      setHolidayDialogStart("");
+      setHolidayDialogEnd("");
+      setHolidayDialogNote("");
     }
-    const data = { date: dateStr, type: "整天公休", note: null };
+  };
+
+  const addHolidayFromDialog = async () => {
+    if (!holidayClickedDate) return;
+    const data: any = { date: holidayClickedDate, type: holidayDialogType, note: holidayDialogNote || null };
+    if (holidayDialogType === "部分時段公休") {
+      if (!holidayDialogStart || !holidayDialogEnd) { toast.error("請選擇時段"); return; }
+      data.start_hour = parseFloat(holidayDialogStart);
+      data.end_hour = parseFloat(holidayDialogEnd);
+    }
     const { data: inserted } = await supabase.from("holidays").insert(data).select().single();
     if (inserted) syncHolidayToCalendar(inserted, "create_holiday");
     fetchHolidays();
-    toast.success(`已設定 ${dateStr} 為公休日`);
+    setHolidayClickedDate(null);
+    toast.success("已新增公休");
   };
 
   const createManualBooking = async () => {
