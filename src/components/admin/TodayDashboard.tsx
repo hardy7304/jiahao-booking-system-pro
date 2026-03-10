@@ -335,13 +335,15 @@ export default function TodayDashboard({
             {dayBookings.map((b) => {
               const cat = getCategoryFromService(b.service);
               const colorClass = SERVICE_COLORS[cat] || SERVICE_COLORS.foot;
+              const isCancelled = !!b.cancelled_at || b.status === "cancelled";
               const endHour = b.start_hour + b.duration / 60;
               const isPast = isViewingToday && b.start_hour < adjustedCurrentHour;
               const isCurrent =
                 isViewingToday &&
+                !isCancelled &&
                 b.start_hour <= adjustedCurrentHour &&
                 endHour > adjustedCurrentHour;
-              const isOverdue = isViewingToday && b.status !== "completed" && endHour < adjustedCurrentHour;
+              const isOverdue = isViewingToday && !isCancelled && b.status !== "completed" && endHour < adjustedCurrentHour;
 
               const base = commission ? commission.calcBase(b.total_price, b.service, b.addons) : null;
               const therapist = commission ? commission.calcTherapist(b.total_price, b.service, b.addons) + (b.oil_bonus || 0) : null;
