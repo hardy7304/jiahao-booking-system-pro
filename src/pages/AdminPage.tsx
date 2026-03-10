@@ -150,6 +150,9 @@ export default function AdminPage() {
   const [servicesList, setServicesList] = useState<any[]>([]);
   const [addonsList, setAddonsList] = useState<any[]>([]);
 
+  // Blacklisted phones
+  const [blacklistedPhones, setBlacklistedPhones] = useState<Set<string>>(new Set());
+
   // Load admin password from DB
   useEffect(() => {
     const loadPassword = async () => {
