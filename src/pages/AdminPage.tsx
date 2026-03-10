@@ -346,22 +346,15 @@ export default function AdminPage() {
     if (pendingHolidayDates.size === 0) return;
     setIsSavingBatch(true);
     try {
-      const rows = Array.from(pendingHolidayDates).map(date => ({
+      const holidays = Array.from(pendingHolidayDates).map(date => ({
         date, type: "整天公休" as const, note: null,
       }));
-      const { data: inserted } = await supabase.from("holidays").insert(rows).select();
-      if (inserted && inserted.length > 0) {
-        // Batch sync to Google Calendar
-        for (const h of inserted) {
-          await syncHolidayToCalendar(h, "create_holiday");
-        }
-      }
+      await adminApi("holiday.create_batch", { holidays });
       setPendingHolidayDates(new Set());
       fetchHolidays();
-      toast.success(`已新增 ${rows.length} 筆公休`);
-    } catch (err) {
-      toast.error("批次新增失敗");
-      console.error(err);
+      toast.success(`已新增 ${holidays.length} 筆公休`);
+    } catch (err: any) {
+      toast.error(err.message || "批次新增失敗");
     } finally {
       setIsSavingBatch(false);
     }
