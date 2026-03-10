@@ -44,10 +44,10 @@ export default function BookingFiltersBar({
   resultCount: number;
 }) {
   const hasFilters =
-    filters.search || filters.dateFrom || filters.dateTo || filters.category !== "all" || filters.status !== "all";
+    filters.search || filters.dateFrom || filters.dateTo || filters.category !== "all" || filters.status !== "all" || filters.filterName || filters.filterService;
 
   const clearFilters = () =>
-    onChange({ ...filters, search: "", dateFrom: undefined, dateTo: undefined, category: "all", status: "all" });
+    onChange({ ...filters, search: "", dateFrom: undefined, dateTo: undefined, category: "all", status: "all", filterName: "", filterService: "" });
 
   return (
     <div className="bg-card rounded-xl shadow p-3 space-y-3">
