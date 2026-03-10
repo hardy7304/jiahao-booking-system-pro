@@ -71,6 +71,11 @@ export default function CustomerTracking() {
   const [search, setSearch] = useState("");
   const [filterTag, setFilterTag] = useState<string>("all");
   const [filterBlacklist, setFilterBlacklist] = useState<string>("all");
+  const [sortField, setSortField] = useState<"spending" | "visits" | "lastVisit" | null>(null);
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  // Spending data for sorting
+  const [spendingByPhone, setSpendingByPhone] = useState<Map<string, number>>(new Map());
 
   // Tags & notes state
   const [allTags, setAllTags] = useState<CustomerTag[]>([]);
