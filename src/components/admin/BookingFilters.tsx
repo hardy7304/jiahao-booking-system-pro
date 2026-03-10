@@ -8,19 +8,26 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 
+export type SortField = "order_time" | "date" | "total_price" | "duration" | "name" | "service";
+export type SortDirection = "asc" | "desc";
+
 export interface BookingFilters {
   search: string;
   dateFrom: Date | undefined;
   dateTo: Date | undefined;
   category: string;
   status: string;
+  sortField: SortField;
+  sortDirection: SortDirection;
 }
 
 const CATEGORY_OPTIONS = [
   { value: "all", label: "全部服務" },
   { value: "foot", label: "腳底按摩" },
   { value: "body", label: "全身指壓" },
-  { value: "fascia", label: "筋膜刀" },
+  { value: "fascia_foot", label: "筋膜刀腳底" },
+  { value: "fascia_body", label: "筋膜刀身體" },
+  { value: "fascia_neck", label: "筋膜刀肩頸" },
   { value: "package", label: "套餐" },
   { value: "combo", label: "深層雙拼" },
 ];
@@ -38,7 +45,7 @@ export default function BookingFiltersBar({
     filters.search || filters.dateFrom || filters.dateTo || filters.category !== "all" || filters.status !== "all";
 
   const clearFilters = () =>
-    onChange({ search: "", dateFrom: undefined, dateTo: undefined, category: "all", status: "all" });
+    onChange({ ...filters, search: "", dateFrom: undefined, dateTo: undefined, category: "all", status: "all" });
 
   return (
     <div className="bg-card rounded-xl shadow p-3 space-y-3">
@@ -86,7 +93,7 @@ export default function BookingFiltersBar({
 
         {/* Category */}
         <Select value={filters.category} onValueChange={(v) => onChange({ ...filters, category: v })}>
-          <SelectTrigger className="w-[130px]">
+          <SelectTrigger className="w-[140px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
