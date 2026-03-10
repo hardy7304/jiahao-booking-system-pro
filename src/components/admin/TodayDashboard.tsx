@@ -441,5 +441,40 @@ export default function TodayDashboard({
         )}
       </div>
     </div>
+
+      <AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>確認取消預約？</AlertDialogTitle>
+            <AlertDialogDescription>
+              {cancellingId && (() => {
+                const target = dayBookings.find(b => b.id === cancellingId);
+                return target ? `${target.name} - ${target.service}（${target.start_time_str}）` : "";
+              })()}
+              <br />
+              取消原因：{cancelReason || "管理員取消"}
+              <br /><br />
+              此操作無法復原，確定要取消這筆預約嗎？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmCancelOpen(false)}>返回</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (cancellingId) {
+                  onCancel?.(cancellingId, cancelReason || "管理員取消");
+                }
+                setConfirmCancelOpen(false);
+                setCancellingId(null);
+                setCancelReason("");
+              }}
+            >
+              確認取消
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
   );
 }
