@@ -14,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, Users, RefreshCw, AlertTriangle, Ban, Star, Tag, StickyNote, Plus, X, ChevronDown, ChevronRight, Shield } from "lucide-react";
+import { Search, Users, RefreshCw, AlertTriangle, Ban, Star, Tag, StickyNote, Plus, X, ChevronDown, ChevronRight, Shield, CalendarDays, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 
@@ -44,6 +44,18 @@ interface CustomerNote {
   created_at: string;
 }
 
+interface BookingRecord {
+  id: string;
+  date: string;
+  start_time_str: string;
+  service: string;
+  addons: string[];
+  status: string | null;
+  total_price: number;
+  cancel_reason: string | null;
+  source: string | null;
+}
+
 const PRESET_TAGS = ["VIP", "常客", "新客", "敏感肌", "偏好重手", "偏好輕柔", "肩頸問題", "腰部問題"];
 
 function getAutoTier(visitCount: number): { label: string; color: string } {
@@ -70,6 +82,8 @@ export default function CustomerTracking() {
   const [newNote, setNewNote] = useState("");
   const [blacklistReason, setBlacklistReason] = useState("");
   const [blacklistAction, setBlacklistAction] = useState("warn");
+  const [customerBookings, setCustomerBookings] = useState<BookingRecord[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -193,12 +207,22 @@ export default function CustomerTracking() {
     toast.success(enable ? "已加入黑名單" : "已解除黑名單");
   };
 
-  const openDetail = (c: Customer) => {
+  const openDetail = async (c: Customer) => {
     setSelectedCustomer(c);
     setBlacklistReason(c.blacklist_reason || "");
     setBlacklistAction(c.blacklist_action || "warn");
     setNewTag("");
     setNewNote("");
+    // Fetch booking history
+    setLoadingBookings(true);
+    const { data } = await supabase
+      .from("bookings")
+      .select("id, date, start_time_str, service, addons, status, total_price, cancel_reason, source")
+      .eq("phone", c.phone)
+      .order("date", { ascending: false })
+      .order("start_hour", { ascending: false });
+    setCustomerBookings((data as BookingRecord[]) || []);
+    setLoadingBookings(false);
   };
 
   return (
@@ -454,6 +478,66 @@ export default function CustomerTracking() {
                             </button>
                           </div>
                         ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Booking History Timeline */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <CalendarDays className="w-4 h-4 text-primary" />
+                      <Label className="font-semibold">預約歷史</Label>
+                      <Badge variant="secondary" className="text-xs">{customerBookings.length} 筆</Badge>
+                    </div>
+                    {loadingBookings ? (
+                      <div className="space-y-2">
+                        {[1, 2].map(i => <Skeleton key={i} className="h-12 w-full rounded" />)}
+                      </div>
+                    ) : customerBookings.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-3">尚無預約紀錄</p>
+                    ) : (
+                      <div className="relative space-y-0 max-h-[300px] overflow-y-auto">
+                        {customerBookings.map((b, idx) => {
+                          const isCompleted = b.status === "completed";
+                          const isCancelled = b.status === "cancelled";
+                          const isNoShow = isCancelled && b.cancel_reason?.includes("爽約");
+                          return (
+                            <div key={b.id} className="flex gap-3 pb-3">
+                              {/* Timeline line */}
+                              <div className="flex flex-col items-center">
+                                <div className={`w-3 h-3 rounded-full shrink-0 mt-1 ${
+                                  isNoShow ? "bg-destructive" :
+                                  isCancelled ? "bg-muted-foreground" :
+                                  isCompleted ? "bg-green-500" :
+                                  "bg-primary"
+                                }`} />
+                                {idx < customerBookings.length - 1 && (
+                                  <div className="w-px flex-1 bg-border min-h-[20px]" />
+                                )}
+                              </div>
+                              {/* Content */}
+                              <div className="flex-1 text-sm pb-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-medium text-foreground">{b.date}</span>
+                                  <span className="text-muted-foreground">{b.start_time_str}</span>
+                                  {isCompleted && <Badge variant="outline" className="text-xs border-green-300 text-green-700">完成</Badge>}
+                                  {isNoShow && <Badge variant="destructive" className="text-xs">爽約</Badge>}
+                                  {isCancelled && !isNoShow && <Badge variant="outline" className="text-xs">取消</Badge>}
+                                  {!isCompleted && !isCancelled && <Badge variant="outline" className="text-xs border-primary text-primary">已確認</Badge>}
+                                </div>
+                                <div className="text-muted-foreground mt-0.5">
+                                  {b.service}
+                                  {b.addons && b.addons.length > 0 && ` + ${b.addons.join("、")}`}
+                                  <span className="ml-2">NT${b.total_price}</span>
+                                  {b.source === "admin" && <span className="ml-1 text-xs">(後台)</span>}
+                                </div>
+                                {b.cancel_reason && (
+                                  <p className="text-xs text-destructive mt-0.5">原因：{b.cancel_reason}</p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
