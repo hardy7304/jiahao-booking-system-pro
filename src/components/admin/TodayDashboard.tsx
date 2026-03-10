@@ -358,10 +358,23 @@ export default function TodayDashboard({
                         {blacklistedPhones?.has(b.phone) && <span title="黑名單客戶"><Ban className="w-3.5 h-3.5 text-destructive shrink-0" /></span>}
                         {b.name}
                       </div>
-                      <div className="text-xs text-muted-foreground truncate">{b.service}</div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {b.service}
+                        {b.addons && b.addons.filter(a => !a.includes("精油香味")).length > 0 && (
+                          <span className="text-blue-600 ml-1">
+                            +{b.addons.filter(a => !a.includes("精油香味")).map(a => {
+                              const short = a.replace(/^(加購：|升級：)/, '').replace(/\s*\(.*\)/, '');
+                              return short;
+                            }).join('、')}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="text-sm font-medium text-primary shrink-0">
-                      NT${b.total_price.toLocaleString()}
+                    <div className="text-sm font-medium text-primary shrink-0 text-right">
+                      <div>NT${b.total_price.toLocaleString()}</div>
+                      {b.addons && b.addons.filter(a => !a.includes("精油香味")).length > 0 && (
+                        <div className="text-[10px] text-muted-foreground font-normal">含加購</div>
+                      )}
                     </div>
                     {b.status === "completed" && (
                       <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 shrink-0">
