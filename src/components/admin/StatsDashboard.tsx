@@ -330,7 +330,11 @@ export default function StatsDashboard({
         <SummaryCard icon={<TrendingUp className="w-4 h-4" />} label="日均營收" value={`NT$${Math.round(rangeRevenue / rangeDays).toLocaleString()}`} valueClass="text-primary" />
         <SummaryCard icon={<BarChart3 className="w-4 h-4" />} label="日均預約數" value={`${(rangeCount / rangeDays).toFixed(1)} 筆`} />
         <SummaryCard icon={<Receipt className="w-4 h-4" />} label="客單價" value={`NT$${rangeCount > 0 ? Math.round(rangeRevenue / rangeCount).toLocaleString() : 0}`} valueClass="text-primary" />
-        <SummaryCard icon={<XCircle className="w-4 h-4" />} label="取消預約" value={`${cancelledInRange} 筆`} valueClass="text-destructive" />
+        <div className="bg-card rounded-xl shadow p-4 cursor-pointer hover:ring-2 hover:ring-destructive/30 transition-all" onClick={() => setShowCancelled(true)}>
+          <div className="flex items-center gap-2 text-muted-foreground text-sm mb-1"><XCircle className="w-4 h-4" />取消預約</div>
+          <div className="text-2xl font-bold text-destructive">{cancelledInRange} 筆</div>
+          <div className="text-xs text-muted-foreground mt-1">點擊查看詳情</div>
+        </div>
       </div>
 
       {/* Commission summary */}
