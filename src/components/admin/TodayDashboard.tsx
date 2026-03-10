@@ -226,7 +226,7 @@ export default function TodayDashboard({
           {nextBooking ? (
             <>
               <div className="text-lg font-bold text-foreground truncate flex items-center gap-1">
-                {blacklistedPhones?.has(nextBooking.phone) && <Ban className="w-4 h-4 text-destructive shrink-0" title="黑名單客戶" />}
+                {blacklistedPhones?.has(nextBooking.phone) && <span title="黑名單客戶"><Ban className="w-4 h-4 text-destructive shrink-0" /></span>}
                 {nextBooking.name} {nextBooking.start_time_str}
               </div>
               <div className="text-xs text-primary font-medium">
