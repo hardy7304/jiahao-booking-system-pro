@@ -209,9 +209,12 @@ export default function BookingCalendarView({
               <div className="text-center text-muted-foreground py-8">當日無預約</div>
             ) : (
               selectedDayBookings.map((b) => (
-                <div key={b.id} className={cn("p-3 rounded-lg border", getCategoryColor(b.service))}>
+                <div key={b.id} className={cn("p-3 rounded-lg border", blacklistedPhones?.has(b.phone) ? "bg-destructive/15 border-destructive/40" : getCategoryColor(b.service))}>
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{b.start_time_str} {b.name}</span>
+                    <span className="font-medium flex items-center gap-1">
+                      {blacklistedPhones?.has(b.phone) && <Ban className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                      {b.start_time_str} {b.name}
+                    </span>
                     <span className="text-sm font-medium">NT${b.total_price.toLocaleString()}</span>
                   </div>
                   <div className="text-xs mt-1">{b.service}</div>
