@@ -165,8 +165,13 @@ export default function BookingCalendarView({
               )}
               onClick={() => setSelectedDay(day)}
             >
-              <div className={cn("text-xs font-medium text-center mb-0.5", isToday ? "text-primary font-bold" : "text-foreground")}>
-                {format(day, "d")}
+              <div className="flex items-center justify-center gap-0.5 mb-0.5">
+                <span className={cn("text-xs font-medium", isToday ? "text-primary font-bold" : "text-foreground")}>
+                  {format(day, "d")}
+                </span>
+                {cancelledCount > 0 && (
+                  <span className="text-[9px] text-muted-foreground leading-none">❌{cancelledCount}</span>
+                )}
               </div>
               {isHoliday && (
                 <div className="text-[10px] text-destructive font-medium text-center">公休</div>
