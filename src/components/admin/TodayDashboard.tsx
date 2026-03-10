@@ -353,10 +353,11 @@ export default function TodayDashboard({
                   key={b.id}
                   className={cn(
                     "p-3 rounded-lg border transition-colors",
-                    isCurrent && "border-primary bg-primary/5 ring-2 ring-primary/20",
-                    isOverdue && "border-orange-400 bg-orange-50/80 ring-1 ring-orange-200",
-                    !isCurrent && !isOverdue && isPast && "border-border opacity-60",
-                    !isCurrent && !isOverdue && !isPast && "border-border hover:bg-secondary/30"
+                    isCancelled && "opacity-40 border-border bg-muted/30 line-through decoration-muted-foreground/40",
+                    !isCancelled && isCurrent && "border-primary bg-primary/5 ring-2 ring-primary/20",
+                    !isCancelled && isOverdue && "border-orange-400 bg-orange-50/80 ring-1 ring-orange-200",
+                    !isCancelled && !isCurrent && !isOverdue && isPast && "border-border opacity-60",
+                    !isCancelled && !isCurrent && !isOverdue && !isPast && "border-border hover:bg-secondary/30"
                   )}
                 >
                   <div className="flex items-center gap-3">
