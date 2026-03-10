@@ -226,7 +226,7 @@ export default function CustomerTracking() {
   };
 
   const exportCsv = async () => {
-    // Fetch all bookings for stats
+    // Fetch all bookings for stats calculation
     const { data: allBookings } = await supabase
       .from("bookings")
       .select("phone, service, total_price, status, date");
