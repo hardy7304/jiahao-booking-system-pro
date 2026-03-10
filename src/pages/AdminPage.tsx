@@ -320,7 +320,7 @@ export default function AdminPage() {
     toast.success("已儲存設定");
   };
 
-  // Filtered bookings
+  // Filtered & sorted bookings
   const filteredBookings = useMemo(() => {
     let result = [...bookings];
     if (filters.status === "active") result = result.filter((b) => !b.cancelled_at && b.status !== "cancelled");
@@ -342,14 +342,31 @@ export default function AdminPage() {
     if (filters.category !== "all") {
       result = result.filter((b) => {
         const s = b.service;
-        if (filters.category === "foot") return s.includes("腳底按摩");
-        if (filters.category === "body") return s.includes("全身指壓");
-        if (filters.category === "fascia") return s.includes("筋膜刀");
+        if (filters.category === "foot") return s.includes("腳底按摩") && !s.includes("筋膜刀");
+        if (filters.category === "body") return s.includes("全身指壓") && !s.includes("筋膜刀");
+        if (filters.category === "fascia_foot") return s.includes("筋膜刀") && s.includes("腳底");
+        if (filters.category === "fascia_body") return s.includes("筋膜刀") && s.includes("身體");
+        if (filters.category === "fascia_neck") return s.includes("筋膜刀") && s.includes("肩頸");
         if (filters.category === "package") return s.includes("套餐");
         if (filters.category === "combo") return s.includes("深層雙拼");
         return true;
       });
     }
+
+    // Sorting
+    const dir = filters.sortDirection === "asc" ? 1 : -1;
+    result.sort((a, b) => {
+      switch (filters.sortField) {
+        case "order_time": return dir * (new Date(a.order_time).getTime() - new Date(b.order_time).getTime());
+        case "date": return dir * (a.date.localeCompare(b.date) || (a.start_hour - b.start_hour));
+        case "total_price": return dir * (a.total_price - b.total_price);
+        case "duration": return dir * (a.duration - b.duration);
+        case "name": return dir * a.name.localeCompare(b.name, "zh-TW");
+        case "service": return dir * a.service.localeCompare(b.service, "zh-TW");
+        default: return 0;
+      }
+    });
+
     return result;
   }, [bookings, filters]);
 
