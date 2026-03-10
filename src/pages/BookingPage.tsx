@@ -42,6 +42,7 @@ interface DbAddon {
 }
 
 export default function BookingPage() {
+  const navigate = useNavigate();
   const { notes: calendarNotes } = useCalendarNotes();
   const { info: shopInfo } = useShopInfo();
   const { settings: bookingSettings } = useBookingSettings();
