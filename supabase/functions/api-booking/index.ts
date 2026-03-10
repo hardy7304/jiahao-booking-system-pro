@@ -80,8 +80,29 @@ Deno.serve(async (req) => {
       if (!id) {
         return new Response(JSON.stringify({ error: "Missing booking id" }), { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
       }
+
+      // Fetch the booking first to get the google_calendar_event_id
+      const { data: bookingData } = await supabase.from("bookings").select("*").eq("id", id).single();
+
       const { error } = await supabase.from("bookings").update({ cancelled_at: new Date().toISOString() }).eq("id", id);
       if (error) throw error;
+
+      // Sync cancellation to Google Calendar
+      if (bookingData?.google_calendar_event_id) {
+        try {
+          await fetch(
+            `${Deno.env.get("SUPABASE_URL")}/functions/v1/google-calendar-sync`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+              body: JSON.stringify({ action: "cancel", booking: bookingData }),
+            }
+          );
+        } catch (syncErr) {
+          console.error("Google Calendar cancel sync error:", syncErr);
+        }
+      }
+
       return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
     }
 
