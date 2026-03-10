@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
   try {
     const email = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_EMAIL");
     const privateKey = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY");
-    const calendarId = Deno.env.get("GOOGLE_CALENDAR_ID");
+    const calendarId = Deno.env.get("GOOGLE_CALENDAR_ID")?.trim();
 
     if (!email || !privateKey || !calendarId) {
       throw new Error("Missing Google Calendar configuration secrets");
