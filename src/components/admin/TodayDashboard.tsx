@@ -283,9 +283,27 @@ export default function TodayDashboard({
 
       {/* Day's bookings list */}
       <div className="bg-card rounded-xl shadow p-4">
-        <h2 className="font-semibold text-foreground mb-3">
-          📋 {isViewingToday ? "今日" : format(selectedDate, "M/d", { locale: zhTW })} 預約時程
-        </h2>
+        <div className="flex items-center gap-2 mb-3">
+          <h2 className="font-semibold text-foreground">
+            📋 {isViewingToday ? "今日" : format(selectedDate, "M/d", { locale: zhTW })} 預約時程
+          </h2>
+          {isViewingToday && (() => {
+            const overdueCount = dayBookings.filter(b => 
+              b.status !== "completed" && 
+              b.start_hour + b.duration / 60 < adjustedCurrentHour
+            ).length;
+            return overdueCount > 0 ? (
+              <Badge variant="outline" className="text-xs border-orange-400 text-orange-600 bg-orange-50 animate-pulse">
+                ⚠️ {overdueCount} 筆待完成
+              </Badge>
+            ) : null;
+          })()}
+          {completedCount > 0 && (
+            <Badge variant="outline" className="text-xs border-emerald-300 text-emerald-600 bg-emerald-50">
+              ✅ {completedCount}/{dayBookings.length}
+            </Badge>
+          )}
+        </div>
         {dayBookings.length === 0 ? (
           <div className="text-center text-muted-foreground py-8">
             {isHolidayOnDate ? (isViewingToday ? "今日公休，無預約" : "該日公休，無預約") : (isViewingToday ? "今日尚無預約" : "該日尚無預約")}
@@ -295,11 +313,13 @@ export default function TodayDashboard({
             {dayBookings.map((b) => {
               const cat = getCategoryFromService(b.service);
               const colorClass = SERVICE_COLORS[cat] || SERVICE_COLORS.foot;
+              const endHour = b.start_hour + b.duration / 60;
               const isPast = isViewingToday && b.start_hour < adjustedCurrentHour;
               const isCurrent =
                 isViewingToday &&
                 b.start_hour <= adjustedCurrentHour &&
-                b.start_hour + b.duration / 60 > adjustedCurrentHour;
+                endHour > adjustedCurrentHour;
+              const isOverdue = isViewingToday && b.status !== "completed" && endHour < adjustedCurrentHour;
 
               const base = commission ? commission.calcBase(b.total_price, b.service, b.addons) : null;
               const therapist = commission ? commission.calcTherapist(b.total_price, b.service, b.addons) + (b.oil_bonus || 0) : null;
@@ -307,13 +327,13 @@ export default function TodayDashboard({
               return (
                 <div
                   key={b.id}
-                  className={`p-3 rounded-lg border transition-colors ${
-                    isCurrent
-                      ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                      : isPast
-                      ? "border-border opacity-60"
-                      : "border-border hover:bg-secondary/30"
-                  }`}
+                  className={cn(
+                    "p-3 rounded-lg border transition-colors",
+                    isCurrent && "border-primary bg-primary/5 ring-2 ring-primary/20",
+                    isOverdue && "border-orange-400 bg-orange-50/80 ring-1 ring-orange-200",
+                    !isCurrent && !isOverdue && isPast && "border-border opacity-60",
+                    !isCurrent && !isOverdue && !isPast && "border-border hover:bg-secondary/30"
+                  )}
                 >
                   <div className="flex items-center gap-3">
                     <div className="text-sm font-mono font-medium text-foreground w-14 shrink-0">
@@ -335,6 +355,11 @@ export default function TodayDashboard({
                     {b.status === "completed" && (
                       <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 shrink-0">
                         ✅ 完成
+                      </Badge>
+                    )}
+                    {isOverdue && (
+                      <Badge variant="outline" className="text-xs border-orange-400 text-orange-600 bg-orange-50 shrink-0 animate-pulse">
+                        ⚠️ 待完成
                       </Badge>
                     )}
                     {isCurrent && (
