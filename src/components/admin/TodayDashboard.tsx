@@ -66,16 +66,26 @@ export default function TodayDashboard({
   loading,
   commission,
   blacklistedPhones,
+  onComplete,
+  onUncomplete,
+  onCancel,
+  onEdit,
 }: {
   bookings: Booking[];
   holidays: Holiday[];
   loading: boolean;
   commission?: CommissionHelpers;
   blacklistedPhones?: Set<string>;
+  onComplete?: (id: string) => void;
+  onUncomplete?: (id: string) => void;
+  onCancel?: (id: string, reason: string) => void;
+  onEdit?: (booking: Booking) => void;
 }) {
   const [now, setNow] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
