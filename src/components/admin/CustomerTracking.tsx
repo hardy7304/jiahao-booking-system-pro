@@ -356,7 +356,7 @@ export default function CustomerTracking() {
         <div className="space-y-2">
           {[1, 2, 3].map(i => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <div className="text-center py-8 text-muted-foreground">
           {search || filterTag !== "all" || filterBlacklist !== "all" ? "找不到符合的客戶" : "尚無客戶資料，點擊「從預約同步」匯入"}
         </div>
@@ -368,14 +368,30 @@ export default function CustomerTracking() {
                 <th className="text-left p-3">姓名</th>
                 <th className="text-left p-3">電話</th>
                 <th className="text-center p-3">分級</th>
-                <th className="text-center p-3">來訪</th>
+                <th className="text-center p-3 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("visits")}>
+                  <div className="flex items-center justify-center gap-1">
+                    來訪
+                    {sortField === "visits" ? (sortDir === "desc" ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
                 <th className="text-center p-3">爽約</th>
+                <th className="text-center p-3 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("spending")}>
+                  <div className="flex items-center justify-center gap-1">
+                    消費
+                    {sortField === "spending" ? (sortDir === "desc" ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
                 <th className="text-left p-3">標籤</th>
-                <th className="text-left p-3">最後造訪</th>
+                <th className="text-left p-3 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("lastVisit")}>
+                  <div className="flex items-center gap-1">
+                    最後造訪
+                    {sortField === "lastVisit" ? (sortDir === "desc" ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map(c => {
+              {sorted.map(c => {
                 const tier = getAutoTier(c.visit_count);
                 const tags = customerTags(c.id);
                 return (
