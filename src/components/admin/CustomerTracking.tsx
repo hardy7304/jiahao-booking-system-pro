@@ -261,7 +261,7 @@ export default function CustomerTracking() {
     setLoadingBookings(true);
     const { data } = await supabase
       .from("bookings")
-      .select("id, date, start_time_str, service, addons, status, total_price, cancel_reason, source")
+      .select("id, date, start_time_str, service, addons, status, total_price, cancel_reason, source, name, phone")
       .eq("phone", c.phone)
       .order("date", { ascending: false })
       .order("start_hour", { ascending: false });
