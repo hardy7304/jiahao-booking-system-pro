@@ -19,6 +19,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Navigate to="/booking" replace />} />
           <Route path="/booking" element={<BookingPage />} />
+          <Route path="/my-bookings" element={<MyBookingsPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
