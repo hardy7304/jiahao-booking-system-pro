@@ -323,7 +323,10 @@ export default function TodayDashboard({
                       {b.duration}分
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-foreground truncate">{b.name}</div>
+                      <div className="font-medium text-foreground truncate flex items-center gap-1">
+                        {blacklistedPhones?.has(b.phone) && <Ban className="w-3.5 h-3.5 text-destructive shrink-0" title="黑名單客戶" />}
+                        {b.name}
+                      </div>
                       <div className="text-xs text-muted-foreground truncate">{b.service}</div>
                     </div>
                     <div className="text-sm font-medium text-primary shrink-0">

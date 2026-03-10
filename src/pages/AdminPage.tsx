@@ -699,7 +699,12 @@ export default function AdminPage() {
                           <td className="p-2 whitespace-nowrap text-xs">{new Date(b.order_time).toLocaleString("zh-TW")}</td>
                           <td className="p-2 whitespace-nowrap">{b.date}</td>
                           <td className="p-2">{b.start_time_str}</td>
-                          <td className="p-2">{b.name}</td>
+                          <td className="p-2">
+                            <span className="flex items-center gap-1">
+                              {blacklistedPhones.has(b.phone) && <Ban className="w-3.5 h-3.5 text-destructive shrink-0" title="黑名單客戶" />}
+                              {b.name}
+                            </span>
+                          </td>
                           <td className="p-2">{b.phone}</td>
                           <td className="p-2 max-w-[140px] truncate">{b.service}</td>
                           <td className="p-2 max-w-[100px] truncate">{b.addons?.join(", ") || "-"}</td>
