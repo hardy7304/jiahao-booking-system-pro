@@ -234,9 +234,14 @@ export default function CustomerTracking() {
           <h2 className="font-semibold text-foreground">客戶追蹤</h2>
           <Badge variant="secondary">{customers.length} 位客戶</Badge>
         </div>
-        <Button variant="outline" size="sm" onClick={seedFromBookings}>
-          <RefreshCw className="w-4 h-4 mr-1" /> 從預約同步
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={exportCsv}>
+            <Download className="w-4 h-4 mr-1" /> 匯出 CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={seedFromBookings}>
+            <RefreshCw className="w-4 h-4 mr-1" /> 從預約同步
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
