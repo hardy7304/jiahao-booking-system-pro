@@ -520,7 +520,7 @@ export default function StatsDashboard({
         </div>
       </div>
 
-      {/* SECTION F: Export */}
+      {/* SECTION F: Export + Sync */}
       <div className="bg-card rounded-xl shadow p-4 flex flex-wrap gap-3">
         <Button variant="outline" onClick={exportBookingsCSV}>
           <Download className="w-4 h-4 mr-1" /> 匯出{rangeLabel}報表 CSV
@@ -528,7 +528,48 @@ export default function StatsDashboard({
         <Button variant="outline" onClick={exportCustomersCSV}>
           <Download className="w-4 h-4 mr-1" /> 匯出客戶名單 CSV
         </Button>
+        <Button variant="outline" disabled={syncing} onClick={async () => {
+          setSyncing(true);
+          try {
+            const res = await adminApi("calendar.full_sync");
+            toast.success(`同步完成：新增 ${res.synced} 筆、移除 ${res.deleted} 筆`);
+          } catch (e: any) {
+            toast.error(`同步失敗：${e.message}`);
+          } finally {
+            setSyncing(false);
+          }
+        }}>
+          <RefreshCw className={`w-4 h-4 mr-1 ${syncing ? "animate-spin" : ""}`} /> {syncing ? "同步中..." : "一鍵同步日曆"}
+        </Button>
       </div>
+
+      {/* Cancelled Bookings Dialog */}
+      <Dialog open={showCancelled} onOpenChange={setShowCancelled}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>❌ 取消預約（{rangeLabel}：{cancelledInRange} 筆）</DialogTitle>
+          </DialogHeader>
+          {cancelledBookingsInRange.length === 0 ? (
+            <p className="text-muted-foreground text-center py-4">無取消預約</p>
+          ) : (
+            <div className="space-y-2">
+              {cancelledBookingsInRange.map(b => (
+                <div key={b.id} className="p-3 rounded-lg border border-border space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-foreground">{b.name}</span>
+                    <span className="text-xs text-muted-foreground">{b.date} {b.start_time_str}</span>
+                  </div>
+                  <div className="text-sm text-muted-foreground">{b.service} · NT${b.total_price}</div>
+                  {(b as any).cancel_reason && (
+                    <div className="text-xs text-destructive">原因：{(b as any).cancel_reason}</div>
+                  )}
+                  <div className="text-xs text-muted-foreground">📞 {b.phone}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
