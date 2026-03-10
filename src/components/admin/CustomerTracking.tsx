@@ -93,6 +93,7 @@ export default function CustomerTracking() {
   const [blacklistAction, setBlacklistAction] = useState("warn");
   const [customerBookings, setCustomerBookings] = useState<BookingRecord[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
+  const [bookingFilter, setBookingFilter] = useState<"all" | "cancelled" | "completed">("all");
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
