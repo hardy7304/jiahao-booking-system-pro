@@ -359,6 +359,26 @@ export default function StatsDashboard({
         </div>
       )}
 
+      {/* Oil Bonus trend chart */}
+      {revenueTrend.some((d) => (d.oilBonus || 0) > 0) && (
+        <div className="bg-card rounded-xl shadow p-4">
+          <h2 className="font-semibold text-foreground mb-1 flex items-center gap-2">
+            <Droplets className="w-4 h-4 text-emerald-600" /> 精油獎金趨勢（{rangeLabel}）
+          </h2>
+          <p className="text-xs text-muted-foreground mb-3">
+            區間合計：NT${rangeOilBonus.toLocaleString()}
+          </p>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={revenueTrend}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" tick={{ fontSize: 11 }} interval={4} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(val: number) => [`NT$${val.toLocaleString()}`, "精油獎金"]} />
+              <Bar dataKey="oilBonus" fill="hsl(145, 55%, 45%)" name="oilBonus" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
       {/* SECTION B: Revenue trend */}
       <div className="bg-card rounded-xl shadow p-4">
         <h2 className="font-semibold text-foreground mb-3">📈 營收趨勢（{rangeLabel}）</h2>
