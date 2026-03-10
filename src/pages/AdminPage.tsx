@@ -701,7 +701,7 @@ export default function AdminPage() {
                           <td className="p-2">{b.start_time_str}</td>
                           <td className="p-2">
                             <span className="flex items-center gap-1">
-                              {blacklistedPhones.has(b.phone) && <Ban className="w-3.5 h-3.5 text-destructive shrink-0" title="黑名單客戶" />}
+                              {blacklistedPhones.has(b.phone) && <span title="黑名單客戶"><Ban className="w-3.5 h-3.5 text-destructive shrink-0" /></span>}
                               {b.name}
                             </span>
                           </td>
