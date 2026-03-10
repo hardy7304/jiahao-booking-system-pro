@@ -379,6 +379,10 @@ export default function AdminPage() {
 
   const timeSlots = generateTimeSlots();
 
+  // Unique names and services for column filters
+  const uniqueNames = useMemo(() => [...new Set(bookings.map(b => b.name))].sort((a, b) => a.localeCompare(b, "zh-TW")), [bookings]);
+  const uniqueServices = useMemo(() => [...new Set(bookings.map(b => b.service))].sort((a, b) => a.localeCompare(b, "zh-TW")), [bookings]);
+
   if (!authenticated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
