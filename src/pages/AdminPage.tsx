@@ -260,8 +260,26 @@ export default function AdminPage() {
     toast.success("已儲存備註");
   };
 
+  const syncHolidayToCalendar = async (holiday: any, action: "create_holiday" | "delete_holiday") => {
+    try {
+      const resp = await fetch(
+        `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/google-calendar-sync`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+          body: JSON.stringify({ action, holiday }),
+        }
+      );
+      if (!resp.ok) console.error("Holiday sync failed:", await resp.text());
+    } catch (err) {
+      console.error("Holiday sync error:", err);
+    }
+  };
+
   const deleteHoliday = async (id: string) => {
+    const holiday = holidays.find(h => h.id === id);
     await supabase.from("holidays").delete().eq("id", id);
+    if (holiday) syncHolidayToCalendar(holiday, "delete_holiday");
     fetchHolidays();
     toast.success("已刪除公休");
   };
@@ -274,11 +292,31 @@ export default function AdminPage() {
       data.start_hour = parseFloat(hStart);
       data.end_hour = parseFloat(hEnd);
     }
-    await supabase.from("holidays").insert(data);
+    const { data: inserted } = await supabase.from("holidays").insert(data).select().single();
+    if (inserted) syncHolidayToCalendar(inserted, "create_holiday");
     fetchHolidays();
     setHDate(undefined);
     setHNote("");
     toast.success("已新增公休");
+  };
+
+  const quickAddFullDayHoliday = async (date: Date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    // Check if already a holiday
+    const existing = holidays.find(h => h.date === dateStr && h.type === "整天公休");
+    if (existing) {
+      // Remove it (toggle off)
+      await supabase.from("holidays").delete().eq("id", existing.id);
+      syncHolidayToCalendar(existing, "delete_holiday");
+      fetchHolidays();
+      toast.success("已取消公休");
+      return;
+    }
+    const data = { date: dateStr, type: "整天公休", note: null };
+    const { data: inserted } = await supabase.from("holidays").insert(data).select().single();
+    if (inserted) syncHolidayToCalendar(inserted, "create_holiday");
+    fetchHolidays();
+    toast.success(`已設定 ${dateStr} 為公休日`);
   };
 
   const createManualBooking = async () => {
