@@ -225,22 +225,34 @@ export default function BookingCalendarView({
             {selectedDayBookings.length === 0 ? (
               <div className="text-center text-muted-foreground py-8">當日無預約</div>
             ) : (
-              selectedDayBookings.map((b) => (
-                <div key={b.id} className={cn("p-3 rounded-lg border", blacklistedPhones?.has(b.phone) ? "bg-destructive/15 border-destructive/40" : getCategoryColor(b.service))}>
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium flex items-center gap-1">
-                      {blacklistedPhones?.has(b.phone) && <Ban className="w-3.5 h-3.5 text-destructive shrink-0" />}
-                      {b.start_time_str} {b.name}
-                    </span>
-                    <span className="text-sm font-medium">NT${b.total_price.toLocaleString()}</span>
+              selectedDayBookings.map((b) => {
+                const isCancelled = !!b.cancelled_at || b.status === "cancelled";
+                return (
+                  <div key={b.id} className={cn(
+                    "p-3 rounded-lg border",
+                    isCancelled && "opacity-40 bg-muted/30 border-border line-through decoration-muted-foreground/40",
+                    !isCancelled && blacklistedPhones?.has(b.phone) && "bg-destructive/15 border-destructive/40",
+                    !isCancelled && !blacklistedPhones?.has(b.phone) && getCategoryColor(b.service)
+                  )}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium flex items-center gap-1">
+                        {blacklistedPhones?.has(b.phone) && <Ban className="w-3.5 h-3.5 text-destructive shrink-0" />}
+                        {b.start_time_str} {b.name}
+                        {isCancelled && <Badge variant="outline" className="text-[10px] px-1 py-0 ml-1 no-underline border-muted text-muted-foreground">已取消</Badge>}
+                      </span>
+                      <span className="text-sm font-medium">NT${b.total_price.toLocaleString()}</span>
+                    </div>
+                    <div className="text-xs mt-1">{b.service}</div>
+                    {b.addons && b.addons.length > 0 && (
+                      <div className="text-xs mt-0.5 opacity-75">加購：{b.addons.join(", ")}</div>
+                    )}
+                    <div className="text-xs mt-1 opacity-75">📞 {b.phone} · {b.duration}分鐘</div>
+                    {isCancelled && b.cancel_reason && (
+                      <div className="text-xs mt-1 text-muted-foreground no-underline" style={{ textDecoration: 'none' }}>取消原因：{b.cancel_reason}</div>
+                    )}
                   </div>
-                  <div className="text-xs mt-1">{b.service}</div>
-                  {b.addons && b.addons.length > 0 && (
-                    <div className="text-xs mt-0.5 opacity-75">加購：{b.addons.join(", ")}</div>
-                  )}
-                  <div className="text-xs mt-1 opacity-75">📞 {b.phone} · {b.duration}分鐘</div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </SheetContent>
