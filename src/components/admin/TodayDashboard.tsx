@@ -145,6 +145,7 @@ export default function TodayDashboard({
   }
 
   return (
+    <>
     <div className="space-y-4">
       {/* Date navigation + live clock */}
       <div className="bg-card rounded-xl shadow p-4">
