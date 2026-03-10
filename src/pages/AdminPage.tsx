@@ -816,7 +816,18 @@ export default function AdminPage() {
                 </div>
               </>
             ) : (
-              <BookingCalendarView bookings={bookings} holidays={holidays} blacklistedPhones={blacklistedPhones} />
+              <BookingCalendarView
+                bookings={bookings}
+                holidays={holidays}
+                blacklistedPhones={blacklistedPhones}
+                onEdit={openEditBooking}
+                onComplete={completeBooking}
+                onUncomplete={uncompleteBooking}
+                onCancel={(id, reason) => softDeleteBooking(id, reason)}
+                onRestore={restoreBooking}
+                onNote={(id, note) => { setNoteBookingId(id); setNoteText(note || ""); }}
+                allBookings={bookings}
+              />
             )}
           </TabsContent>
 
