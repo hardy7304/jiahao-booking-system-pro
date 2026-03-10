@@ -231,6 +231,22 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // List events for a date range
+    if (action === "list_events") {
+      const { timeMin, timeMax } = body;
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime`;
+      const resp = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+      if (!resp.ok) { const t = await resp.text(); throw new Error(`List events error: ${resp.status} ${t}`); }
+      const data = await resp.json();
+      return new Response(JSON.stringify({ events: data.items }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // Delete a specific event by ID
+    if (action === "delete_event") {
+      await deleteCalendarEvent(accessToken, calendarId, body.event_id);
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("Google Calendar sync error:", e);
