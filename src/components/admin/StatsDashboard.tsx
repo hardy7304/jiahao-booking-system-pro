@@ -85,6 +85,12 @@ export default function StatsDashboard({
   }, [preset, customFrom, customTo]);
 
   const active = bookings.filter((b) => b.status === "completed");
+  const cancelledInRange = useMemo(() => {
+    return bookings.filter((b) => b.status === "cancelled" && (() => {
+      const d = parseISO(b.date);
+      return isWithinInterval(d, { start: rangeStart, end: rangeEnd });
+    })()).length;
+  }, [bookings, rangeStart, rangeEnd]);
 
   const rangeBookings = useMemo(() => {
     return active.filter((b) => {
