@@ -41,6 +41,12 @@ export async function getAvailableSlots(dateStr: string, totalDuration: number):
   // 營業日區間固定為 14:00~26:00，前一天資料不應影響當天 14:00 後時段
   const allBookings = bookings || [];
 
+  // Fetch holidays
+  const { data: holidays } = await supabase
+    .from('holidays')
+    .select('date, type, start_hour, end_hour')
+    .eq('date', dateStr);
+
   // Check if full day holiday
   if (holidays?.some(h => h.type === '整天公休')) {
     return [];
