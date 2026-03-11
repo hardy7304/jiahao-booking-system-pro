@@ -549,6 +549,15 @@ export default function CustomerTracking() {
                         {tags.length > 3 && <Badge variant="outline" className="text-xs">+{tags.length - 3}</Badge>}
                       </div>
                     </td>
+                    <td className="p-3 text-muted-foreground text-xs">
+                      {c.line_id ? (
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                          <MessageCircle className="w-3 h-3 mr-0.5" /> 已綁定
+                        </Badge>
+                      ) : <span className="text-muted-foreground/50">—</span>}
+                    </td>
+                    <td className="p-3 text-muted-foreground text-xs">{c.birthday || "—"}</td>
+                    <td className="p-3 text-muted-foreground text-xs">{c.area || "—"}</td>
                     <td className="p-3 text-muted-foreground">{c.last_visit_date || "—"}</td>
                   </tr>
                 );
