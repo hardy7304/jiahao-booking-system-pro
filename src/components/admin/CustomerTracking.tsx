@@ -136,6 +136,8 @@ function loadColumnConfig(): { visibleIds: string[]; order: string[] } {
 function saveColumnConfig(config: { visibleIds: string[]; order: string[] }) {
   localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(config));
 }
+
+function getAutoTier(visitCount: number): { label: string; color: string } {
   if (visitCount >= 10) return { label: "VIP", color: "bg-yellow-100 text-yellow-800 border-yellow-300" };
   if (visitCount >= 5) return { label: "常客", color: "bg-blue-100 text-blue-700 border-blue-300" };
   if (visitCount >= 2) return { label: "回頭客", color: "bg-green-100 text-green-700 border-green-200" };
