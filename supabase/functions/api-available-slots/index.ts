@@ -45,16 +45,6 @@ Deno.serve(async (req) => {
       .eq("date", dateStr)
       .is("cancelled_at", null);
 
-    const prevDate = new Date(dateStr);
-    prevDate.setDate(prevDate.getDate() - 1);
-    const prevDateStr = prevDate.toISOString().split("T")[0];
-
-    const { data: prevBookings } = await supabase
-      .from("bookings")
-      .select("start_hour, duration, cancelled_at")
-      .eq("date", prevDateStr)
-      .is("cancelled_at", null);
-
     const { data: holidays } = await supabase
       .from("holidays")
       .select("date, type, start_hour, end_hour")
@@ -64,7 +54,8 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ slots: [], formatted: [] }), { headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
     }
 
-    const allBookings = [...(bookings || []), ...(prevBookings || [])];
+    // 營業日區間固定為 14:00~26:00，前一天資料不應影響當天 14:00 後時段
+    const allBookings = bookings || [];
     const blockMinutes = totalDuration + bufferMinutes;
     const blockHours = blockMinutes / 60;
     const preBlockHours = preBlockMinutes / 60;
