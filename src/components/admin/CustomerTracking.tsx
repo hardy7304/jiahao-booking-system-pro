@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { adminApi } from "@/lib/adminApi";
 import { Input } from "@/components/ui/input";
@@ -9,13 +9,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Popover, PopoverContent, PopoverTrigger,
+} from "@/components/ui/popover";
+import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, Users, RefreshCw, AlertTriangle, Ban, Star, Tag, StickyNote, Plus, X, ChevronDown, ChevronRight, Shield, CalendarDays, Clock, CheckCircle2, XCircle, DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, Minus, Download, ArrowUpDown, ArrowUp, ArrowDown, Cake, MessageCircle, Mail, MapPin, Heart, Settings2, Pencil, Trash2 } from "lucide-react";
+import { Search, Users, RefreshCw, AlertTriangle, Ban, Star, Tag, StickyNote, Plus, X, ChevronDown, ChevronRight, Shield, CalendarDays, Clock, CheckCircle2, XCircle, DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, Minus, Download, ArrowUpDown, ArrowUp, ArrowDown, Cake, MessageCircle, Mail, MapPin, Heart, Settings2, Pencil, Trash2, Columns3, GripVertical, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 import { format, subMonths } from "date-fns";
 
