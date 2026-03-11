@@ -701,8 +701,9 @@ export default function CustomerTracking() {
                         <Input type="date" value={editBirthday} onChange={e => setEditBirthday(e.target.value)} className="h-8 text-sm" />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground flex items-center gap-1"><MessageCircle className="w-3 h-3" /> LINE ID</Label>
-                        <Input placeholder="LINE ID" value={editLineId} onChange={e => setEditLineId(e.target.value)} className="h-8 text-sm" />
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1"><MessageCircle className="w-3 h-3" /> LINE User ID</Label>
+                        <Input placeholder="U 開頭（推播用）" value={editLineId} onChange={e => setEditLineId(e.target.value)} className="h-8 text-sm" />
+                        <p className="text-xs text-muted-foreground/70">用於 LINE 推播訊息，格式如 Uxxxxxxxxx</p>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="w-3 h-3" /> Email</Label>
