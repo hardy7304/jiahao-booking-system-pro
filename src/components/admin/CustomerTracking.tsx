@@ -677,10 +677,119 @@ export default function CustomerTracking() {
                     );
                   })()}
 
+                  {/* Fixed Fields */}
                   <div className="p-3 rounded-lg border border-border space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Ban className="w-4 h-4 text-destructive" />
+                    <div className="flex items-center gap-2">
+                      <Heart className="w-4 h-4 text-primary" />
+                      <Label className="font-semibold">客戶資料</Label>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1"><Cake className="w-3 h-3" /> 生日</Label>
+                        <Input type="date" value={editBirthday} onChange={e => setEditBirthday(e.target.value)} className="h-8 text-sm" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1"><MessageCircle className="w-3 h-3" /> LINE ID</Label>
+                        <Input placeholder="LINE ID" value={editLineId} onChange={e => setEditLineId(e.target.value)} className="h-8 text-sm" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="w-3 h-3" /> Email</Label>
+                        <Input placeholder="email@example.com" type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} className="h-8 text-sm" />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="w-3 h-3" /> 居住區域</Label>
+                        <Input placeholder="如：安平區" value={editArea} onChange={e => setEditArea(e.target.value)} className="h-8 text-sm" />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">偏好力道</Label>
+                      <Select value={editPressure} onValueChange={setEditPressure}>
+                        <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {PRESSURE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">過敏/禁忌事項</Label>
+                      <Textarea placeholder="如：精油過敏、孕婦、特殊疾病..." value={editAllergy} onChange={e => setEditAllergy(e.target.value)} className="text-sm min-h-[50px]" />
+                    </div>
+
+                    {/* Custom Fields */}
+                    {customFields.filter(f => f.is_active).map(field => {
+                      const val = customFieldValues.find(v => v.customer_id === c.id && v.field_id === field.id)?.value || "";
+                      return (
+                        <div key={field.id} className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">{field.field_name}</Label>
+                          {field.field_type === "select" ? (
+                            <Select value={val} onValueChange={v => saveCustomFieldValue(c.id, field.id, v)}>
+                              <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="請選擇" /></SelectTrigger>
+                              <SelectContent>
+                                {(field.options || []).map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          ) : field.field_type === "date" ? (
+                            <Input type="date" value={val} onChange={e => saveCustomFieldValue(c.id, field.id, e.target.value)} className="h-8 text-sm" />
+                          ) : field.field_type === "number" ? (
+                            <Input type="number" value={val} placeholder="輸入數值" onChange={e => saveCustomFieldValue(c.id, field.id, e.target.value)} className="h-8 text-sm" />
+                          ) : (
+                            <Input value={val} placeholder={`輸入${field.field_name}`} onChange={e => saveCustomFieldValue(c.id, field.id, e.target.value)}
+                              onBlur={e => saveCustomFieldValue(c.id, field.id, e.target.value)} className="h-8 text-sm" />
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    <Button size="sm" className="w-full" onClick={() => saveFixedFields(c.id)}>
+                      儲存客戶資料
+                    </Button>
+                  </div>
+
+                  {/* Custom Field Manager */}
+                  <div className="p-3 rounded-lg border border-border space-y-2">
+                    <button className="flex items-center gap-2 w-full text-left" onClick={() => setShowFieldManager(!showFieldManager)}>
+                      <Settings2 className="w-4 h-4 text-muted-foreground" />
+                      <Label className="font-semibold cursor-pointer">管理自訂欄位</Label>
+                      {showFieldManager ? <ChevronDown className="w-4 h-4 ml-auto" /> : <ChevronRight className="w-4 h-4 ml-auto" />}
+                    </button>
+                    {showFieldManager && (
+                      <div className="space-y-3 pt-2">
+                        {customFields.map(f => (
+                          <div key={f.id} className="flex items-center justify-between bg-muted rounded p-2 text-sm">
+                            <div>
+                              <span className="font-medium">{f.field_name}</span>
+                              <Badge variant="outline" className="ml-2 text-xs">{f.field_type}</Badge>
+                              {f.field_type === "select" && f.options?.length > 0 && (
+                                <span className="text-xs text-muted-foreground ml-1">({f.options.join(", ")})</span>
+                              )}
+                            </div>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive" onClick={() => deleteCustomField(f.id)}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                        <div className="space-y-2">
+                          <Input placeholder="欄位名稱" value={newFieldName} onChange={e => setNewFieldName(e.target.value)} className="h-8 text-sm" />
+                          <Select value={newFieldType} onValueChange={setNewFieldType}>
+                            <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="text">文字</SelectItem>
+                              <SelectItem value="number">數字</SelectItem>
+                              <SelectItem value="date">日期</SelectItem>
+                              <SelectItem value="select">選項</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {newFieldType === "select" && (
+                            <Input placeholder="選項（逗號分隔，如：A,B,C）" value={newFieldOptions} onChange={e => setNewFieldOptions(e.target.value)} className="h-8 text-sm" />
+                          )}
+                          <Button size="sm" variant="outline" className="w-full" onClick={addCustomField}>
+                            <Plus className="w-4 h-4 mr-1" /> 新增自訂欄位
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                         <Label className="font-semibold">黑名單</Label>
                       </div>
                       <Switch
