@@ -38,27 +38,14 @@ export async function getAvailableSlots(dateStr: string, totalDuration: number):
     .eq('date', dateStr)
     .is('cancelled_at', null);
 
-  // Also check previous day bookings that might cross midnight
-  const prevDate = new Date(dateStr);
-  prevDate.setDate(prevDate.getDate() - 1);
-  const prevDateStr = prevDate.toISOString().split('T')[0];
-  
-  const { data: prevBookings } = await supabase
-    .from('bookings')
-    .select('start_hour, duration, cancelled_at')
-    .eq('date', prevDateStr)
-    .is('cancelled_at', null);
+  // 營業日區間固定為 14:00~26:00，前一天資料不應影響當天 14:00 後時段
+  const allBookings = bookings || [];
 
   // Fetch holidays
   const { data: holidays } = await supabase
     .from('holidays')
     .select('date, type, start_hour, end_hour')
     .eq('date', dateStr);
-
-  const allBookings = [...(bookings || []), ...(prevBookings || []).map(b => ({
-    ...b,
-    start_hour: b.start_hour
-  }))];
 
   // Check if full day holiday
   if (holidays?.some(h => h.type === '整天公休')) {

@@ -190,15 +190,33 @@ export default function BookingPage() {
 
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      if (!supabaseUrl || !publishableKey) {
+        setLoading(false);
+        toast.error("系統設定異常，請稍後再試");
+        return;
+      }
+
       const resp = await fetch(`${supabaseUrl}/functions/v1/api-booking`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${publishableKey}`,
+        },
         body: JSON.stringify(bookingData),
       });
+
       setLoading(false);
       if (!resp.ok) {
-        const err = await resp.json();
-        toast.error(err.error || "預約失敗，請稍後再試");
+        let errMsg = "預約失敗，請稍後再試";
+        try {
+          const err = await resp.json();
+          errMsg = err?.error || errMsg;
+        } catch {
+          // keep default message
+        }
+        toast.error(errMsg);
       } else {
         setSuccess({
           ...bookingData,
