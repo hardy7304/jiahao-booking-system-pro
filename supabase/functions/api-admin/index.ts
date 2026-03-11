@@ -238,6 +238,34 @@ Deno.serve(async (req) => {
         break;
       }
 
+      // ===== Custom Fields =====
+      case "custom_field.create": {
+        const { data: inserted, error } = await supabase.from("customer_custom_fields").insert(data.field).select().single();
+        if (error) throw error;
+        result = { success: true, field: inserted };
+        break;
+      }
+      case "custom_field.update": {
+        const { id, ...updates } = data.field;
+        const { error } = await supabase.from("customer_custom_fields").update(updates).eq("id", id);
+        if (error) throw error;
+        break;
+      }
+      case "custom_field.delete": {
+        const { error } = await supabase.from("customer_custom_fields").delete().eq("id", data.id);
+        if (error) throw error;
+        break;
+      }
+      case "custom_field_value.upsert": {
+        const { customer_id, field_id, value } = data;
+        const { error } = await supabase.from("customer_field_values").upsert(
+          { customer_id, field_id, value, updated_at: new Date().toISOString() },
+          { onConflict: "customer_id,field_id" }
+        );
+        if (error) throw error;
+        break;
+      }
+
       // ===== System Config =====
       case "config.update": {
         for (const { key, value } of data.configs) {
