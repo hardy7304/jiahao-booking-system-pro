@@ -493,6 +493,9 @@ export default function CustomerTracking() {
                   </div>
                 </th>
                 <th className="text-left p-3">標籤</th>
+                <th className="text-left p-3"><div className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> LINE</div></th>
+                <th className="text-left p-3"><div className="flex items-center gap-1"><Cake className="w-3 h-3" /> 生日</div></th>
+                <th className="text-left p-3"><div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> 地區</div></th>
                 <th className="text-left p-3 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("lastVisit")}>
                   <div className="flex items-center gap-1">
                     最後造訪
