@@ -122,6 +122,78 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_custom_fields: {
+        Row: {
+          created_at: string | null
+          field_name: string
+          field_type: string
+          id: string
+          is_active: boolean | null
+          options: string[] | null
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          field_name: string
+          field_type?: string
+          id?: string
+          is_active?: boolean | null
+          options?: string[] | null
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          field_name?: string
+          field_type?: string
+          id?: string
+          is_active?: boolean | null
+          options?: string[] | null
+          sort_order?: number | null
+        }
+        Relationships: []
+      }
+      customer_field_values: {
+        Row: {
+          created_at: string | null
+          customer_id: string
+          field_id: string
+          id: string
+          updated_at: string | null
+          value: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_id: string
+          field_id: string
+          id?: string
+          updated_at?: string | null
+          value?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_id?: string
+          field_id?: string
+          id?: string
+          updated_at?: string | null
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_field_values_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_field_values_field_id_fkey"
+            columns: ["field_id"]
+            isOneToOne: false
+            referencedRelation: "customer_custom_fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_notes: {
         Row: {
           content: string
@@ -182,44 +254,62 @@ export type Database = {
       }
       customers: {
         Row: {
+          allergy_notes: string | null
+          area: string | null
+          birthday: string | null
           blacklist_action: string
           blacklist_reason: string | null
           cancel_count: number
           created_at: string | null
+          email: string | null
           id: string
           is_blacklisted: boolean
           last_visit_date: string | null
+          line_id: string | null
           name: string
           no_show_count: number
           phone: string
+          pressure_preference: string | null
           updated_at: string | null
           visit_count: number
         }
         Insert: {
+          allergy_notes?: string | null
+          area?: string | null
+          birthday?: string | null
           blacklist_action?: string
           blacklist_reason?: string | null
           cancel_count?: number
           created_at?: string | null
+          email?: string | null
           id?: string
           is_blacklisted?: boolean
           last_visit_date?: string | null
+          line_id?: string | null
           name?: string
           no_show_count?: number
           phone: string
+          pressure_preference?: string | null
           updated_at?: string | null
           visit_count?: number
         }
         Update: {
+          allergy_notes?: string | null
+          area?: string | null
+          birthday?: string | null
           blacklist_action?: string
           blacklist_reason?: string | null
           cancel_count?: number
           created_at?: string | null
+          email?: string | null
           id?: string
           is_blacklisted?: boolean
           last_visit_date?: string | null
+          line_id?: string | null
           name?: string
           no_show_count?: number
           phone?: string
+          pressure_preference?: string | null
           updated_at?: string | null
           visit_count?: number
         }
