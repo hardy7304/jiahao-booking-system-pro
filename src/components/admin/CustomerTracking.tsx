@@ -296,6 +296,88 @@ export default function CustomerTracking() {
     return 0;
   });
 
+  // All columns = fixed + custom field columns
+  const allColumns = useMemo(() => {
+    const customCols: ColumnDef[] = customFields.filter(f => f.is_active).map(f => ({
+      id: `cf_${f.id}`,
+      label: f.field_name,
+      defaultVisible: false,
+    }));
+    return [...FIXED_COLUMNS, ...customCols];
+  }, [customFields]);
+
+  // Visible columns in order
+  const visibleColumns = useMemo(() => {
+    const ordered = columnConfig.order
+      .filter(id => columnConfig.visibleIds.includes(id))
+      .map(id => allColumns.find(c => c.id === id))
+      .filter(Boolean) as ColumnDef[];
+    // Add any new columns not in order yet
+    const inOrder = new Set(columnConfig.order);
+    allColumns.forEach(c => {
+      if (!inOrder.has(c.id) && columnConfig.visibleIds.includes(c.id)) ordered.push(c);
+    });
+    return ordered;
+  }, [columnConfig, allColumns]);
+
+  const toggleColumnVisibility = (colId: string) => {
+    const col = allColumns.find(c => c.id === colId);
+    if (col?.fixed) return;
+    const newConfig = { ...columnConfig };
+    if (newConfig.visibleIds.includes(colId)) {
+      newConfig.visibleIds = newConfig.visibleIds.filter(id => id !== colId);
+    } else {
+      newConfig.visibleIds = [...newConfig.visibleIds, colId];
+      if (!newConfig.order.includes(colId)) newConfig.order = [...newConfig.order, colId];
+    }
+    setColumnConfig(newConfig);
+    saveColumnConfig(newConfig);
+  };
+
+  const moveColumn = (colId: string, direction: "up" | "down") => {
+    const newOrder = [...columnConfig.order];
+    // Ensure all visible ids are in order
+    columnConfig.visibleIds.forEach(id => { if (!newOrder.includes(id)) newOrder.push(id); });
+    const idx = newOrder.indexOf(colId);
+    if (idx < 0) return;
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= newOrder.length) return;
+    [newOrder[idx], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[idx]];
+    const newConfig = { ...columnConfig, order: newOrder };
+    setColumnConfig(newConfig);
+    saveColumnConfig(newConfig);
+  };
+
+  // Render cell content for a column
+  const renderCell = (col: ColumnDef, c: Customer) => {
+    const tags = customerTags(c.id);
+    const tier = getAutoTier(c.visit_count);
+    switch (col.id) {
+      case "name": return <div className="flex items-center gap-1">{c.is_blacklisted && <Ban className="w-4 h-4 text-destructive shrink-0" />}{c.name || "—"}</div>;
+      case "phone": return c.phone;
+      case "tier": return <Badge variant="outline" className={tier.color}>{tier.label}</Badge>;
+      case "visits": return <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">{c.visit_count}</Badge>;
+      case "noShow": return c.no_show_count > 0 ? <Badge variant="destructive" className="gap-1"><AlertTriangle className="w-3 h-3" />{c.no_show_count}</Badge> : <span className="text-muted-foreground">0</span>;
+      case "cancel": return (c.cancel_count || 0) > 0 ? <Badge variant="outline" className="gap-1 text-muted-foreground">{c.cancel_count}</Badge> : <span className="text-muted-foreground">0</span>;
+      case "spending": return <span>${(spendingByPhone.get(c.phone) || 0).toLocaleString()}</span>;
+      case "tags": return <div className="flex flex-wrap gap-1">{tags.slice(0,3).map(t => <Badge key={t.id} variant="outline" className="text-xs">{t.tag}</Badge>)}{tags.length > 3 && <Badge variant="outline" className="text-xs">+{tags.length-3}</Badge>}</div>;
+      case "line": return c.line_id ? <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200"><MessageCircle className="w-3 h-3 mr-0.5" /> 已綁定</Badge> : <span className="text-muted-foreground/50">—</span>;
+      case "birthday": return <span className="text-xs">{c.birthday || "—"}</span>;
+      case "email": return <span className="text-xs truncate max-w-[120px] block">{c.email || "—"}</span>;
+      case "area": return <span className="text-xs">{c.area || "—"}</span>;
+      case "pressure": return <span className="text-xs">{PRESSURE_OPTIONS.find(o => o.value === c.pressure_preference)?.label || "—"}</span>;
+      case "allergy": return <span className="text-xs truncate max-w-[100px] block">{c.allergy_notes || "—"}</span>;
+      case "lastVisit": return c.last_visit_date || "—";
+      default:
+        // Custom field
+        if (col.id.startsWith("cf_")) {
+          const fieldId = col.id.replace("cf_", "");
+          const val = customFieldValues.find(v => v.customer_id === c.id && v.field_id === fieldId)?.value;
+          return <span className="text-xs">{val || "—"}</span>;
+        }
+        return "—";
+    }
+  };
   // Tag actions
   const addTag = async (customerId: string, tag: string) => {
     if (!tag.trim()) return;
