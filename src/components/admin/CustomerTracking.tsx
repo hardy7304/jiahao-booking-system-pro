@@ -790,6 +790,10 @@ export default function CustomerTracking() {
                     )}
                   </div>
 
+                  <div className="p-3 rounded-lg border border-border space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Ban className="w-4 h-4 text-destructive" />
                         <Label className="font-semibold">黑名單</Label>
                       </div>
                       <Switch
