@@ -122,17 +122,37 @@ export default function CustomerTracking() {
   const [loadingBookings, setLoadingBookings] = useState(false);
   const [bookingFilter, setBookingFilter] = useState<"all" | "cancelled" | "completed">("all");
 
+  // Custom fields
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [customFieldValues, setCustomFieldValues] = useState<CustomFieldValue[]>([]);
+  const [showFieldManager, setShowFieldManager] = useState(false);
+  const [newFieldName, setNewFieldName] = useState("");
+  const [newFieldType, setNewFieldType] = useState("text");
+  const [newFieldOptions, setNewFieldOptions] = useState("");
+
+  // Editable fixed fields
+  const [editBirthday, setEditBirthday] = useState("");
+  const [editLineId, setEditLineId] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editAllergy, setEditAllergy] = useState("");
+  const [editPressure, setEditPressure] = useState("medium");
+  const [editArea, setEditArea] = useState("");
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    const [{ data: c }, { data: t }, { data: n }, { data: bk }] = await Promise.all([
+    const [{ data: c }, { data: t }, { data: n }, { data: bk }, { data: cf }, { data: cfv }] = await Promise.all([
       supabase.from("customers").select("*").order("updated_at", { ascending: false }),
       supabase.from("customer_tags").select("*"),
       supabase.from("customer_notes").select("*").order("created_at", { ascending: false }),
       supabase.from("bookings").select("phone, total_price, status"),
+      supabase.from("customer_custom_fields").select("*").order("sort_order"),
+      supabase.from("customer_field_values").select("*"),
     ]);
     if (c) setCustomers(c as Customer[]);
     if (t) setAllTags(t as CustomerTag[]);
     if (n) setAllNotes(n as CustomerNote[]);
+    if (cf) setCustomFields(cf as CustomField[]);
+    if (cfv) setCustomFieldValues(cfv as CustomFieldValue[]);
     // Build spending map
     const sMap = new Map<string, number>();
     (bk || []).forEach((b: any) => {
