@@ -178,6 +178,10 @@ export default function CustomerTracking() {
   const [newFieldType, setNewFieldType] = useState("text");
   const [newFieldOptions, setNewFieldOptions] = useState("");
 
+  // Column configuration
+  const [columnConfig, setColumnConfig] = useState(loadColumnConfig);
+  const [showColumnSettings, setShowColumnSettings] = useState(false);
+
   // Editable fixed fields
   const [editBirthday, setEditBirthday] = useState("");
   const [editLineId, setEditLineId] = useState("");
