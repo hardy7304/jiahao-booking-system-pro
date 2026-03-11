@@ -93,7 +93,49 @@ const PRESSURE_OPTIONS = [
   { value: "heavy", label: "重手" },
 ];
 
-function getAutoTier(visitCount: number): { label: string; color: string } {
+// Column definition system
+interface ColumnDef {
+  id: string;
+  label: string;
+  icon?: any;
+  align?: "left" | "center";
+  sortable?: "visits" | "spending" | "lastVisit";
+  fixed?: boolean; // cannot be hidden (name, phone)
+  defaultVisible?: boolean;
+}
+
+const FIXED_COLUMNS: ColumnDef[] = [
+  { id: "name", label: "姓名", fixed: true, defaultVisible: true },
+  { id: "phone", label: "電話", fixed: true, defaultVisible: true },
+  { id: "tier", label: "分級", align: "center", defaultVisible: true },
+  { id: "visits", label: "來訪", align: "center", sortable: "visits", defaultVisible: true },
+  { id: "noShow", label: "爽約", align: "center", defaultVisible: true },
+  { id: "cancel", label: "取消", align: "center", defaultVisible: true },
+  { id: "spending", label: "消費", align: "center", sortable: "spending", defaultVisible: true },
+  { id: "tags", label: "標籤", defaultVisible: true },
+  { id: "line", label: "LINE", icon: MessageCircle, defaultVisible: true },
+  { id: "birthday", label: "生日", icon: Cake, defaultVisible: false },
+  { id: "email", label: "Email", icon: Mail, defaultVisible: false },
+  { id: "area", label: "地區", icon: MapPin, defaultVisible: false },
+  { id: "pressure", label: "力道偏好", icon: Heart, defaultVisible: false },
+  { id: "allergy", label: "過敏禁忌", icon: AlertTriangle, defaultVisible: false },
+  { id: "lastVisit", label: "最後造訪", sortable: "lastVisit", defaultVisible: true },
+];
+
+const COLUMN_STORAGE_KEY = "customer_table_columns";
+
+function loadColumnConfig(): { visibleIds: string[]; order: string[] } {
+  try {
+    const stored = localStorage.getItem(COLUMN_STORAGE_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  const defaultIds = FIXED_COLUMNS.filter(c => c.defaultVisible).map(c => c.id);
+  return { visibleIds: defaultIds, order: defaultIds };
+}
+
+function saveColumnConfig(config: { visibleIds: string[]; order: string[] }) {
+  localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(config));
+}
   if (visitCount >= 10) return { label: "VIP", color: "bg-yellow-100 text-yellow-800 border-yellow-300" };
   if (visitCount >= 5) return { label: "常客", color: "bg-blue-100 text-blue-700 border-blue-300" };
   if (visitCount >= 2) return { label: "回頭客", color: "bg-green-100 text-green-700 border-green-200" };
