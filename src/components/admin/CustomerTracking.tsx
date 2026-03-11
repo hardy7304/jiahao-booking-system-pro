@@ -593,6 +593,47 @@ export default function CustomerTracking() {
             <SelectItem value="normal">正常客戶</SelectItem>
           </SelectContent>
         </Select>
+        {/* Column Settings */}
+        <Popover open={showColumnSettings} onOpenChange={setShowColumnSettings}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="icon" className="shrink-0" title="自訂欄位顯示">
+              <Columns3 className="w-4 h-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[280px] max-h-[400px] overflow-y-auto p-3" align="end">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold mb-2">顯示欄位與排序</p>
+              {allColumns.map(col => {
+                const isVisible = columnConfig.visibleIds.includes(col.id);
+                const orderIdx = columnConfig.order.indexOf(col.id);
+                return (
+                  <div key={col.id} className={`flex items-center gap-2 p-1.5 rounded text-sm ${isVisible ? "bg-secondary/50" : ""}`}>
+                    <Checkbox
+                      checked={isVisible}
+                      disabled={col.fixed}
+                      onCheckedChange={() => toggleColumnVisibility(col.id)}
+                      className="shrink-0"
+                    />
+                    <span className={`flex-1 ${col.fixed ? "font-medium" : ""}`}>
+                      {col.label}
+                      {col.fixed && <span className="text-xs text-muted-foreground ml-1">(固定)</span>}
+                    </span>
+                    {isVisible && !col.fixed && (
+                      <div className="flex gap-0.5">
+                        <button onClick={() => moveColumn(col.id, "up")} className="p-0.5 hover:bg-muted rounded" title="上移">
+                          <ArrowUp className="w-3 h-3" />
+                        </button>
+                        <button onClick={() => moveColumn(col.id, "down")} className="p-0.5 hover:bg-muted rounded" title="下移">
+                          <ArrowDown className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Table */}
@@ -609,93 +650,37 @@ export default function CustomerTracking() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-muted-foreground">
-                <th className="text-left p-3">姓名</th>
-                <th className="text-left p-3">電話</th>
-                <th className="text-center p-3">分級</th>
-                <th className="text-center p-3 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("visits")}>
-                  <div className="flex items-center justify-center gap-1">
-                    來訪
-                    {sortField === "visits" ? (sortDir === "desc" ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
-                  </div>
-                </th>
-                <th className="text-center p-3">爽約</th>
-                <th className="text-center p-3">取消</th>
-                <th className="text-center p-3 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("spending")}>
-                  <div className="flex items-center justify-center gap-1">
-                    消費
-                    {sortField === "spending" ? (sortDir === "desc" ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
-                  </div>
-                </th>
-                <th className="text-left p-3">標籤</th>
-                <th className="text-left p-3"><div className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> LINE</div></th>
-                <th className="text-left p-3"><div className="flex items-center gap-1"><Cake className="w-3 h-3" /> 生日</div></th>
-                <th className="text-left p-3"><div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> 地區</div></th>
-                <th className="text-left p-3 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("lastVisit")}>
-                  <div className="flex items-center gap-1">
-                    最後造訪
-                    {sortField === "lastVisit" ? (sortDir === "desc" ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
-                  </div>
-                </th>
+                {visibleColumns.map(col => (
+                  <th key={col.id}
+                    className={`p-3 ${col.align === "center" ? "text-center" : "text-left"} ${col.sortable ? "cursor-pointer select-none hover:text-foreground transition-colors" : ""}`}
+                    onClick={col.sortable ? () => toggleSort(col.sortable!) : undefined}
+                  >
+                    <div className={`flex items-center gap-1 ${col.align === "center" ? "justify-center" : ""}`}>
+                      {col.icon && <col.icon className="w-3 h-3" />}
+                      {col.label}
+                      {col.sortable && (
+                        sortField === col.sortable
+                          ? (sortDir === "desc" ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />)
+                          : <ArrowUpDown className="w-3 h-3 opacity-40" />
+                      )}
+                    </div>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
-              {sorted.map(c => {
-                const tier = getAutoTier(c.visit_count);
-                const tags = customerTags(c.id);
-                return (
-                  <tr key={c.id} className={`border-b border-border hover:bg-secondary/50 cursor-pointer ${c.is_blacklisted ? "bg-destructive/5" : ""}`}
-                    onClick={() => openDetail(c)}>
-                    <td className="p-3 font-medium text-foreground">
-                      <div className="flex items-center gap-1">
-                        {c.is_blacklisted && <Ban className="w-4 h-4 text-destructive shrink-0" />}
-                        {c.name || "—"}
-                      </div>
+              {sorted.map(c => (
+                <tr key={c.id}
+                  className={`border-b border-border hover:bg-secondary/50 cursor-pointer ${c.is_blacklisted ? "bg-destructive/5" : ""}`}
+                  onClick={() => openDetail(c)}
+                >
+                  {visibleColumns.map(col => (
+                    <td key={col.id} className={`p-3 ${col.align === "center" ? "text-center" : ""} ${col.id === "name" ? "font-medium text-foreground" : "text-muted-foreground"}`}>
+                      {renderCell(col, c)}
                     </td>
-                    <td className="p-3 text-muted-foreground">{c.phone}</td>
-                    <td className="p-3 text-center">
-                      <Badge variant="outline" className={tier.color}>{tier.label}</Badge>
-                    </td>
-                    <td className="p-3 text-center">
-                      <Badge variant="secondary" className="bg-green-100 text-green-700 border-green-200">{c.visit_count}</Badge>
-                    </td>
-                    <td className="p-3 text-center">
-                      {c.no_show_count > 0 ? (
-                        <Badge variant="destructive" className="gap-1">
-                          <AlertTriangle className="w-3 h-3" />{c.no_show_count}
-                        </Badge>
-                      ) : <span className="text-muted-foreground">0</span>}
-                    </td>
-                    <td className="p-3 text-center">
-                      {(c.cancel_count || 0) > 0 ? (
-                        <Badge variant="outline" className="gap-1 text-muted-foreground">
-                          {c.cancel_count}
-                        </Badge>
-                      ) : <span className="text-muted-foreground">0</span>}
-                    </td>
-                    <td className="p-3 text-center text-muted-foreground">
-                      ${(spendingByPhone.get(c.phone) || 0).toLocaleString()}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex flex-wrap gap-1">
-                        {tags.slice(0, 3).map(t => (
-                          <Badge key={t.id} variant="outline" className="text-xs">{t.tag}</Badge>
-                        ))}
-                        {tags.length > 3 && <Badge variant="outline" className="text-xs">+{tags.length - 3}</Badge>}
-                      </div>
-                    </td>
-                    <td className="p-3 text-muted-foreground text-xs">
-                      {c.line_id ? (
-                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
-                          <MessageCircle className="w-3 h-3 mr-0.5" /> 已綁定
-                        </Badge>
-                      ) : <span className="text-muted-foreground/50">—</span>}
-                    </td>
-                    <td className="p-3 text-muted-foreground text-xs">{c.birthday || "—"}</td>
-                    <td className="p-3 text-muted-foreground text-xs">{c.area || "—"}</td>
-                    <td className="p-3 text-muted-foreground">{c.last_visit_date || "—"}</td>
-                  </tr>
-                );
-              })}
+                  ))}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
