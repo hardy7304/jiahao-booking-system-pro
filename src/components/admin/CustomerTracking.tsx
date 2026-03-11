@@ -493,6 +493,9 @@ export default function CustomerTracking() {
                   </div>
                 </th>
                 <th className="text-left p-3">標籤</th>
+                <th className="text-left p-3"><div className="flex items-center gap-1"><MessageCircle className="w-3 h-3" /> LINE</div></th>
+                <th className="text-left p-3"><div className="flex items-center gap-1"><Cake className="w-3 h-3" /> 生日</div></th>
+                <th className="text-left p-3"><div className="flex items-center gap-1"><MapPin className="w-3 h-3" /> 地區</div></th>
                 <th className="text-left p-3 cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => toggleSort("lastVisit")}>
                   <div className="flex items-center gap-1">
                     最後造訪
@@ -546,6 +549,15 @@ export default function CustomerTracking() {
                         {tags.length > 3 && <Badge variant="outline" className="text-xs">+{tags.length - 3}</Badge>}
                       </div>
                     </td>
+                    <td className="p-3 text-muted-foreground text-xs">
+                      {c.line_id ? (
+                        <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                          <MessageCircle className="w-3 h-3 mr-0.5" /> 已綁定
+                        </Badge>
+                      ) : <span className="text-muted-foreground/50">—</span>}
+                    </td>
+                    <td className="p-3 text-muted-foreground text-xs">{c.birthday || "—"}</td>
+                    <td className="p-3 text-muted-foreground text-xs">{c.area || "—"}</td>
                     <td className="p-3 text-muted-foreground">{c.last_visit_date || "—"}</td>
                   </tr>
                 );
@@ -689,8 +701,9 @@ export default function CustomerTracking() {
                         <Input type="date" value={editBirthday} onChange={e => setEditBirthday(e.target.value)} className="h-8 text-sm" />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs text-muted-foreground flex items-center gap-1"><MessageCircle className="w-3 h-3" /> LINE ID</Label>
-                        <Input placeholder="LINE ID" value={editLineId} onChange={e => setEditLineId(e.target.value)} className="h-8 text-sm" />
+                        <Label className="text-xs text-muted-foreground flex items-center gap-1"><MessageCircle className="w-3 h-3" /> LINE User ID</Label>
+                        <Input placeholder="U 開頭（推播用）" value={editLineId} onChange={e => setEditLineId(e.target.value)} className="h-8 text-sm" />
+                        <p className="text-xs text-muted-foreground/70">用於 LINE 推播訊息，格式如 Uxxxxxxxxx</p>
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground flex items-center gap-1"><Mail className="w-3 h-3" /> Email</Label>
