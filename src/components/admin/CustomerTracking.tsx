@@ -15,7 +15,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Search, Users, RefreshCw, AlertTriangle, Ban, Star, Tag, StickyNote, Plus, X, ChevronDown, ChevronRight, Shield, CalendarDays, Clock, CheckCircle2, XCircle, DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, Minus, Download, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Search, Users, RefreshCw, AlertTriangle, Ban, Star, Tag, StickyNote, Plus, X, ChevronDown, ChevronRight, Shield, CalendarDays, Clock, CheckCircle2, XCircle, DollarSign, TrendingUp, ArrowUpRight, ArrowDownRight, Minus, Download, ArrowUpDown, ArrowUp, ArrowDown, Cake, MessageCircle, Mail, MapPin, Heart, Settings2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format, subMonths } from "date-fns";
 
@@ -31,6 +31,12 @@ interface Customer {
   is_blacklisted: boolean;
   blacklist_reason: string | null;
   blacklist_action: string;
+  birthday: string | null;
+  line_id: string | null;
+  email: string | null;
+  allergy_notes: string | null;
+  pressure_preference: string | null;
+  area: string | null;
 }
 
 interface CustomerTag {
@@ -60,7 +66,28 @@ interface BookingRecord {
   phone: string;
 }
 
+interface CustomField {
+  id: string;
+  field_name: string;
+  field_type: string;
+  options: string[];
+  sort_order: number;
+  is_active: boolean;
+}
+
+interface CustomFieldValue {
+  id: string;
+  customer_id: string;
+  field_id: string;
+  value: string | null;
+}
+
 const PRESET_TAGS = ["VIP", "常客", "新客", "敏感肌", "偏好重手", "偏好輕柔", "肩頸問題", "腰部問題"];
+const PRESSURE_OPTIONS = [
+  { value: "light", label: "輕柔" },
+  { value: "medium", label: "適中" },
+  { value: "heavy", label: "重手" },
+];
 
 function getAutoTier(visitCount: number): { label: string; color: string } {
   if (visitCount >= 10) return { label: "VIP", color: "bg-yellow-100 text-yellow-800 border-yellow-300" };
