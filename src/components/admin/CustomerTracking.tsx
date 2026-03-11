@@ -301,6 +301,12 @@ export default function CustomerTracking() {
     setSelectedCustomer(c);
     setBlacklistReason(c.blacklist_reason || "");
     setBlacklistAction(c.blacklist_action || "warn");
+    setEditBirthday(c.birthday || "");
+    setEditLineId(c.line_id || "");
+    setEditEmail(c.email || "");
+    setEditAllergy(c.allergy_notes || "");
+    setEditPressure(c.pressure_preference || "medium");
+    setEditArea(c.area || "");
     setNewTag("");
     setNewNote("");
     setBookingFilter("all");
@@ -314,6 +320,54 @@ export default function CustomerTracking() {
       .order("start_hour", { ascending: false });
     setCustomerBookings((data as BookingRecord[]) || []);
     setLoadingBookings(false);
+  };
+
+  const saveFixedFields = async (customerId: string) => {
+    const updates: any = {
+      birthday: editBirthday || null,
+      line_id: editLineId || null,
+      email: editEmail || null,
+      allergy_notes: editAllergy || null,
+      pressure_preference: editPressure,
+      area: editArea || null,
+    };
+    await adminApi("customer.update", { id: customerId, updates });
+    setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, ...updates } : c));
+    if (selectedCustomer?.id === customerId) {
+      setSelectedCustomer(prev => prev ? { ...prev, ...updates } : null);
+    }
+    toast.success("客戶資料已更新");
+  };
+
+  const saveCustomFieldValue = async (customerId: string, fieldId: string, value: string) => {
+    await adminApi("custom_field_value.upsert", { customer_id: customerId, field_id: fieldId, value });
+    setCustomFieldValues(prev => {
+      const existing = prev.find(v => v.customer_id === customerId && v.field_id === fieldId);
+      if (existing) return prev.map(v => v.customer_id === customerId && v.field_id === fieldId ? { ...v, value } : v);
+      return [...prev, { id: crypto.randomUUID(), customer_id: customerId, field_id: fieldId, value, created_at: "", updated_at: "" }];
+    });
+  };
+
+  const addCustomField = async () => {
+    if (!newFieldName.trim()) return;
+    try {
+      const field: any = { field_name: newFieldName.trim(), field_type: newFieldType };
+      if (newFieldType === "select" && newFieldOptions.trim()) {
+        field.options = newFieldOptions.split(",").map((o: string) => o.trim()).filter(Boolean);
+      }
+      const res = await adminApi("custom_field.create", { field });
+      if (res.field) setCustomFields(prev => [...prev, res.field as CustomField]);
+      setNewFieldName("");
+      setNewFieldOptions("");
+      toast.success("自訂欄位已新增");
+    } catch { toast.error("新增失敗"); }
+  };
+
+  const deleteCustomField = async (id: string) => {
+    await adminApi("custom_field.delete", { id });
+    setCustomFields(prev => prev.filter(f => f.id !== id));
+    setCustomFieldValues(prev => prev.filter(v => v.field_id !== id));
+    toast.success("欄位已刪除");
   };
 
   const exportCsv = async () => {
