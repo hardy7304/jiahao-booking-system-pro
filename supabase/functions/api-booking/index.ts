@@ -148,6 +148,20 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Send LINE notification (fire-and-forget)
+      try {
+        await fetch(
+          `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-line-notification`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+            body: JSON.stringify({ type: "booking_confirmed", phone, booking: data }),
+          }
+        );
+      } catch (lineErr) {
+        console.error("LINE notification error:", lineErr);
+      }
+
       return new Response(JSON.stringify({ booking: data }), { status: 201, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
     }
 
@@ -178,6 +192,22 @@ Deno.serve(async (req) => {
           );
         } catch (syncErr) {
           console.error("Google Calendar cancel sync error:", syncErr);
+        }
+      }
+
+      // Send LINE cancellation notification (fire-and-forget)
+      if (bookingData?.phone) {
+        try {
+          await fetch(
+            `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-line-notification`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+              body: JSON.stringify({ type: "booking_cancelled", phone: bookingData.phone, booking: bookingData }),
+            }
+          );
+        } catch (lineErr) {
+          console.error("LINE cancel notification error:", lineErr);
         }
       }
 

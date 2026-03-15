@@ -98,10 +98,13 @@ export default function TodayDashboard({
   const isViewingToday = isToday(selectedDate);
   const viewDateStr = format(selectedDate, "yyyy-MM-dd");
 
+  // Normalize date: DB may return "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm:ss.sssZ"
+  const toDateStr = (d: string | null | undefined) => (d || "").slice(0, 10);
+
   const dayBookings = useMemo(
     () =>
       bookings
-        .filter((b) => b.date === viewDateStr)
+        .filter((b) => toDateStr(b.date) === viewDateStr)
         .sort((a, b) => a.start_hour - b.start_hour),
     [bookings, viewDateStr]
   );
@@ -120,7 +123,7 @@ export default function TodayDashboard({
     ? Math.round((nextBooking.start_hour - adjustedCurrentHour) * 60)
     : null;
 
-  const isHolidayOnDate = holidays.some((h) => h.date === viewDateStr && h.type === "整天公休");
+  const isHolidayOnDate = holidays.some((h) => toDateStr(h.date) === viewDateStr && h.type === "整天公休");
   const totalSlots = 24;
   const bookedSlots = activeBookings.length;
   const availableSlots = isHolidayOnDate ? 0 : Math.max(0, totalSlots - bookedSlots);

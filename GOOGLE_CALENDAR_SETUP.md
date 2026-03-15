@@ -113,3 +113,13 @@ A:
 
 ### Q: 私鑰貼上後格式錯誤
 A: 在 Supabase Secrets 中，可嘗試將 `\n` 換成實際換行，或整段用 `"` 包住。
+
+### Q: 出現 "Failed to decode base64" 或 "InvalidCharacterError"
+A: 私鑰格式不正確。請依下列步驟**重新設定** `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`：
+1. 打開下載的**服務帳號 JSON 檔**
+2. 找到 `"private_key"` 欄位，值是一串以 `"-----BEGIN PRIVATE KEY-----\\n"` 開頭、`"\\n-----END PRIVATE KEY-----\\n"` 結尾的文字
+3. **整段複製**（包含雙引號內的全部內容，從第一個 `"` 到最後一個 `"`）
+4. 到 Supabase → Edge Functions → **google-calendar-sync** → Settings → Secrets
+5. 編輯或新增 `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`，貼上剛複製的整段
+6. 若 Supabase 不允許多行，可貼成**一行**：保留 `\n` 不要刪，例如 `"-----BEGIN PRIVATE KEY-----\nMIIE...\n-----END PRIVATE KEY-----\n"`
+7. 儲存後重新測試（無需再 deploy function）

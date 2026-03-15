@@ -170,7 +170,12 @@ Deno.serve(async (req) => {
       const errText = await customerRes.text();
       console.error("Resend API error (customer):", customerRes.status, errText);
       return new Response(
-        JSON.stringify({ error: "Failed to send confirmation email" }),
+        JSON.stringify({
+          error: "Failed to send confirmation email",
+          resend_status: customerRes.status,
+          resend_error: errText,
+          from_used: `${fromName} <${fromEmail}>`,
+        }),
         { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

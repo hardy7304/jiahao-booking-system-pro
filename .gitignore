@@ -20,6 +20,9 @@ dist-ssr
 # Cursor MCP config (contains tokens)
 .cursor/mcp.json
 
+# Google OAuth credentials (for Calendar MCP)
+gcp-oauth.keys.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

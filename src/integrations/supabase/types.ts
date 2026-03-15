@@ -194,6 +194,42 @@ export type Database = {
           },
         ]
       }
+      line_message_log: {
+        Row: {
+          id: string
+          customer_phone: string | null
+          line_user_id: string | null
+          message_type: string
+          booking_id: string | null
+          sent_at: string | null
+          success: boolean | null
+          cost_counted: boolean | null
+          error_message: string | null
+        }
+        Insert: {
+          id?: string
+          customer_phone?: string | null
+          line_user_id?: string | null
+          message_type: string
+          booking_id?: string | null
+          sent_at?: string | null
+          success?: boolean | null
+          cost_counted?: boolean | null
+          error_message?: string | null
+        }
+        Update: {
+          id?: string
+          customer_phone?: string | null
+          line_user_id?: string | null
+          message_type?: string
+          booking_id?: string | null
+          sent_at?: string | null
+          success?: boolean | null
+          cost_counted?: boolean | null
+          error_message?: string | null
+        }
+        Relationships: []
+      }
       customer_notes: {
         Row: {
           content: string

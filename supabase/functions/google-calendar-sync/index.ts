@@ -20,17 +20,44 @@ function base64urlEncode(data: Uint8Array): string {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+/** 從 PEM 字串取出 base64 並解碼，相容 Supabase Secrets 常見格式 */
 function pemToArrayBuffer(pem: string): ArrayBuffer {
-  let cleaned = pem
-    .replace(/\\n/g, "\n")
-    .replace(/-----BEGIN PRIVATE KEY-----/g, "")
-    .replace(/-----END PRIVATE KEY-----/g, "")
-    .replace(/[\s\r\n]/g, "");
-  while (cleaned.length % 4 !== 0) cleaned += "=";
-  const binary = atob(cleaned);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes.buffer;
+  if (!pem || typeof pem !== "string") {
+    throw new Error("Private key is empty or not a string");
+  }
+  // 去掉前後引號（JSON 貼上時可能帶有）
+  let raw = pem.replace(/^["'\s]+|["'\s]+$/g, "");
+  // 統一換行：\n 字面量 → 實際換行
+  raw = raw.replace(/\\n/g, "\n");
+  // 只保留 -----BEGIN...----- 與 -----END...----- 之間的內容
+  const begin = "-----BEGIN PRIVATE KEY-----";
+  const end = "-----END PRIVATE KEY-----";
+  const i = raw.indexOf(begin);
+  const j = raw.indexOf(end);
+  if (i !== -1 && j > i) {
+    raw = raw.slice(i + begin.length, j);
+  } else if (i !== -1) {
+    raw = raw.slice(i + begin.length);
+  } else if (j !== -1) {
+    raw = raw.slice(0, j);
+  }
+  // 移除所有空白與換行，只留 base64 字元
+  let b64 = raw.replace(/[\s\r\n]/g, "");
+  // 只保留合法 base64 字元（避免非法字元導致 atob 失敗）
+  b64 = b64.replace(/[^A-Za-z0-9+/=]/g, "");
+  if (!b64.length) {
+    throw new Error("No base64 content found in private key. Check GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY: include -----BEGIN PRIVATE KEY----- ... -----END PRIVATE KEY-----");
+  }
+  while (b64.length % 4 !== 0) b64 += "=";
+  try {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes.buffer;
+  } catch (e) {
+    const msg = (e as Error).message || String(e);
+    throw new Error(`Failed to decode private key base64: ${msg}. Ensure the key is the full PEM (from JSON private_key) without extra characters.`);
+  }
 }
 
 async function createGoogleJWT(email: string, privateKeyPem: string, scopes: string[]): Promise<string> {
@@ -203,12 +230,24 @@ Deno.serve(async (req) => {
 
     // action "check": 診斷用，檢查設定狀態
     if (body?.action === "check") {
+      // 嘗試實際取得 token 來驗證私鑰是否能用
+      let tokenTest = "未測試";
+      if (email && privateKey && calendarId) {
+        try {
+          const fk = privateKey.replace(/^["']|["']$/g, "").replace(/\\n/g, "\n");
+          await getAccessToken(email, fk);
+          tokenTest = "成功（私鑰有效）";
+        } catch (e) {
+          tokenTest = `失敗：${(e as Error).message}`;
+        }
+      }
       return new Response(
         JSON.stringify({
-          ok: !!(email && privateKey && calendarId),
-          google_calendar_id: calendarId ? "已設定" : "未設定",
-          google_service_account_email: email ? "已設定" : "未設定",
-          google_private_key: privateKey ? "已設定" : "未設定",
+          ok: !!(email && privateKey && calendarId) && tokenTest.startsWith("成功"),
+          google_calendar_id: calendarId || "未設定",
+          google_service_account_email: email || "未設定",
+          google_private_key: privateKey ? `已設定（${privateKey.length} 字元）` : "未設定",
+          token_test: tokenTest,
           hint: !(email && privateKey && calendarId)
             ? "請在 Supabase → Edge Functions → google-calendar-sync → Secrets 設定 GOOGLE_CALENDAR_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
             : null,
@@ -277,7 +316,11 @@ Deno.serve(async (req) => {
 
     return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
-    console.error("Google Calendar sync error:", e);
-    return new Response(JSON.stringify({ error: (e as Error).message }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const err = e as Error;
+    console.error("Google Calendar sync error:", err.message, err.stack);
+    return new Response(
+      JSON.stringify({ error: err.message, stack: err.stack }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 });

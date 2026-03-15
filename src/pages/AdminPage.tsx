@@ -18,6 +18,7 @@ import TodayDashboard from "@/components/admin/TodayDashboard";
 import BookingCalendarView from "@/components/admin/BookingCalendarView";
 import StatsDashboard from "@/components/admin/StatsDashboard";
 import CustomerTracking from "@/components/admin/CustomerTracking";
+import LineMessageStats from "@/components/admin/LineMessageStats";
 import BookingFiltersBar, { type BookingFilters, type SortField } from "@/components/admin/BookingFilters";
 import { useCommission } from "@/hooks/useCommission";
 import { useCalendarNotes } from "@/hooks/useCalendarNotes";
@@ -125,6 +126,7 @@ export default function AdminPage() {
 
   // Settings dialog
   const [showSettings, setShowSettings] = useState(false);
+  const [bookingPageUrlInput, setBookingPageUrlInput] = useState("");
   const [rateInput, setRateInput] = useState("60");
   const [calendarNotesInput, setCalendarNotesInput] = useState("");
   const [shopInfoInput, setShopInfoInput] = useState(shopInfoHook.info);
@@ -463,6 +465,7 @@ export default function AdminPage() {
         { key: "buffer_minutes", value: bufferInput },
         { key: "free_addon_duration", value: freeAddonInput },
         { key: "pre_block_minutes", value: preBlockInput },
+        { key: "booking_page_url", value: bookingPageUrlInput.trim() },
         ...Object.entries(shopInfoInput).map(([k, v]) => ({ key: k, value: v })),
       ];
       if (adminPasswordInput.trim()) {
@@ -566,7 +569,17 @@ export default function AdminPage() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-xl font-bold text-foreground">{shopInfoHook.info.store_name} · 管理後台</h1>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setCalendarNotesInput(calendarNotesHook.notes); setShopInfoInput(shopInfoHook.info); setBufferInput(bookingSettingsHook.settings.buffer_minutes.toString()); setFreeAddonInput(bookingSettingsHook.settings.free_addon_duration.toString()); setPreBlockInput(bookingSettingsHook.settings.pre_block_minutes.toString()); setShowSettings(true); }}>
+            <Button variant="outline" size="sm" onClick={async () => {
+              setRateInput(Math.round(commission.commissionRate * 100).toString());
+              setCalendarNotesInput(calendarNotesHook.notes);
+              setShopInfoInput(shopInfoHook.info);
+              setBufferInput(bookingSettingsHook.settings.buffer_minutes.toString());
+              setFreeAddonInput(bookingSettingsHook.settings.free_addon_duration.toString());
+              setPreBlockInput(bookingSettingsHook.settings.pre_block_minutes.toString());
+              const { data: urlRow } = await supabase.from("system_config").select("value").eq("key", "booking_page_url").maybeSingle();
+              setBookingPageUrlInput(urlRow?.value || "");
+              setShowSettings(true);
+            }}>
               <Settings className="w-4 h-4 mr-1" /> 設定
             </Button>
             <Button variant="outline" size="sm" onClick={() => { setAuthenticated(false); sessionStorage.removeItem("admin_auth"); }}>
@@ -583,6 +596,7 @@ export default function AdminPage() {
             <TabsTrigger value="services" className="flex-1">服務管理</TabsTrigger>
             <TabsTrigger value="stats" className="flex-1">統計</TabsTrigger>
             <TabsTrigger value="customers" className="flex-1">客戶</TabsTrigger>
+            <TabsTrigger value="line" className="flex-1">LINE</TabsTrigger>
           </TabsList>
 
           {/* TODAY */}
@@ -1149,7 +1163,14 @@ export default function AdminPage() {
 
           {/* SERVICES */}
           <TabsContent value="services" className="mt-4">
-            <ServiceManagement onOpenSettings={() => { setRateInput(Math.round(commission.commissionRate * 100).toString()); setCalendarNotesInput(calendarNotesHook.notes); setShopInfoInput(shopInfoHook.info); setShowSettings(true); }} />
+            <ServiceManagement onOpenSettings={async () => {
+              setRateInput(Math.round(commission.commissionRate * 100).toString());
+              setCalendarNotesInput(calendarNotesHook.notes);
+              setShopInfoInput(shopInfoHook.info);
+              const { data: urlRow } = await supabase.from("system_config").select("value").eq("key", "booking_page_url").maybeSingle();
+              setBookingPageUrlInput(urlRow?.value || "");
+              setShowSettings(true);
+            }} />
           </TabsContent>
 
           {/* STATS */}
@@ -1160,6 +1181,10 @@ export default function AdminPage() {
           {/* CUSTOMERS */}
           <TabsContent value="customers" className="mt-4">
             <CustomerTracking />
+          </TabsContent>
+
+          <TabsContent value="line" className="mt-4">
+            <LineMessageStats />
           </TabsContent>
         </Tabs>
       </div>
@@ -1344,6 +1369,14 @@ export default function AdminPage() {
             <div className="space-y-2">
               <Label className="text-sm font-medium">地址（預約頁底部）</Label>
               <Input value={shopInfoInput.store_address} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_address: e.target.value }))} placeholder="例：台南市安平區 · 不老松足湯安平店" />
+            </div>
+            <div className="border-t border-border pt-4 space-y-2">
+              <h3 className="text-sm font-semibold text-foreground">📱 LINE 預約導流</h3>
+              <Label className="text-sm font-medium">預約頁網址（LINE 用）</Label>
+              <Input value={bookingPageUrlInput} onChange={(e) => setBookingPageUrlInput(e.target.value)} placeholder="例：https://你的網站.vercel.app/booking" />
+              <p className="text-xs text-muted-foreground">
+                填寫後，LINE 歡迎訊息、查詢結果、功能選單會顯示「立即預約」連結，導流客人到官網預約
+              </p>
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">師傅抽成比例</Label>
