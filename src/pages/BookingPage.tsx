@@ -192,9 +192,9 @@ export default function BookingPage() {
 
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-      if (!supabaseUrl || !publishableKey) {
+      if (!supabaseUrl || !anonKey) {
         setLoading(false);
         toast.error("系統設定異常，請稍後再試");
         return;
@@ -204,7 +204,7 @@ export default function BookingPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${publishableKey}`,
+          "Authorization": `Bearer ${anonKey}`,
         },
         body: JSON.stringify(bookingData),
       });
