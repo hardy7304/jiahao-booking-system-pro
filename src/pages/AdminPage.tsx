@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseUrl, supabaseAnonKey } from "@/integrations/supabase/client";
 import { formatHourToTime, generateTimeSlots } from "@/lib/services";
 import { adminApi } from "@/lib/adminApi";
 import { Button } from "@/components/ui/button";
@@ -158,6 +158,11 @@ export default function AdminPage() {
   const [googleCalendarId, setGoogleCalendarId] = useState<string>("");
   const [showGoogleCalendar, setShowGoogleCalendar] = useState(false);
 
+  // 日曆 / 寄信診斷
+  const [calendarDiagnostic, setCalendarDiagnostic] = useState<{ ok: boolean; message?: string } | null>(null);
+  const [emailDiagnostic, setEmailDiagnostic] = useState<{ ok: boolean; message?: string } | null>(null);
+  const [diagnosticLoading, setDiagnosticLoading] = useState(false);
+
   // Load admin password from DB & Google Calendar ID
   useEffect(() => {
     const loadConfig = async () => {
@@ -178,6 +183,35 @@ export default function AdminPage() {
       fetchCalendarId();
     }
   }, [authenticated]);
+
+  const runDiagnostic = useCallback(async () => {
+    setDiagnosticLoading(true);
+    setCalendarDiagnostic(null);
+    setEmailDiagnostic(null);
+    try {
+      const calRes = await fetch(`${supabaseUrl}/functions/v1/google-calendar-sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseAnonKey}` },
+        body: JSON.stringify({ action: "check" }),
+      }).then((r) => r.json()).catch((e) => ({ ok: false, error: e.message }));
+      const emailRes = await fetch(`${supabaseUrl}/functions/v1/send-booking-email`, {
+        headers: { "Authorization": `Bearer ${supabaseAnonKey}` },
+      }).then((r) => r.json()).catch((e) => ({ ok: false, hint: e.message }));
+
+      setCalendarDiagnostic(
+        calRes.ok === true
+          ? { ok: true, message: "日曆 API 已設定（預約會同步到 Google 日曆）" }
+          : { ok: false, message: calRes.error || "未設定或私鑰格式錯誤，請檢查 Supabase → google-calendar-sync → Secrets" }
+      );
+      setEmailDiagnostic(
+        emailRes.resend_api_key_set === true
+          ? { ok: true, message: "寄信 API 已設定（預約成功會寄確認信）" }
+          : { ok: false, message: emailRes.hint || "請在 Supabase → send-booking-email → Secrets 設定 RESEND_API_KEY" }
+      );
+    } finally {
+      setDiagnosticLoading(false);
+    }
+  }, []);
 
   const handleLogin = () => {
     if (password === adminPasswordFromDb) {
@@ -934,7 +968,32 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Google Calendar embed */}
+            {/* 日曆 / 寄信診斷 */}
+            <div className="bg-card rounded-xl shadow p-4 mb-4">
+              <h3 className="font-semibold text-foreground mb-2">🔧 顯示與預約連線檢查</h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                預約功能本身一定會寫入資料庫；下方檢查「日曆同步」與「寄信」的設定是否正確。
+              </p>
+              <Button variant="outline" size="sm" onClick={runDiagnostic} disabled={diagnosticLoading}>
+                {diagnosticLoading ? "檢查中..." : "檢查日曆與寄信設定"}
+              </Button>
+              {(calendarDiagnostic || emailDiagnostic) && (
+                <div className="mt-3 space-y-2 text-sm">
+                  {calendarDiagnostic && (
+                    <div className={cn("p-2 rounded", calendarDiagnostic.ok ? "bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200" : "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-200")}>
+                      <span className="font-medium">Google 日曆：</span> {calendarDiagnostic.message}
+                    </div>
+                  )}
+                  {emailDiagnostic && (
+                    <div className={cn("p-2 rounded", emailDiagnostic.ok ? "bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200" : "bg-amber-50 text-amber-800 dark:bg-amber-950 dark:text-amber-200")}>
+                      <span className="font-medium">預約確認信：</span> {emailDiagnostic.message}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Google Calendar：優先「新分頁開啟」，內嵌為選用（避免 400 無解） */}
             {googleCalendarId && (
               <Collapsible open={showGoogleCalendar} onOpenChange={setShowGoogleCalendar}>
                 <div className="bg-card rounded-xl shadow">
@@ -943,17 +1002,33 @@ export default function AdminPage() {
                     <ChevronRight className="w-4 h-4 text-muted-foreground transition-transform [[data-state=open]>&]:rotate-90" />
                   </CollapsibleTrigger>
                   <CollapsibleContent className="px-4 pb-4">
+                    <div className="flex flex-col gap-3 mb-3">
+                      <a
+                        href={`https://calendar.google.com/calendar?cid=${encodeURIComponent(googleCalendarId)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-3 text-primary-foreground font-medium hover:opacity-90"
+                      >
+                        在新分頁開啟 Google 日曆（推薦，不受 400 影響）
+                      </a>
+                      <details className="text-xs text-muted-foreground rounded border border-border p-3 bg-muted/30">
+                        <summary className="cursor-pointer font-medium text-foreground">若內嵌顯示 400，可依序檢查</summary>
+                        <ol className="list-decimal list-inside mt-2 space-y-1">
+                          <li>到 Google 日曆網頁 → 左側該日曆旁的 ⋮ → 設定與共用 → 「存取權限」區塊勾選「提供給所有人使用」。</li>
+                          <li>關閉可能干擾的瀏覽器擴充功能（如 DuckDuckGo、Bitdefender 等防追蹤）後重新整理。</li>
+                          <li>直接使用上方「在新分頁開啟 Google 日曆」按鈕，不需依賴內嵌。</li>
+                        </ol>
+                      </details>
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">下方為內嵌檢視（若出現 400 請用上方按鈕）：</p>
                     <div className="rounded-lg overflow-hidden border border-border">
                       <iframe
                         src={`https://calendar.google.com/calendar/embed?src=${encodeURIComponent(googleCalendarId)}&ctz=Asia/Taipei&mode=WEEK&showTitle=0&showNav=1&showDate=1&showPrint=0&showTabs=1&showCalendars=0&showTz=0`}
                         className="w-full border-0"
-                        style={{ height: "600px" }}
+                        style={{ height: "500px" }}
                         title="Google Calendar"
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      此為 Google 日曆即時內容，可確認預約與公休是否已正確同步
-                    </p>
                   </CollapsibleContent>
                 </div>
               </Collapsible>
