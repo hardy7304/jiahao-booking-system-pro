@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseUrl } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -72,7 +72,6 @@ export default function MyBookingsPage() {
 
     setCancellingId(booking.id);
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       const resp = await fetch(`${supabaseUrl}/functions/v1/api-booking?id=${booking.id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },

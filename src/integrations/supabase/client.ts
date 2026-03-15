@@ -1,27 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
+const DEFAULT_SUPABASE_URL = 'https://plhrervpunzpdoqruagb.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsaHJlcnZwdW56cGRvcXJ1YWdiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0ODI2ODksImV4cCI6MjA4OTA1ODY4OX0.vWtdoVotzMqzj1LXha6mLr9yuiM5Z45NBm-FweLHUt4';
+
+const SUPABASE_URL =
+  import.meta.env.VITE_SUPABASE_URL || DEFAULT_SUPABASE_URL;
 const SUPABASE_ANON_KEY =
-  import.meta.env.VITE_SUPABASE_ANON_KEY ??
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ??
-  '';
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  DEFAULT_SUPABASE_ANON_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error(
-    '[supabase/client] Missing env vars. Need VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY. ' +
-    'Check .env (local) or Vercel Environment Variables (production).'
-  );
-}
+export const supabaseUrl = SUPABASE_URL;
+export const supabaseAnonKey = SUPABASE_ANON_KEY;
 
-export const supabase = createClient<Database>(
-  SUPABASE_URL || 'https://placeholder.supabase.co',
-  SUPABASE_ANON_KEY || 'placeholder',
-  {
-    auth: {
-      storage: typeof localStorage !== 'undefined' ? localStorage : undefined,
-      persistSession: true,
-      autoRefreshToken: true,
-    },
-  }
-);
+export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+});

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase, supabaseUrl, supabaseAnonKey } from "@/integrations/supabase/client";
 import { formatHourToTime } from "@/lib/services";
 import { getAvailableSlots, generateGoogleCalendarLink } from "@/lib/timeUtils";
 import { useCalendarNotes } from "@/hooks/useCalendarNotes";
@@ -191,20 +191,11 @@ export default function BookingPage() {
     };
 
     try {
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-      if (!supabaseUrl || !anonKey) {
-        setLoading(false);
-        toast.error("系統設定異常，請稍後再試");
-        return;
-      }
-
       const resp = await fetch(`${supabaseUrl}/functions/v1/api-booking`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${anonKey}`,
+          "Authorization": `Bearer ${supabaseAnonKey}`,
         },
         body: JSON.stringify(bookingData),
       });
