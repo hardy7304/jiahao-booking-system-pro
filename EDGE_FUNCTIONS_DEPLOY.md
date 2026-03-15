@@ -14,6 +14,7 @@
 | **api-holidays** | 取得假日列表 | 日曆相關 |
 | **api-services** | 取得服務與加購項目 | 預約頁（備援） |
 | **google-calendar-sync** | 同步 Google 日曆 | api-booking、api-admin |
+| **send-booking-email** | 寄送預約確認信（Resend） | api-booking |
 | **line-webhook** | LINE 訊息 Webhook | LINE 平台（若啟用） |
 
 **預約寫入依賴**：`api-booking` 負責將預約寫入 `bookings` 表。
@@ -74,6 +75,7 @@ supabase functions deploy api-available-slots
 supabase functions deploy api-holidays
 supabase functions deploy api-services
 supabase functions deploy google-calendar-sync
+supabase functions deploy send-booking-email
 supabase functions deploy line-webhook
 ```
 
@@ -101,7 +103,54 @@ npm run dev
 
 ---
 
-## 3. 驗證部署
+## 3. Environment Variables（環境變數）
+
+### 自動注入（不需手動設定）
+
+Supabase 部署 Edge Functions 時會**自動注入**以下變數，無需在 Dashboard 設定：
+
+| 變數 | 說明 |
+|------|------|
+| `SUPABASE_URL` | 專案 URL |
+| `SUPABASE_ANON_KEY` | anon 金鑰 |
+| `SUPABASE_SERVICE_ROLE_KEY` | service_role 金鑰（寫入權限） |
+
+### 需手動設定的變數
+
+前往 **Supabase Dashboard** → **Edge Functions** → 選取函數 → **Settings** → **Environment Variables**（或 **Secrets**）
+
+#### line-webhook（若使用 LINE 整合）
+
+| 變數 | 說明 | 取得位置 |
+|------|------|----------|
+| `LINE_CHANNEL_SECRET` | LINE Channel Secret | [LINE Developers Console](https://developers.line.biz/) |
+| `LINE_CHANNEL_ACCESS_TOKEN` | LINE Channel Access Token | 同上 |
+
+#### google-calendar-sync、api-admin（若使用 Google 日曆同步）
+
+| 變數 | 說明 | 取得方式 |
+|------|------|----------|
+| `GOOGLE_CALENDAR_ID` | Google 日曆 ID | 日曆設定 → 整合日曆 → 日曆 ID |
+| `GOOGLE_SERVICE_ACCOUNT_EMAIL` | 服務帳號 email | Google Cloud → IAM → 服務帳號 |
+| `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` | 服務帳號私鑰 (JSON 內 private_key) | 建立服務帳號金鑰後取得 |
+
+**取得 service_role key（若需手動使用）：**  
+**Supabase** → **Project Settings** → **API** → **service_role**（secret，切勿曝光於前端）
+
+#### send-booking-email（預約確認信）
+
+| 變數 | 說明 | 取得方式 |
+|------|------|----------|
+| `RESEND_API_KEY` | Resend API 金鑰 | [Resend](https://resend.com) 註冊後取得 |
+| `RESEND_FROM_EMAIL` | 寄件者 email（需在 Resend 驗證網域） | 例：`booking@yourdomain.com` |
+| `RESEND_FROM_NAME` | 寄件者顯示名稱（選填） | 例：`不老松足湯安平店` |
+| `RESEND_STORE_EMAIL` | 店家通知 email（選填，預約成功時會另寄一份給店家） | 例：`store@yourdomain.com` |
+
+若未設定 `RESEND_FROM_EMAIL`，預設使用 `onboarding@resend.dev`（僅適用 Resend 測試，正式環境請驗證網域）。
+
+---
+
+## 4. 驗證部署
 
 ### 測試 api-booking
 
@@ -138,7 +187,7 @@ curl -X POST "https://plhrervpunzpdoqruagb.supabase.co/functions/v1/api-booking"
 
 ---
 
-## 4. 常見問題
+## 5. 常見問題
 
 ### Q: 部署時出現 "function size exceeded"？
 A: 單一函數上限約 20MB，若過大可檢查相依套件與 bundle 設定。

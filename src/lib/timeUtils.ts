@@ -58,7 +58,8 @@ export async function getAvailableSlots(dateStr: string, totalDuration: number):
 
   const slots: number[] = [];
   const now = new Date();
-  const today = new Date().toISOString().split('T')[0];
+  // Use local date for "today" comparison (avoid timezone bugs near midnight)
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   for (let hour = 14; hour < 26; hour += 0.5) {
     const endHour = hour + blockHours;
@@ -88,14 +89,12 @@ export async function getAvailableSlots(dateStr: string, totalDuration: number):
     });
     if (bookingConflict) continue;
 
-    // Pre-block rule: if this slot's total duration > 60 min,
-    // check that no existing booking starts within pre_block_minutes after this slot ends
-    // i.e., if someone booked 19:00, we can't start a >60min service at 18:00
-    // Rule: for services > 60min total, the slot must not have an existing booking
-    // starting within pre_block_minutes ahead of it
+    // Pre-block rule: for long services (>60min), ensure no booking starts within
+    // pre_block_minutes after our slot ends (need buffer between appointments)
     if (totalDuration > 60) {
+      const slotEnd = hour + blockHours;
       const preConflict = allBookings.some(b => {
-        return b.start_hour > hour && b.start_hour < hour + preBlockHours;
+        return b.start_hour >= slotEnd && b.start_hour < slotEnd + preBlockHours;
       });
       if (preConflict) continue;
     }

@@ -1,6 +1,24 @@
 project_id = "plhrervpunzpdoqruagb"
 
+[functions.api-admin]
+verify_jwt = false
+
+[functions.api-booking]
+verify_jwt = false
+
 [functions.google-calendar-sync]
+verify_jwt = false
+
+[functions.send-booking-email]
+verify_jwt = false
+
+[functions.api-available-slots]
+verify_jwt = false
+
+[functions.api-holidays]
+verify_jwt = false
+
+[functions.api-services]
 verify_jwt = false
 
 [functions.line-webhook]

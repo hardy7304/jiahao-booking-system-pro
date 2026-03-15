@@ -7,8 +7,12 @@ const corsHeaders = {
 
 // --- JWT helpers for Google Service Account auth ---
 function base64url(str: string): string {
-  return btoa(str).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const bytes = new TextEncoder().encode(str);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
+
 
 function base64urlEncode(data: Uint8Array): string {
   let binary = "";
@@ -195,13 +199,29 @@ Deno.serve(async (req) => {
     const privateKey = Deno.env.get("GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY");
     const calendarId = Deno.env.get("GOOGLE_CALENDAR_ID")?.trim();
 
+    const body = await req.json();
+
+    // action "check": 診斷用，檢查設定狀態
+    if (body?.action === "check") {
+      return new Response(
+        JSON.stringify({
+          ok: !!(email && privateKey && calendarId),
+          google_calendar_id: calendarId ? "已設定" : "未設定",
+          google_service_account_email: email ? "已設定" : "未設定",
+          google_private_key: privateKey ? "已設定" : "未設定",
+          hint: !(email && privateKey && calendarId)
+            ? "請在 Supabase → Edge Functions → google-calendar-sync → Secrets 設定 GOOGLE_CALENDAR_ID, GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY"
+            : null,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (!email || !privateKey || !calendarId) {
       throw new Error("Missing Google Calendar configuration secrets");
     }
 
     let formattedKey = privateKey.replace(/^["']|["']$/g, "").replace(/\\n/g, "\n");
-
-    const body = await req.json();
     const { action, booking, holiday } = body;
 
     const accessToken = await getAccessToken(email, formattedKey);

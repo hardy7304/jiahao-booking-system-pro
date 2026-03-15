@@ -32,10 +32,60 @@ Deno.serve(async (req) => {
     // POST: Create a booking
     if (req.method === "POST") {
       const body = await req.json();
-      const { date, start_hour, name, phone, service, addons, duration, total_price } = body;
+      const { date, start_hour, name, phone, service, addons, duration, total_price, email } = body;
 
       if (!date || start_hour == null || !name || !phone || !service || !duration || !total_price) {
         return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
+      }
+
+      // Fetch buffer_minutes from system_config
+      const { data: configRows } = await supabase.from("system_config").select("key, value").eq("key", "buffer_minutes").maybeSingle();
+      const bufferMinutes = configRows?.value ? parseInt(configRows.value) || 10 : 10;
+
+      // Holiday check: block bookings on public holidays
+      const { data: holidays } = await supabase
+        .from("holidays")
+        .select("type, start_hour, end_hour")
+        .eq("date", date);
+
+      if (holidays?.some((h: { type: string }) => h.type === "整天公休")) {
+        return new Response(
+          JSON.stringify({ error: "該日為公休日，無法預約" }),
+          { status: 409, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+        );
+      }
+
+      const newStart = start_hour;
+      const newEnd = start_hour + duration / 60;
+
+      const partialHolidayConflict = (holidays || []).some((h: { type: string; start_hour?: number; end_hour?: number }) => {
+        if (h.type !== "部分時段公休" || h.start_hour == null || h.end_hour == null) return false;
+        return newStart < h.end_hour && newEnd > h.start_hour;
+      });
+      if (partialHolidayConflict) {
+        return new Response(
+          JSON.stringify({ error: "該時段為公休時段，無法預約" }),
+          { status: 409, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+        );
+      }
+
+      // Conflict check: fetch existing non-cancelled bookings for this date
+      const { data: existingBookings } = await supabase
+        .from("bookings")
+        .select("start_hour, duration")
+        .eq("date", date)
+        .is("cancelled_at", null);
+
+      const hasConflict = (existingBookings || []).some((b: { start_hour: number; duration: number }) => {
+        const bEnd = b.start_hour + (b.duration + bufferMinutes) / 60;
+        return newStart < bEnd && newEnd > b.start_hour;
+      });
+
+      if (hasConflict) {
+        return new Response(
+          JSON.stringify({ error: "該時段已被預約，請選擇其他時段" }),
+          { status: 409, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } }
+        );
       }
 
       const bookingData = {
@@ -68,6 +118,34 @@ Deno.serve(async (req) => {
         }
       } catch (syncErr) {
         console.error("Google Calendar sync error:", syncErr);
+      }
+
+      // Send confirmation email if email provided (fire-and-forget)
+      let sendToEmail = email && typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+        ? email.trim()
+        : null;
+      if (!sendToEmail) {
+        const { data: customer } = await supabase.from("customers").select("email").eq("phone", phone).maybeSingle();
+        if (customer?.email) sendToEmail = customer.email;
+      }
+      if (sendToEmail) {
+        try {
+          const { data: storeRow } = await supabase.from("system_config").select("value").eq("key", "store_name").maybeSingle();
+          const storeName = storeRow?.value || "不老松足湯";
+          const emailResp = await fetch(
+            `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-booking-email`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+              body: JSON.stringify({ to: sendToEmail, booking: data, storeName }),
+            }
+          );
+          if (!emailResp.ok) {
+            console.error("Booking email failed:", await emailResp.text());
+          }
+        } catch (emailErr) {
+          console.error("Booking email error:", emailErr);
+        }
       }
 
       return new Response(JSON.stringify({ booking: data }), { status: 201, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });

@@ -56,6 +56,7 @@ export default function BookingPage() {
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [success, setSuccess] = useState<any>(null);
@@ -186,6 +187,7 @@ export default function BookingPage() {
       addons: allAddons,
       duration: totalDuration,
       total_price: totalPrice,
+      ...(email.trim() && { email: email.trim() }),
     };
 
     try {
@@ -280,6 +282,7 @@ export default function BookingPage() {
               setSelectedSlot(null);
               setName("");
               setPhone("");
+              setEmail("");
             }}>
               再次預約
             </Button>
@@ -430,7 +433,7 @@ export default function BookingPage() {
             </div>
           )}
 
-          {/* Name & Phone */}
+          {/* Name, Phone, Email */}
           {selectedSlot !== null && (
             <div className="space-y-3 animate-fade-in">
               <div className="space-y-2">
@@ -440,6 +443,10 @@ export default function BookingPage() {
               <div className="space-y-2">
                 <Label className="text-sm font-semibold">電話 *</Label>
                 <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="請輸入電話號碼" maxLength={20} type="tel" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Email（選填，用於寄送預約確認信）</Label>
+                <Input value={email} onChange={e => setEmail(e.target.value)} placeholder="example@email.com" maxLength={100} type="email" />
               </div>
             </div>
           )}
