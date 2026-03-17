@@ -118,9 +118,24 @@ export default function TodayDashboard({
   const currentHourRaw = now.getHours() + now.getMinutes() / 60;
   const adjustedCurrentHour = currentHourRaw < 6 ? currentHourRaw + 24 : currentHourRaw;
 
-  const nextBooking = isViewingToday ? dayBookings.find((b) => b.start_hour > adjustedCurrentHour) : null;
+  const nextBooking = isViewingToday
+    ? (() => {
+        const pending = activeBookings.filter((b) => b.status !== "completed");
+        if (adjustedCurrentHour >= 24) {
+          const lateNight = pending.find((b) => b.start_hour >= 24 && b.start_hour > adjustedCurrentHour);
+          if (lateNight) return lateNight;
+          return pending.find((b) => b.start_hour < 24);
+        }
+        return pending.find((b) => b.start_hour > adjustedCurrentHour);
+      })()
+    : null;
   const minutesUntilNext = nextBooking
-    ? Math.round((nextBooking.start_hour - adjustedCurrentHour) * 60)
+    ? (() => {
+        if (adjustedCurrentHour >= 24 && nextBooking.start_hour < 24) {
+          return Math.round((nextBooking.start_hour - currentHourRaw) * 60);
+        }
+        return Math.round((nextBooking.start_hour - adjustedCurrentHour) * 60);
+      })()
     : null;
 
   const isHolidayOnDate = holidays.some((h) => toDateStr(h.date) === viewDateStr && h.type === "整天公休");
@@ -248,9 +263,12 @@ export default function TodayDashboard({
             <>
               <div className="text-lg font-bold text-foreground truncate flex items-center gap-1">
                 {blacklistedPhones?.has(nextBooking.phone) && <span title="黑名單客戶"><Ban className="w-4 h-4 text-destructive shrink-0" /></span>}
-                {nextBooking.name} {nextBooking.start_time_str}
+                {nextBooking.start_time_str} {nextBooking.name}
               </div>
-              <div className="text-xs text-primary font-medium">
+              <div className="text-xs text-muted-foreground truncate">
+                {nextBooking.service} · {nextBooking.duration}分鐘
+              </div>
+              <div className="text-xs text-primary font-medium mt-0.5">
                 還有 {minutesUntilNext! > 60 ? `${Math.floor(minutesUntilNext! / 60)}小時${minutesUntilNext! % 60}分` : `${minutesUntilNext}分鐘`}
               </div>
             </>

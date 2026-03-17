@@ -173,11 +173,27 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Missing booking id" }), { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
       }
 
+      // Read optional cancel_reason from request body
+      let cancelReason: string | null = null;
+      try {
+        const body = await req.json();
+        if (body?.cancel_reason && typeof body.cancel_reason === "string") {
+          cancelReason = body.cancel_reason.trim().slice(0, 200) || null;
+        }
+      } catch {
+        // No body or invalid JSON — that's fine, cancel_reason stays null
+      }
+
       // Fetch the booking first to get the google_calendar_event_id
       const { data: bookingData } = await supabase.from("bookings").select("*").eq("id", id).single();
 
-      const { error } = await supabase.from("bookings").update({ cancelled_at: new Date().toISOString() }).eq("id", id);
+      const updatePayload: Record<string, unknown> = { cancelled_at: new Date().toISOString() };
+      if (cancelReason) updatePayload.cancel_reason = cancelReason;
+
+      const { error } = await supabase.from("bookings").update(updatePayload).eq("id", id);
       if (error) throw error;
+
+      const bookingWithReason = bookingData ? { ...bookingData, cancel_reason: cancelReason } : null;
 
       // Sync cancellation to Google Calendar
       if (bookingData?.google_calendar_event_id) {
@@ -203,11 +219,34 @@ Deno.serve(async (req) => {
             {
               method: "POST",
               headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
-              body: JSON.stringify({ type: "booking_cancelled", phone: bookingData.phone, booking: bookingData }),
+              body: JSON.stringify({ type: "booking_cancelled", phone: bookingData.phone, booking: bookingWithReason }),
             }
           );
         } catch (lineErr) {
           console.error("LINE cancel notification error:", lineErr);
+        }
+      }
+
+      // Send cancellation email (fire-and-forget)
+      if (bookingData?.phone) {
+        let sendToEmail: string | null = null;
+        const { data: customer } = await supabase.from("customers").select("email").eq("phone", bookingData.phone).maybeSingle();
+        if (customer?.email) sendToEmail = customer.email;
+        if (sendToEmail) {
+          try {
+            const { data: storeRow } = await supabase.from("system_config").select("value").eq("key", "store_name").maybeSingle();
+            const storeName = storeRow?.value || "不老松足湯";
+            await fetch(
+              `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-booking-email`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+                body: JSON.stringify({ to: sendToEmail, booking: bookingWithReason, storeName, type: "cancelled" }),
+              }
+            );
+          } catch (emailErr) {
+            console.error("Cancel email error:", emailErr);
+          }
         }
       }
 

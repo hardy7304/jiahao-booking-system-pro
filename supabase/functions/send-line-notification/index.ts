@@ -33,16 +33,21 @@ function formatBookingMessage(
         `如需查詢或取消，請輸入「查詢」或「取消」`,
       ].join("\n");
 
-    case "booking_cancelled":
-      return [
+    case "booking_cancelled": {
+      const cancelReason = String(booking.cancel_reason || "");
+      const lines = [
         `${name} 您好，您的預約已取消`,
         "",
         `日期：${date}`,
         `時間：${time}`,
         `服務：${service}`,
-        "",
-        `如需重新預約，歡迎至官網預約頁面`,
-      ].join("\n");
+      ];
+      if (cancelReason) {
+        lines.push(`取消原因：${cancelReason}`);
+      }
+      lines.push("", `如需重新預約，歡迎至官網預約頁面`);
+      return lines.join("\n");
+    }
 
     case "booking_reminder":
       return [

@@ -61,6 +61,60 @@ function buildCustomerEmailHtml(booking: Booking, storeName: string): string {
 `;
 }
 
+interface CancelBooking extends Booking {
+  cancel_reason?: string | null;
+}
+
+function buildCancelEmailHtml(booking: CancelBooking, storeName: string): string {
+  const startTime = booking.start_time_str ?? (booking.start_hour != null ? formatHourToTime(booking.start_hour) : "—");
+  const cancelReason = booking.cancel_reason || "未提供";
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><style>${emailStyles}</style></head>
+<body>
+  <h1>预约已取消</h1>
+  <p>您好 ${booking.name}，</p>
+  <p>您的以下預約已取消：</p>
+  <div class="card">
+    <div class="row"><span class="label">店家</span><span class="value">${storeName}</span></div>
+    <div class="row"><span class="label">日期</span><span class="value">${booking.date}</span></div>
+    <div class="row"><span class="label">時段</span><span class="value">${startTime}</span></div>
+    <div class="row"><span class="label">服務</span><span class="value">${booking.service}</span></div>
+    <div class="row"><span class="label">取消原因</span><span class="value">${cancelReason}</span></div>
+  </div>
+  <p>如需重新預約，歡迎至官網預約頁面。</p>
+  <div class="footer">此信由 ${storeName} 預約系統自動寄出，請勿直接回覆。</div>
+</body>
+</html>
+`;
+}
+
+function buildStoreCancelNotificationHtml(booking: CancelBooking, storeName: string): string {
+  const startTime = booking.start_time_str ?? (booking.start_hour != null ? formatHourToTime(booking.start_hour) : "—");
+  const cancelReason = booking.cancel_reason || "未提供";
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><style>${emailStyles}</style></head>
+<body>
+  <span class="badge" style="background:#dc2626;">取消通知</span>
+  <h1>有預約被取消</h1>
+  <p>客人 ${booking.name} 已取消預約：</p>
+  <div class="card">
+    <div class="row"><span class="label">預約人</span><span class="value">${booking.name}</span></div>
+    <div class="row"><span class="label">電話</span><span class="value">${booking.phone}</span></div>
+    <div class="row"><span class="label">日期</span><span class="value">${booking.date}</span></div>
+    <div class="row"><span class="label">時段</span><span class="value">${startTime}</span></div>
+    <div class="row"><span class="label">服務</span><span class="value">${booking.service}</span></div>
+    <div class="row"><span class="label">取消原因</span><span class="value">${cancelReason}</span></div>
+  </div>
+  <div class="footer">${storeName} 預約系統 · 店家通知</div>
+</body>
+</html>
+`;
+}
+
 function buildStoreNotificationHtml(booking: Booking, storeName: string): string {
   const startTime = booking.start_time_str ?? (booking.start_hour != null ? formatHourToTime(booking.start_hour) : "—");
   const addonsStr = (booking.addons?.length ?? 0) > 0 ? booking.addons!.join("、") : "無";
@@ -128,7 +182,7 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { to, booking, storeName = "不老松足湯" } = body;
+    const { to, booking, storeName = "不老松足湯", type = "confirmed" } = body;
 
     if (!to || typeof to !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
       return new Response(
@@ -148,21 +202,29 @@ Deno.serve(async (req) => {
     const fromName = Deno.env.get("RESEND_FROM_NAME") || storeName;
     const storeEmail = Deno.env.get("RESEND_STORE_EMAIL");
     const startTimeStr = booking.start_time_str ?? (booking.start_hour != null ? formatHourToTime(booking.start_hour) : "");
+    const isCancelled = type === "cancelled";
 
     const resendHeaders = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     };
 
-    // 1. 寄送預約確認信給客人
+    const customerSubject = isCancelled
+      ? `【${storeName}】預約取消通知 - ${booking.date} ${startTimeStr}`
+      : `【${storeName}】預約確認 - ${booking.date} ${startTimeStr}`;
+    const customerHtml = isCancelled
+      ? buildCancelEmailHtml(booking, storeName)
+      : buildCustomerEmailHtml(booking, storeName);
+
+    // 1. 寄信給客人（確認信 or 取消信）
     const customerRes = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: resendHeaders,
       body: JSON.stringify({
         from: `${fromName} <${fromEmail}>`,
         to: [to],
-        subject: `【${storeName}】預約確認 - ${booking.date} ${startTimeStr}`,
-        html: buildCustomerEmailHtml(booking, storeName),
+        subject: customerSubject,
+        html: customerHtml,
       }),
     });
 
@@ -171,7 +233,7 @@ Deno.serve(async (req) => {
       console.error("Resend API error (customer):", customerRes.status, errText);
       return new Response(
         JSON.stringify({
-          error: "Failed to send confirmation email",
+          error: isCancelled ? "Failed to send cancellation email" : "Failed to send confirmation email",
           resend_status: customerRes.status,
           resend_error: errText,
           from_used: `${fromName} <${fromEmail}>`,
@@ -186,14 +248,21 @@ Deno.serve(async (req) => {
     // 2. 同時寄一份通知給店家（若有設定 RESEND_STORE_EMAIL）
     if (storeEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(storeEmail)) {
       try {
+        const storeSubject = isCancelled
+          ? `【${storeName}】預約取消通知 - ${booking.name} · ${booking.date} ${startTimeStr}`
+          : `【${storeName}】新預約通知 - ${booking.name} · ${booking.date} ${startTimeStr}`;
+        const storeHtml = isCancelled
+          ? buildStoreCancelNotificationHtml(booking, storeName)
+          : buildStoreNotificationHtml(booking, storeName);
+
         const storeRes = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: resendHeaders,
           body: JSON.stringify({
             from: `${fromName} <${fromEmail}>`,
             to: [storeEmail],
-            subject: `【${storeName}】新預約通知 - ${booking.name} · ${booking.date} ${startTimeStr}`,
-            html: buildStoreNotificationHtml(booking, storeName),
+            subject: storeSubject,
+            html: storeHtml,
           }),
         });
         if (storeRes.ok) {

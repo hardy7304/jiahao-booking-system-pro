@@ -3,8 +3,10 @@ import { supabase, supabaseUrl } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Search, Phone, Calendar, Clock, X, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
@@ -33,13 +35,34 @@ export default function MyBookingsPage() {
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [phoneError, setPhoneError] = useState("");
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelTarget, setCancelTarget] = useState<Booking | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+
+  const validatePhone = (value: string): string => {
+    const cleaned = value.replace(/[\s\-()]/g, "");
+    if (!cleaned) return "請輸入電話號碼";
+    if (!/^\d+$/.test(cleaned)) return "電話號碼只能包含數字";
+    if (!cleaned.startsWith("09")) return "手機號碼需以 09 開頭";
+    if (cleaned.length !== 10) return "手機號碼需為 10 碼，例如 0912345678";
+    return "";
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setPhone(value);
+    if (phoneError) setPhoneError(validatePhone(value));
+  };
 
   const handleSearch = async () => {
-    const cleaned = phone.replace(/\s|-/g, "").trim();
-    if (!cleaned || cleaned.length < 8) {
-      toast.error("請輸入有效的電話號碼");
+    const cleaned = phone.replace(/[\s\-()]/g, "").trim();
+    const error = validatePhone(cleaned);
+    if (error) {
+      setPhoneError(error);
+      toast.error(error);
       return;
     }
+    setPhoneError("");
     setLoading(true);
     try {
       const { data, error } = await supabase
@@ -58,7 +81,7 @@ export default function MyBookingsPage() {
     }
   };
 
-  const handleCancel = async (booking: Booking) => {
+  const openCancelDialog = (booking: Booking) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const bookingDate = new Date(booking.date + "T00:00:00");
@@ -68,20 +91,28 @@ export default function MyBookingsPage() {
       return;
     }
 
-    if (!confirm(`確定要取消 ${booking.date} ${booking.start_time_str} 的預約嗎？`)) return;
+    setCancelTarget(booking);
+    setCancelReason("");
+    setCancelDialogOpen(true);
+  };
 
-    setCancellingId(booking.id);
+  const handleConfirmCancel = async () => {
+    if (!cancelTarget) return;
+
+    setCancelDialogOpen(false);
+    setCancellingId(cancelTarget.id);
     try {
-      const resp = await fetch(`${supabaseUrl}/functions/v1/api-booking?id=${booking.id}`, {
+      const resp = await fetch(`${supabaseUrl}/functions/v1/api-booking?id=${cancelTarget.id}`, {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cancel_reason: cancelReason.trim() || undefined }),
       });
       if (!resp.ok) throw new Error("取消失敗");
 
       setBookings((prev) =>
         prev.map((b) =>
-          b.id === booking.id
-            ? { ...b, cancelled_at: new Date().toISOString(), status: "cancelled" }
+          b.id === cancelTarget.id
+            ? { ...b, cancelled_at: new Date().toISOString(), status: "cancelled", cancel_reason: cancelReason.trim() || null }
             : b
         )
       );
@@ -90,6 +121,7 @@ export default function MyBookingsPage() {
       toast.error("取消失敗，請稍後再試");
     } finally {
       setCancellingId(null);
+      setCancelTarget(null);
     }
   };
 
@@ -127,10 +159,11 @@ export default function MyBookingsPage() {
                   id="phone"
                   placeholder="0912345678"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={(e) => handlePhoneChange(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  className="pl-9"
-                  maxLength={15}
+                  className={`pl-9 ${phoneError ? "border-destructive" : ""}`}
+                  maxLength={10}
+                  type="tel"
                 />
               </div>
               <Button onClick={handleSearch} disabled={loading}>
@@ -138,6 +171,9 @@ export default function MyBookingsPage() {
                 查詢
               </Button>
             </div>
+            {phoneError && (
+              <p className="text-xs text-destructive mt-1.5">{phoneError}</p>
+            )}
           </CardContent>
         </Card>
 
@@ -154,7 +190,7 @@ export default function MyBookingsPage() {
               <BookingCard
                 key={b.id}
                 booking={b}
-                onCancel={handleCancel}
+                onCancel={openCancelDialog}
                 cancelling={cancellingId === b.id}
                 showCancel
               />
@@ -177,6 +213,39 @@ export default function MyBookingsPage() {
             ))}
           </Section>
         )}
+
+        <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>取消預約</DialogTitle>
+              <DialogDescription>
+                {cancelTarget && `${cancelTarget.date} ${cancelTarget.start_time_str} - ${cancelTarget.service}`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 py-2">
+              <Label htmlFor="cancel-reason" className="text-sm font-medium">
+                取消原因（選填）
+              </Label>
+              <Textarea
+                id="cancel-reason"
+                placeholder="例如：臨時有事、時間衝突..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                maxLength={200}
+                rows={3}
+              />
+              <p className="text-xs text-muted-foreground text-right">{cancelReason.length}/200</p>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
+                返回
+              </Button>
+              <Button variant="destructive" onClick={handleConfirmCancel}>
+                確認取消
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
@@ -235,7 +304,12 @@ function BookingCard({
               {booking.duration} 分鐘 ・ ${booking.total_price}
             </p>
             {cancelled && (
-              <Badge variant="destructive" className="text-[10px]">已取消</Badge>
+              <>
+                <Badge variant="destructive" className="text-[10px]">已取消</Badge>
+                {booking.cancel_reason && (
+                  <p className="text-xs text-muted-foreground">原因：{booking.cancel_reason}</p>
+                )}
+              </>
             )}
           </div>
           {showCancel && onCancel && (

@@ -60,6 +60,21 @@ export default function BookingPage() {
   const [loading, setLoading] = useState(false);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [success, setSuccess] = useState<any>(null);
+  const [phoneError, setPhoneError] = useState("");
+
+  const validatePhone = (value: string): string => {
+    const cleaned = value.replace(/[\s\-()]/g, "");
+    if (!cleaned) return "請輸入電話號碼";
+    if (!/^\d+$/.test(cleaned)) return "電話號碼只能包含數字";
+    if (!cleaned.startsWith("09")) return "手機號碼需以 09 開頭";
+    if (cleaned.length !== 10) return "手機號碼需為 10 碼，例如 0912345678";
+    return "";
+  };
+
+  const handlePhoneChange = (value: string) => {
+    setPhone(value);
+    if (phoneError) setPhoneError(validatePhone(value));
+  };
 
   // Load services and addons from DB
   useEffect(() => {
@@ -152,6 +167,13 @@ export default function BookingPage() {
       toast.error("請填寫所有必填欄位");
       return;
     }
+    const phoneValidationError = validatePhone(phone);
+    if (phoneValidationError) {
+      setPhoneError(phoneValidationError);
+      toast.error(phoneValidationError);
+      return;
+    }
+    setPhoneError("");
     if (hasOilUpgrade && !selectedAroma) {
       toast.error("請選擇精油香味");
       return;
@@ -433,7 +455,17 @@ export default function BookingPage() {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold">電話 *</Label>
-                <Input value={phone} onChange={e => setPhone(e.target.value)} placeholder="請輸入電話號碼" maxLength={20} type="tel" />
+                <Input
+                  value={phone}
+                  onChange={e => handlePhoneChange(e.target.value)}
+                  placeholder="0912345678"
+                  maxLength={10}
+                  type="tel"
+                  className={phoneError ? "border-destructive" : ""}
+                />
+                {phoneError && (
+                  <p className="text-xs text-destructive">{phoneError}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold">Email（選填，用於寄送預約確認信）</Label>
