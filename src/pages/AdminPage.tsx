@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings, Pencil, Undo2, ArrowUpDown, ArrowUp, ArrowDown, Filter, ChevronDown, ChevronRight, Ban } from "lucide-react";
+import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings, Pencil, Undo2, ArrowUpDown, ArrowUp, ArrowDown, Filter, ChevronDown, ChevronRight, Ban, Copy } from "lucide-react";
 import ServiceManagement from "@/components/ServiceManagement";
 import TodayDashboard from "@/components/admin/TodayDashboard";
 import BookingCalendarView from "@/components/admin/BookingCalendarView";
@@ -39,6 +39,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useForm } from "react-hook-form";
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 
@@ -931,6 +932,7 @@ export default function AdminPage() {
               <BookingCalendarView
                 bookings={bookings}
                 holidays={holidays}
+                services={servicesList}
                 blacklistedPhones={blacklistedPhones}
                 onEdit={openEditBooking}
                 onComplete={completeBooking}
@@ -1410,178 +1412,159 @@ export default function AdminPage() {
 
       {/* Settings dialog */}
       <Dialog open={showSettings} onOpenChange={setShowSettings}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
           <DialogHeader><DialogTitle>⚙️ 系統設定</DialogTitle></DialogHeader>
-          <div className="space-y-5 max-h-[60vh] overflow-y-auto pr-1">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">店名</Label>
-              <Input value={shopInfoInput.store_name} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_name: e.target.value }))} placeholder="例：不老松足湯安平店" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">師傅名稱</Label>
-              <Input value={shopInfoInput.therapist_name} onChange={(e) => setShopInfoInput(prev => ({ ...prev, therapist_name: e.target.value }))} placeholder="例：嘉豪師傅" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">地點（日曆顯示）</Label>
-              <Input value={shopInfoInput.store_location} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_location: e.target.value }))} placeholder="例：不老松足湯安平店" />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">地址（預約頁底部）</Label>
-              <Input value={shopInfoInput.store_address} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_address: e.target.value }))} placeholder="例：台南市安平區 · 不老松足湯安平店" />
-            </div>
-            <Separator />
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">店家聯絡信箱 (Email)</Label>
-              <Input type="email" value={storeContactEmailInput} onChange={(e) => setStoreContactEmailInput(e.target.value)} placeholder="例：contact@example.com" />
-              <p className="text-xs text-muted-foreground">用於客人回覆信件、預約確認通知</p>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">預約注意事項</Label>
-              <Textarea
-                className="min-h-[80px] text-sm"
-                value={bookingPolicyInput}
-                onChange={(e) => setBookingPolicyInput(e.target.value)}
-                placeholder="例：退改規則、遲到提醒、攜帶物品等..."
-              />
-              <p className="text-xs text-muted-foreground">店家自訂退改規則與提醒，可顯示於預約頁</p>
-            </div>
-            <Separator />
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">🖥️ 前台設定</h3>
-              <Form {...frontendForm}>
-                <div className="space-y-4">
-                  <FormField
-                    control={frontendForm.control}
-                    name="frontend_subtitle"
-                    render={({ field }) => (
+          <Accordion type="multiple" defaultValue={["basic", "line"]} className="flex-1 overflow-y-auto pr-1">
+            <AccordionItem value="basic">
+              <AccordionTrigger className="text-sm font-semibold">🏪 店家基本資訊</AccordionTrigger>
+              <AccordionContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">店名</Label>
+                  <Input value={shopInfoInput.store_name} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_name: e.target.value }))} placeholder="例：不老松足湯安平店" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">師傅名稱</Label>
+                  <Input value={shopInfoInput.therapist_name} onChange={(e) => setShopInfoInput(prev => ({ ...prev, therapist_name: e.target.value }))} placeholder="例：嘉豪師傅" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">地點（日曆顯示）</Label>
+                  <Input value={shopInfoInput.store_location} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_location: e.target.value }))} placeholder="例：不老松足湯安平店" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">地址（預約頁底部）</Label>
+                  <Input value={shopInfoInput.store_address} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_address: e.target.value }))} placeholder="例：台南市安平區 · 不老松足湯安平店" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">店家聯絡信箱 (Email)</Label>
+                  <Input type="email" value={storeContactEmailInput} onChange={(e) => setStoreContactEmailInput(e.target.value)} placeholder="例：contact@example.com" />
+                  <p className="text-xs text-muted-foreground">用於客人回覆信件、預約確認通知</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">預約注意事項</Label>
+                  <Textarea className="min-h-[80px] text-sm" value={bookingPolicyInput} onChange={(e) => setBookingPolicyInput(e.target.value)} placeholder="例：退改規則、遲到提醒、攜帶物品等..." />
+                  <p className="text-xs text-muted-foreground">店家自訂退改規則與提醒，可顯示於預約頁</p>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="frontend">
+              <AccordionTrigger className="text-sm font-semibold">🖥️ 前台設定</AccordionTrigger>
+              <AccordionContent>
+                <Form {...frontendForm}>
+                  <div className="space-y-4">
+                    <FormField control={frontendForm.control} name="frontend_subtitle" render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm font-medium">前台小標題</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="例：線上預約系統" />
-                        </FormControl>
+                        <FormControl><Input {...field} placeholder="例：線上預約系統" /></FormControl>
                       </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={frontendForm.control}
-                    name="business_hours"
-                    render={({ field }) => (
+                    )} />
+                    <FormField control={frontendForm.control} name="business_hours" render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm font-medium">營業時間</FormLabel>
-                        <FormControl>
-                          <Input {...field} placeholder="例：週一至週日 10:00-22:00" />
-                        </FormControl>
+                        <FormControl><Input {...field} placeholder="例：週一至週日 10:00-22:00" /></FormControl>
                       </FormItem>
-                    )}
-                  />
+                    )} />
+                  </div>
+                </Form>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="line">
+              <AccordionTrigger className="text-sm font-semibold">📱 LINE 預約導流</AccordionTrigger>
+              <AccordionContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">專屬 Webhook URL</Label>
+                  <div className="flex gap-2">
+                    <Input readOnly value={`${supabaseUrl}/functions/v1/line-webhook?store_id=${storeId}`} className="font-mono text-xs" />
+                    <Button type="button" variant="outline" size="icon" onClick={() => {
+                      navigator.clipboard.writeText(`${supabaseUrl}/functions/v1/line-webhook?store_id=${storeId}`);
+                      toast.success("已複製");
+                    }}>
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">請將此網址貼到 LINE Developers Console 的 Webhook URL 欄位中</p>
                 </div>
-              </Form>
-            </div>
-            <Separator />
-            <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-foreground">📱 LINE 預約導流</h3>
-              <Label className="text-sm font-medium">預約頁網址（LINE 用）</Label>
-              <Input value={bookingPageUrlInput} onChange={(e) => setBookingPageUrlInput(e.target.value)} placeholder="例：https://你的網站.vercel.app/booking" />
-              <p className="text-xs text-muted-foreground">
-                填寫後，LINE 歡迎訊息、查詢結果、功能選單會顯示「立即預約」連結，導流客人到官網預約
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">老闆 LINE User ID</Label>
-              <Input value={lineAdminUserIdInput} onChange={(e) => setLineAdminUserIdInput(e.target.value)} placeholder="例：U1234567890abcdef" />
-              <p className="text-xs text-muted-foreground">
-                填寫後，新預約成立時會推播通知到老闆的 LINE（需先加官方帳號為好友取得 User ID）
-              </p>
-            </div>
-            <Separator />
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">🔌 進階串接設定 (API)</h3>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">Google Calendar Webhook URL</Label>
-                <Input value={googleCalendarWebhookInput} onChange={(e) => setGoogleCalendarWebhookInput(e.target.value)} placeholder="例：https://..." />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">LINE Channel Access Token</Label>
-                <Input type="password" value={lineChannelTokenInput} onChange={(e) => setLineChannelTokenInput(e.target.value)} placeholder="多店時可覆寫 Supabase Secrets" autoComplete="off" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">LINE Channel Secret</Label>
-                <Input type="password" value={lineChannelSecretInput} onChange={(e) => setLineChannelSecretInput(e.target.value)} placeholder="多店時可覆寫 Supabase Secrets" autoComplete="off" />
-              </div>
-              <p className="text-xs text-muted-foreground">多租戶時可在此設定各店專屬 LINE 憑證，留空則使用全域 Secrets</p>
-            </div>
-            <Separator />
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">師傅抽成比例</Label>
-              <div className="flex items-center gap-2">
-                <Input type="number" className="w-24" value={rateInput} onChange={(e) => setRateInput(e.target.value)} min={1} max={99} />
-                <span className="text-sm text-muted-foreground">%</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                目前設定：師傅 {rateInput}% / 店家 {100 - (parseInt(rateInput) || 0)}%
-              </p>
-            </div>
-            <Separator />
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-foreground">預約時段設定</h3>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">預約間隔緩衝時間</Label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">預約頁網址（LINE 用）</Label>
+                  <Input value={bookingPageUrlInput} onChange={(e) => setBookingPageUrlInput(e.target.value)} placeholder="例：https://你的網站.vercel.app/booking" />
+                  <p className="text-xs text-muted-foreground">填寫後，LINE 歡迎訊息、查詢結果會顯示「立即預約」連結</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">老闆 LINE User ID</Label>
+                  <Input value={lineAdminUserIdInput} onChange={(e) => setLineAdminUserIdInput(e.target.value)} placeholder="例：U1234567890abcdef" />
+                  <p className="text-xs text-muted-foreground">新預約成立時會推播通知到老闆的 LINE</p>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="api">
+              <AccordionTrigger className="text-sm font-semibold">🔌 進階串接設定 (API)</AccordionTrigger>
+              <AccordionContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Google Calendar Webhook URL</Label>
+                  <Input value={googleCalendarWebhookInput} onChange={(e) => setGoogleCalendarWebhookInput(e.target.value)} placeholder="例：https://..." />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">LINE Channel Access Token</Label>
+                  <Input type="password" value={lineChannelTokenInput} onChange={(e) => setLineChannelTokenInput(e.target.value)} placeholder="多店專屬憑證" autoComplete="off" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">LINE Channel Secret</Label>
+                  <Input type="password" value={lineChannelSecretInput} onChange={(e) => setLineChannelSecretInput(e.target.value)} placeholder="多店專屬憑證" autoComplete="off" />
+                </div>
+                <p className="text-xs text-muted-foreground">多租戶時在此設定各店專屬 LINE 憑證（Webhook 必填）</p>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="commission">
+              <AccordionTrigger className="text-sm font-semibold">💰 師傅抽成比例</AccordionTrigger>
+              <AccordionContent className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Input type="number" className="w-24" value={bufferInput} onChange={(e) => setBufferInput(e.target.value)} min={0} max={60} />
-                  <span className="text-sm text-muted-foreground">分鐘</span>
+                  <Input type="number" className="w-24" value={rateInput} onChange={(e) => setRateInput(e.target.value)} min={1} max={99} />
+                  <span className="text-sm text-muted-foreground">%</span>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  每筆預約結束後保留的緩衝時間，避免預約太密集
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">免費泡腳肩頸時長</Label>
-                <div className="flex items-center gap-2">
-                  <Input type="number" className="w-24" value={freeAddonInput} onChange={(e) => setFreeAddonInput(e.target.value)} min={0} max={30} />
-                  <span className="text-sm text-muted-foreground">分鐘</span>
+                <p className="text-xs text-muted-foreground">師傅 {rateInput}% / 店家 {100 - (parseInt(rateInput) || 0)}%</p>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="slots">
+              <AccordionTrigger className="text-sm font-semibold">⏱️ 預約時段設定</AccordionTrigger>
+              <AccordionContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">預約間隔緩衝時間</Label>
+                  <div className="flex items-center gap-2">
+                    <Input type="number" className="w-24" value={bufferInput} onChange={(e) => setBufferInput(e.target.value)} min={0} max={60} />
+                    <span className="text-sm text-muted-foreground">分鐘</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">每筆預約結束後保留的緩衝時間</p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  免費贈送的泡腳肩頸時長，會加入服務顯示時長與佔用時段
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">前方預約保護時間</Label>
-                <div className="flex items-center gap-2">
-                  <Input type="number" className="w-24" value={preBlockInput} onChange={(e) => setPreBlockInput(e.target.value)} min={0} max={120} />
-                  <span className="text-sm text-muted-foreground">分鐘</span>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">免費泡腳肩頸時長</Label>
+                  <div className="flex items-center gap-2">
+                    <Input type="number" className="w-24" value={freeAddonInput} onChange={(e) => setFreeAddonInput(e.target.value)} min={0} max={30} />
+                    <span className="text-sm text-muted-foreground">分鐘</span>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  超過 60 分鐘的服務，若前方有預約在此時間內開始，則不接新客
-                </p>
-              </div>
-            </div>
-            <Separator />
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Google 日曆注意事項</Label>
-              <Textarea
-                className="min-h-[120px] text-sm"
-                value={calendarNotesInput}
-                onChange={(e) => setCalendarNotesInput(e.target.value)}
-                placeholder="輸入要顯示在 Google 日曆描述中的注意事項..."
-              />
-              <p className="text-xs text-muted-foreground">
-                此內容會顯示在客人加入 Google 日曆時的事件描述底部
-              </p>
-            </div>
-            <Separator />
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">修改管理員密碼</Label>
-              <Input
-                type="password"
-                value={adminPasswordInput}
-                onChange={(e) => setAdminPasswordInput(e.target.value)}
-                placeholder="留空則不修改"
-              />
-              <p className="text-xs text-muted-foreground">
-                輸入新密碼後儲存即可變更，留空則維持原密碼
-              </p>
-            </div>
-          </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">前方預約保護時間</Label>
+                  <div className="flex items-center gap-2">
+                    <Input type="number" className="w-24" value={preBlockInput} onChange={(e) => setPreBlockInput(e.target.value)} min={0} max={120} />
+                    <span className="text-sm text-muted-foreground">分鐘</span>
+                  </div>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="calendar">
+              <AccordionTrigger className="text-sm font-semibold">📅 Google 日曆注意事項</AccordionTrigger>
+              <AccordionContent className="space-y-2">
+                <Textarea className="min-h-[100px] text-sm" value={calendarNotesInput} onChange={(e) => setCalendarNotesInput(e.target.value)} placeholder="輸入要顯示在 Google 日曆描述中的注意事項..." />
+                <p className="text-xs text-muted-foreground">此內容會顯示在客人加入 Google 日曆時的事件描述底部</p>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="password">
+              <AccordionTrigger className="text-sm font-semibold">🔐 修改管理員密碼</AccordionTrigger>
+              <AccordionContent className="space-y-2">
+                <Input type="password" value={adminPasswordInput} onChange={(e) => setAdminPasswordInput(e.target.value)} placeholder="留空則不修改" />
+                <p className="text-xs text-muted-foreground">輸入新密碼後儲存即可變更</p>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSettings(false)}>取消</Button>
             <Button onClick={saveSettings}>儲存</Button>

@@ -5,6 +5,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-line-signature",
 };
 
+function jsonRes(data: unknown, status: number) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
 async function verifySignature(body: string, signature: string, secret: string): Promise<boolean> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
@@ -51,14 +58,11 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const LINE_CHANNEL_SECRET = Deno.env.get("LINE_CHANNEL_SECRET");
-  const LINE_CHANNEL_ACCESS_TOKEN = Deno.env.get("LINE_CHANNEL_ACCESS_TOKEN");
-
-  if (!LINE_CHANNEL_SECRET || !LINE_CHANNEL_ACCESS_TOKEN) {
-    console.error("Missing LINE secrets");
-    return new Response(JSON.stringify({ error: "LINE secrets not configured" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+  // 1. 擷取 Store ID
+  const url = new URL(req.url);
+  const storeId = url.searchParams.get("store_id");
+  if (!storeId || !storeId.trim()) {
+    return jsonRes({ error: "Missing store_id in URL" }, 400);
   }
 
   const supabase = createClient(
@@ -66,25 +70,40 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
+  // 2. 動態抓取憑證
+  const { data: configRows } = await supabase
+    .from("system_config")
+    .select("key, value")
+    .eq("store_id", storeId)
+    .in("key", ["line_channel_secret", "line_channel_token"]);
+  const config: Record<string, string> = {};
+  (configRows || []).forEach((r: { key: string; value: string }) => { config[r.key] = (r.value || "").trim(); });
+  const LINE_CHANNEL_SECRET = config.line_channel_secret;
+  const LINE_CHANNEL_ACCESS_TOKEN = config.line_channel_token;
+
+  if (!LINE_CHANNEL_SECRET || !LINE_CHANNEL_ACCESS_TOKEN) {
+    return jsonRes({ error: "LINE credentials not configured for this store" }, 400);
+  }
+
+  const bodyText = await req.text();
+  const signature = req.headers.get("x-line-signature") || "";
+
+  // 3. 簽章驗證（使用該店專屬 Secret）
+  const valid = await verifySignature(bodyText, signature, LINE_CHANNEL_SECRET);
+  if (!valid) {
+    console.error("Invalid LINE signature");
+    return jsonRes({ error: "Invalid signature" }, 401);
+  }
+
   try {
-    const bodyText = await req.text();
-
-    const signature = req.headers.get("x-line-signature") || "";
-    const valid = await verifySignature(bodyText, signature, LINE_CHANNEL_SECRET);
-    if (!valid) {
-      console.error("Invalid LINE signature");
-      return new Response(JSON.stringify({ error: "Invalid signature" }), {
-        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const body = JSON.parse(bodyText);
     const events = body.events || [];
 
-    // 預約頁網址（從後台設定讀取，用於 LINE 內導流預約）
+    // 預約頁網址（從後台設定讀取，需加 store_id）
     const { data: bookingUrlRow } = await supabase
       .from("system_config")
       .select("value")
+      .eq("store_id", storeId)
       .eq("key", "booking_page_url")
       .maybeSingle();
     const bookingPageUrl = (bookingUrlRow?.value || "").trim();
@@ -96,7 +115,7 @@ Deno.serve(async (req) => {
       const lineUserId = event.source?.userId;
       if (!lineUserId) continue;
 
-      console.log(`LINE event: ${event.type}, userId: ${lineUserId}`);
+      console.log(`LINE event: ${event.type}, userId: ${lineUserId}, storeId: ${storeId}`);
 
       // === FOLLOW EVENT ===
       if (event.type === "follow") {
@@ -113,6 +132,7 @@ Deno.serve(async (req) => {
         const { data: existing } = await supabase
           .from("customers")
           .select("id")
+          .eq("store_id", storeId)
           .eq("line_id", lineUserId)
           .maybeSingle();
 
@@ -145,6 +165,7 @@ Deno.serve(async (req) => {
           const { data: customer } = await supabase
             .from("customers")
             .select("id, name, line_id")
+            .eq("store_id", storeId)
             .eq("phone", phone)
             .maybeSingle();
 
@@ -154,10 +175,10 @@ Deno.serve(async (req) => {
                 `此電話號碼已綁定其他 LINE 帳號，若有疑問請聯繫我們 🙏`
               );
             } else {
-              await supabase.from("customers").update({ line_id: lineUserId }).eq("id", customer.id);
-            if (replyToken) await sendReplyMessage(LINE_CHANNEL_ACCESS_TOKEN, replyToken,
-              `✅ 綁定成功！\n\n${customer.name} 您好，您的帳號已與 LINE 綁定完成！\n之後預約提醒和優惠訊息都會透過這裡通知您 😊\n\n輸入「查詢」可查看預約\n輸入「取消」可取消預約${bookingPrompt}`
-            );
+              await supabase.from("customers").update({ line_id: lineUserId }).eq("id", customer.id).eq("store_id", storeId);
+              if (replyToken) await sendReplyMessage(LINE_CHANNEL_ACCESS_TOKEN, replyToken,
+                `✅ 綁定成功！\n\n${customer.name} 您好，您的帳號已與 LINE 綁定完成！\n之後預約提醒和優惠訊息都會透過這裡通知您 😊\n\n輸入「查詢」可查看預約\n輸入「取消」可取消預約${bookingPrompt}`
+              );
               console.log(`Bound LINE ${lineUserId} to customer ${customer.name} (${phone})`);
             }
           } else {
@@ -173,6 +194,7 @@ Deno.serve(async (req) => {
           const { data: customer } = await supabase
             .from("customers")
             .select("id, name, phone")
+            .eq("store_id", storeId)
             .eq("line_id", lineUserId)
             .maybeSingle();
 
@@ -191,6 +213,7 @@ Deno.serve(async (req) => {
           const { data: bookings } = await supabase
             .from("bookings")
             .select("id, date, start_time_str, service, duration")
+            .eq("store_id", storeId)
             .eq("phone", customer.phone)
             .gte("date", todayStr)
             .is("cancelled_at", null)
@@ -218,6 +241,7 @@ Deno.serve(async (req) => {
           const { data: customer } = await supabase
             .from("customers")
             .select("id, name, phone")
+            .eq("store_id", storeId)
             .eq("line_id", lineUserId)
             .maybeSingle();
 
@@ -236,6 +260,7 @@ Deno.serve(async (req) => {
           const { data: bookings } = await supabase
             .from("bookings")
             .select("id, date, start_time_str, service")
+            .eq("store_id", storeId)
             .eq("phone", customer.phone)
             .gt("date", todayStr)
             .is("cancelled_at", null)
@@ -266,6 +291,7 @@ Deno.serve(async (req) => {
           const { data: customer } = await supabase
             .from("customers")
             .select("id, name, phone")
+            .eq("store_id", storeId)
             .eq("line_id", lineUserId)
             .maybeSingle();
 
@@ -284,6 +310,7 @@ Deno.serve(async (req) => {
           const { data: bookings } = await supabase
             .from("bookings")
             .select("id, date, start_time_str, service, google_calendar_event_id")
+            .eq("store_id", storeId)
             .eq("phone", customer.phone)
             .gt("date", todayStr)
             .is("cancelled_at", null)
@@ -300,11 +327,11 @@ Deno.serve(async (req) => {
 
           const target = bookings[cancelIndex];
 
-          // Perform cancellation
           const { error: cancelError } = await supabase
             .from("bookings")
             .update({ cancelled_at: new Date().toISOString(), status: "cancelled", cancel_reason: "LINE 自行取消" })
-            .eq("id", target.id);
+            .eq("id", target.id)
+            .eq("store_id", storeId);
 
           if (cancelError) {
             if (replyToken) await sendReplyMessage(LINE_CHANNEL_ACCESS_TOKEN, replyToken,
@@ -313,7 +340,6 @@ Deno.serve(async (req) => {
             continue;
           }
 
-          // Sync Google Calendar cancellation
           if (target.google_calendar_event_id) {
             try {
               await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/google-calendar-sync`, {
@@ -339,13 +365,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ success: true }), {
-      status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonRes({ success: true }, 200);
   } catch (err) {
     console.error("LINE webhook error:", err);
-    return new Response(JSON.stringify({ error: "Internal error" }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return jsonRes({ error: "Internal error" }, 500);
   }
 });

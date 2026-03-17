@@ -45,18 +45,43 @@ interface Holiday {
   note: string | null;
 }
 
-function getCategoryColor(serviceName: string): string {
-  if (serviceName.includes("套餐") || serviceName.includes("深層雙拼")) return "bg-purple-200 text-purple-900 border-purple-300";
-  if (serviceName.includes("筋膜刀")) return "bg-orange-200 text-orange-900 border-orange-300";
-  if (serviceName.includes("全身指壓") || serviceName.includes("全身")) return "bg-blue-200 text-blue-900 border-blue-300";
-  return "bg-emerald-200 text-emerald-900 border-emerald-300";
+interface ServiceRow {
+  id: string;
+  name: string;
+  sort_order?: number;
+  [key: string]: unknown;
 }
 
-function getCategoryDot(serviceName: string): string {
-  if (serviceName.includes("套餐") || serviceName.includes("深層雙拼")) return "bg-purple-500";
-  if (serviceName.includes("筋膜刀")) return "bg-orange-500";
-  if (serviceName.includes("全身指壓") || serviceName.includes("全身")) return "bg-blue-500";
-  return "bg-emerald-500";
+/** 柔和且易辨識的顏色配對（至少 10 種） */
+const SERVICE_COLOR_PALETTE = [
+  { bg: "bg-blue-200 text-blue-900 border-blue-300", dot: "bg-blue-500" },
+  { bg: "bg-emerald-200 text-emerald-900 border-emerald-300", dot: "bg-emerald-500" },
+  { bg: "bg-purple-200 text-purple-900 border-purple-300", dot: "bg-purple-500" },
+  { bg: "bg-orange-200 text-orange-900 border-orange-300", dot: "bg-orange-500" },
+  { bg: "bg-amber-200 text-amber-900 border-amber-300", dot: "bg-amber-500" },
+  { bg: "bg-pink-200 text-pink-900 border-pink-300", dot: "bg-pink-500" },
+  { bg: "bg-indigo-200 text-indigo-900 border-indigo-300", dot: "bg-indigo-500" },
+  { bg: "bg-cyan-200 text-cyan-900 border-cyan-300", dot: "bg-cyan-500" },
+  { bg: "bg-teal-200 text-teal-900 border-teal-300", dot: "bg-teal-500" },
+  { bg: "bg-violet-200 text-violet-900 border-violet-300", dot: "bg-violet-500" },
+  { bg: "bg-rose-200 text-rose-900 border-rose-300", dot: "bg-rose-500" },
+  { bg: "bg-lime-200 text-lime-900 border-lime-300", dot: "bg-lime-500" },
+];
+
+const DEFAULT_SERVICE_COLOR = { bg: "bg-slate-200 text-slate-900 border-slate-300", dot: "bg-slate-500" };
+
+function buildServiceColorMap(services: ServiceRow[]): Map<string, { bg: string; dot: string }> {
+  const map = new Map<string, { bg: string; dot: string }>();
+  const sorted = [...services].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  sorted.forEach((s, i) => {
+    const color = SERVICE_COLOR_PALETTE[i % SERVICE_COLOR_PALETTE.length] ?? DEFAULT_SERVICE_COLOR;
+    map.set(s.name, color);
+  });
+  return map;
+}
+
+function getServiceColor(serviceName: string, serviceColorMap: Map<string, { bg: string; dot: string }>): { bg: string; dot: string } {
+  return serviceColorMap.get(serviceName) ?? DEFAULT_SERVICE_COLOR;
 }
 
 function getStatusBorder(status: string | null, cancelledAt: string | null): string {
@@ -107,6 +132,7 @@ function checkConflict(booking: Booking, allBookings: Booking[], newDate: string
 export default function BookingCalendarView({
   bookings,
   holidays,
+  services = [],
   blacklistedPhones,
   onEdit,
   onComplete,
@@ -118,6 +144,7 @@ export default function BookingCalendarView({
 }: {
   bookings: Booking[];
   holidays: Holiday[];
+  services?: ServiceRow[];
   blacklistedPhones?: Set<string>;
   onEdit?: (b: Booking) => void;
   onComplete?: (id: string) => void;
@@ -128,6 +155,7 @@ export default function BookingCalendarView({
   allBookings?: Booking[];
 }) {
   const [calendarDate, setCalendarDate] = useState(new Date());
+  const serviceColorMap = useMemo(() => buildServiceColorMap(services), [services]);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [cancelDialogId, setCancelDialogId] = useState<string | null>(null);
   const [cancelReason, setCancelReason] = useState("客人取消");
@@ -251,7 +279,7 @@ export default function BookingCalendarView({
                     className={cn(
                       "text-[10px] px-1 py-0.5 rounded truncate border flex items-center gap-0.5",
                       getStatusBorder(b.status, b.cancelled_at),
-                      getCategoryColor(b.service),
+                      getServiceColor(b.service, serviceColorMap).bg,
                       blacklistedPhones?.has(b.phone) && "!bg-destructive/20 !border-destructive/40 !text-destructive"
                     )}
                   >
@@ -266,7 +294,7 @@ export default function BookingCalendarView({
               {/* Mobile: show dots */}
               <div className="md:hidden flex flex-wrap gap-0.5 justify-center mt-0.5">
                 {dayBookings.slice(0, 5).map((b) => (
-                  <div key={b.id} className={cn("w-2 h-2 rounded-full", blacklistedPhones?.has(b.phone) ? "bg-destructive ring-1 ring-destructive/50" : getCategoryDot(b.service))} />
+                  <div key={b.id} className={cn("w-2 h-2 rounded-full", blacklistedPhones?.has(b.phone) ? "bg-destructive ring-1 ring-destructive/50" : getServiceColor(b.service, serviceColorMap).dot)} />
                 ))}
                 {dayBookings.length > 5 && (
                   <span className="text-[9px] text-muted-foreground">+{dayBookings.length - 5}</span>
@@ -277,12 +305,22 @@ export default function BookingCalendarView({
         })}
       </div>
 
-      {/* Legend */}
+      {/* Legend: 服務圖例（動態） + 狀態圖例（跨店通用） */}
       <div className="flex flex-wrap gap-3 mt-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-emerald-500" /> 腳底按摩</span>
-        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-blue-500" /> 全身指壓</span>
-        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-orange-500" /> 筋膜刀</span>
-        <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-full bg-purple-500" /> 套餐/雙拼</span>
+        {services.length > 0 ? (
+          [...services].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)).map((s) => {
+            const color = getServiceColor(s.name, serviceColorMap);
+            return (
+              <span key={s.id} className="flex items-center gap-1">
+                <span className={cn("w-3 h-3 rounded-full shrink-0", color.dot)} />
+                <span className="truncate max-w-[100px]">{s.name}</span>
+              </span>
+            );
+          })
+        ) : (
+          <span className="text-muted-foreground/70">（尚無服務項目）</span>
+        )}
+        <span className="w-px h-3 bg-border mx-0.5" aria-hidden />
         <span className="flex items-center gap-1 border-l-2 border-l-primary pl-1">已確認</span>
         <span className="flex items-center gap-1 border-l-2 border-l-emerald-500 pl-1">已完成</span>
         <span className="flex items-center gap-1">❌ 已取消</span>
@@ -311,7 +349,7 @@ export default function BookingCalendarView({
                     getStatusBorder(b.status, b.cancelled_at),
                     isCancelled && "opacity-50 bg-muted/30 border-border",
                     !isCancelled && blacklistedPhones?.has(b.phone) && "bg-destructive/15 border-destructive/40",
-                    !isCancelled && !blacklistedPhones?.has(b.phone) && !isCompleted && getCategoryColor(b.service),
+                    !isCancelled && !blacklistedPhones?.has(b.phone) && !isCompleted && getServiceColor(b.service, serviceColorMap).bg,
                     isCompleted && !isCancelled && "bg-emerald-50 border-emerald-200"
                   )}>
                     <div className="flex items-center justify-between">
