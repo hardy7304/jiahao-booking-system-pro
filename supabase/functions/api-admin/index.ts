@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
             await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-line-notification`, {
               method: "POST",
               headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
-              body: JSON.stringify({ type: "booking_confirmed", phone: inserted.phone, booking: inserted }),
+              body: JSON.stringify({ type: "booking_confirmed", phone: inserted.phone, booking: inserted, store_id: inserted?.store_id ?? storeId }),
             });
           } catch (e) { console.error("LINE notify error on manual create:", e); }
         }

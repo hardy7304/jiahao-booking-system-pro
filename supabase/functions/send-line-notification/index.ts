@@ -86,14 +86,52 @@ Deno.serve(async (req) => {
       type,
       phone,
       booking,
+      store_id: bodyStoreId,
     }: {
       type: "booking_confirmed" | "booking_cancelled" | "booking_reminder";
       phone: string;
       booking: Record<string, unknown>;
+      store_id?: string;
     } = body;
 
     if (!type || !phone) {
       return jsonRes({ error: "Missing type or phone" }, 400);
+    }
+
+    const storeId = bodyStoreId ?? (booking?.store_id as string | undefined);
+
+    // 0. 老闆新預約通知（僅 booking_confirmed）
+    if (type === "booking_confirmed" && storeId) {
+      const { data: configRows } = await supabase
+        .from("system_config")
+        .select("key, value")
+        .eq("store_id", storeId)
+        .in("key", ["line_channel_token", "line_admin_user_id", "store_name"]);
+      const config: Record<string, string> = {};
+      (configRows || []).forEach((r: { key: string; value: string }) => { config[r.key] = r.value; });
+      const lineChannelToken = (config.line_channel_token || "").trim() || LINE_CHANNEL_ACCESS_TOKEN;
+      const lineAdminUserId = (config.line_admin_user_id || "").trim();
+      const storeName = config.store_name || "店家";
+      if (lineChannelToken && lineAdminUserId) {
+        const customer = String(booking?.name || "顧客");
+        const time = String(booking?.start_time_str || "");
+        const adminMsg = `🎉 ${storeName} 新預約：${customer} ${time}`;
+        try {
+          await fetch("https://api.line.me/v2/bot/message/push", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${lineChannelToken}`,
+            },
+            body: JSON.stringify({
+              to: lineAdminUserId,
+              messages: [{ type: "text", text: adminMsg }],
+            }),
+          });
+        } catch (e) {
+          console.error("LINE admin notify error:", e);
+        }
+      }
     }
 
     // 1. Look up customer

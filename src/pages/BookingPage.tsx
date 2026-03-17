@@ -44,7 +44,7 @@ interface DbAddon {
 
 export default function BookingPage() {
   const navigate = useNavigate();
-  const { storeId } = useStore();
+  const { storeId, currentStore } = useStore();
   const { notes: calendarNotes } = useCalendarNotes();
   const { info: shopInfo } = useShopInfo();
   const { settings: bookingSettings } = useBookingSettings();
@@ -313,8 +313,8 @@ export default function BookingPage() {
     <div className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto px-4 py-6">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-bold text-foreground">{shopInfo.store_name}</h1>
-          <p className="text-muted-foreground mt-1">{shopInfo.therapist_name} · 線上預約</p>
+          <h1 className="text-2xl font-bold text-foreground">{currentStore?.name ?? shopInfo.store_name ?? "線上預約"}</h1>
+          <p className="text-muted-foreground mt-1">{shopInfo.frontend_subtitle || "線上預約系統"}</p>
         </div>
 
         <div className="bg-card rounded-xl shadow-lg p-5 space-y-5 animate-fade-in">
@@ -493,7 +493,7 @@ export default function BookingPage() {
           >
             查詢 / 取消我的預約
           </button>
-          <p className="text-xs text-muted-foreground">營業時間：14:00 ~ 02:00（隔日）</p>
+          <p className="text-xs text-muted-foreground">營業時間：{shopInfo.business_hours || "尚未設定營業時間"}</p>
           <p className="text-xs text-muted-foreground">{shopInfo.store_address}</p>
         </div>
       </div>

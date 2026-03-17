@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
     // POST: Create a booking
     if (req.method === "POST") {
       const body = await req.json();
-      const { date, start_hour, name, phone, service, addons, duration, total_price, email } = body;
+      const { date, start_hour, name, phone, service, addons, duration, total_price, email, store_id } = body;
 
       if (!date || start_hour == null || !name || !phone || !service || !duration || !total_price) {
         return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
@@ -155,7 +155,7 @@ Deno.serve(async (req) => {
           {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
-            body: JSON.stringify({ type: "booking_confirmed", phone, booking: data }),
+            body: JSON.stringify({ type: "booking_confirmed", phone, booking: data, store_id: data?.store_id ?? store_id }),
           }
         );
       } catch (lineErr) {

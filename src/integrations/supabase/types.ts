@@ -53,6 +53,39 @@ export type Database = {
         }
         Relationships: []
       }
+      coaches: {
+        Row: {
+          id: string
+          store_id: string | null
+          name: string
+          phone: string | null
+          specialty: string | null
+          password_hash: string | null
+          is_active: boolean | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          store_id?: string | null
+          name: string
+          phone?: string | null
+          specialty?: string | null
+          password_hash?: string | null
+          is_active?: boolean | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          store_id?: string | null
+          name?: string
+          phone?: string | null
+          specialty?: string | null
+          password_hash?: string | null
+          is_active?: boolean | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
       bookings: {
         Row: {
           addons: string[] | null

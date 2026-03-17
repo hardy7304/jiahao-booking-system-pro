@@ -38,6 +38,9 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { useForm } from "react-hook-form";
+import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 
 const DEFAULT_ADMIN_PASSWORD = "bulaosong2024";
 
@@ -78,7 +81,7 @@ interface Holiday {
 }
 
 export default function AdminPage() {
-  const { storeId } = useStore();
+  const { storeId, currentStore, isLoading: storeLoading } = useStore();
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -129,6 +132,12 @@ export default function AdminPage() {
   // Settings dialog
   const [showSettings, setShowSettings] = useState(false);
   const [bookingPageUrlInput, setBookingPageUrlInput] = useState("");
+  const [lineAdminUserIdInput, setLineAdminUserIdInput] = useState("");
+  const [storeContactEmailInput, setStoreContactEmailInput] = useState("");
+  const [bookingPolicyInput, setBookingPolicyInput] = useState("");
+  const [googleCalendarWebhookInput, setGoogleCalendarWebhookInput] = useState("");
+  const [lineChannelTokenInput, setLineChannelTokenInput] = useState("");
+  const [lineChannelSecretInput, setLineChannelSecretInput] = useState("");
   const [rateInput, setRateInput] = useState("60");
   const [calendarNotesInput, setCalendarNotesInput] = useState("");
   const [shopInfoInput, setShopInfoInput] = useState(shopInfoHook.info);
@@ -137,6 +146,10 @@ export default function AdminPage() {
   const [preBlockInput, setPreBlockInput] = useState("60");
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
   const [adminPasswordFromDb, setAdminPasswordFromDb] = useState(DEFAULT_ADMIN_PASSWORD);
+
+  const frontendForm = useForm<{ frontend_subtitle: string; business_hours: string }>({
+    defaultValues: { frontend_subtitle: "", business_hours: "" },
+  });
 
   // Holiday calendar navigation
   const [holidayCalendarMonth, setHolidayCalendarMonth] = useState<Date>(new Date());
@@ -462,6 +475,7 @@ export default function AdminPage() {
     const rate = parseInt(rateInput) / 100;
     if (rate <= 0 || rate >= 1) { toast.error("請輸入 1~99 的數值"); return; }
     try {
+      const frontendValues = frontendForm.getValues();
       const configs: { key: string; value: string }[] = [
         { key: "commission_rate", value: rate.toString() },
         { key: "calendar_notes", value: calendarNotesInput },
@@ -469,7 +483,17 @@ export default function AdminPage() {
         { key: "free_addon_duration", value: freeAddonInput },
         { key: "pre_block_minutes", value: preBlockInput },
         { key: "booking_page_url", value: bookingPageUrlInput.trim() },
-        ...Object.entries(shopInfoInput).map(([k, v]) => ({ key: k, value: v })),
+        { key: "line_admin_user_id", value: lineAdminUserIdInput.trim() },
+        { key: "store_contact_email", value: storeContactEmailInput.trim() },
+        { key: "booking_policy", value: bookingPolicyInput.trim() },
+        { key: "google_calendar_webhook", value: googleCalendarWebhookInput.trim() },
+        { key: "line_channel_token", value: lineChannelTokenInput.trim() },
+        { key: "line_channel_secret", value: lineChannelSecretInput.trim() },
+        { key: "frontend_subtitle", value: frontendValues.frontend_subtitle },
+        { key: "business_hours", value: frontendValues.business_hours },
+        ...Object.entries(shopInfoInput)
+          .filter(([k]) => k !== "frontend_subtitle" && k !== "business_hours")
+          .map(([k, v]) => ({ key: k, value: String(v ?? "") })),
       ];
       if (adminPasswordInput.trim()) {
         configs.push({ key: "admin_password", value: adminPasswordInput.trim() });
@@ -570,17 +594,38 @@ export default function AdminPage() {
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-xl font-bold text-foreground">{shopInfoHook.info.store_name} · 管理後台</h1>
+          <h1 className="text-xl font-bold text-foreground">
+            {storeLoading ? (
+              <span className="animate-pulse text-muted-foreground">載入中...</span>
+            ) : (
+              `${currentStore?.name || shopInfoHook.info.store_name} · 管理後台`
+            )}
+          </h1>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={async () => {
               setRateInput(Math.round(commission.commissionRate * 100).toString());
               setCalendarNotesInput(calendarNotesHook.notes);
               setShopInfoInput(shopInfoHook.info);
+              frontendForm.reset({
+                frontend_subtitle: shopInfoHook.info.frontend_subtitle,
+                business_hours: shopInfoHook.info.business_hours,
+              });
               setBufferInput(bookingSettingsHook.settings.buffer_minutes.toString());
               setFreeAddonInput(bookingSettingsHook.settings.free_addon_duration.toString());
               setPreBlockInput(bookingSettingsHook.settings.pre_block_minutes.toString());
-              const { data: urlRow } = await supabase.from("system_config").select("value").eq("key", "booking_page_url").eq("store_id", storeId).maybeSingle();
-              setBookingPageUrlInput(urlRow?.value || "");
+              const { data: configRows } = await supabase.from("system_config").select("key, value").eq("store_id", storeId).in("key", [
+                "booking_page_url", "line_admin_user_id", "store_contact_email", "booking_policy",
+                "google_calendar_webhook", "line_channel_token", "line_channel_secret",
+              ]);
+              const configMap: Record<string, string> = {};
+              (configRows || []).forEach((r: { key: string; value: string }) => { configMap[r.key] = r.value || ""; });
+              setBookingPageUrlInput(configMap.booking_page_url || "");
+              setLineAdminUserIdInput(configMap.line_admin_user_id || "");
+              setStoreContactEmailInput(configMap.store_contact_email || "");
+              setBookingPolicyInput(configMap.booking_policy || "");
+              setGoogleCalendarWebhookInput(configMap.google_calendar_webhook || "");
+              setLineChannelTokenInput(configMap.line_channel_token || "");
+              setLineChannelSecretInput(configMap.line_channel_secret || "");
               setShowSettings(true);
             }}>
               <Settings className="w-4 h-4 mr-1" /> 設定
@@ -1170,8 +1215,19 @@ export default function AdminPage() {
               setRateInput(Math.round(commission.commissionRate * 100).toString());
               setCalendarNotesInput(calendarNotesHook.notes);
               setShopInfoInput(shopInfoHook.info);
-              const { data: urlRow } = await supabase.from("system_config").select("value").eq("key", "booking_page_url").eq("store_id", storeId).maybeSingle();
-              setBookingPageUrlInput(urlRow?.value || "");
+              const { data: configRows } = await supabase.from("system_config").select("key, value").eq("store_id", storeId).in("key", [
+                "booking_page_url", "line_admin_user_id", "store_contact_email", "booking_policy",
+                "google_calendar_webhook", "line_channel_token", "line_channel_secret",
+              ]);
+              const configMap: Record<string, string> = {};
+              (configRows || []).forEach((r: { key: string; value: string }) => { configMap[r.key] = r.value || ""; });
+              setBookingPageUrlInput(configMap.booking_page_url || "");
+              setLineAdminUserIdInput(configMap.line_admin_user_id || "");
+              setStoreContactEmailInput(configMap.store_contact_email || "");
+              setBookingPolicyInput(configMap.booking_policy || "");
+              setGoogleCalendarWebhookInput(configMap.google_calendar_webhook || "");
+              setLineChannelTokenInput(configMap.line_channel_token || "");
+              setLineChannelSecretInput(configMap.line_channel_secret || "");
               setShowSettings(true);
             }} />
           </TabsContent>
@@ -1373,7 +1429,56 @@ export default function AdminPage() {
               <Label className="text-sm font-medium">地址（預約頁底部）</Label>
               <Input value={shopInfoInput.store_address} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_address: e.target.value }))} placeholder="例：台南市安平區 · 不老松足湯安平店" />
             </div>
-            <div className="border-t border-border pt-4 space-y-2">
+            <Separator />
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">店家聯絡信箱 (Email)</Label>
+              <Input type="email" value={storeContactEmailInput} onChange={(e) => setStoreContactEmailInput(e.target.value)} placeholder="例：contact@example.com" />
+              <p className="text-xs text-muted-foreground">用於客人回覆信件、預約確認通知</p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">預約注意事項</Label>
+              <Textarea
+                className="min-h-[80px] text-sm"
+                value={bookingPolicyInput}
+                onChange={(e) => setBookingPolicyInput(e.target.value)}
+                placeholder="例：退改規則、遲到提醒、攜帶物品等..."
+              />
+              <p className="text-xs text-muted-foreground">店家自訂退改規則與提醒，可顯示於預約頁</p>
+            </div>
+            <Separator />
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-foreground">🖥️ 前台設定</h3>
+              <Form {...frontendForm}>
+                <div className="space-y-4">
+                  <FormField
+                    control={frontendForm.control}
+                    name="frontend_subtitle"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">前台小標題</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="例：線上預約系統" />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={frontendForm.control}
+                    name="business_hours"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">營業時間</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="例：週一至週日 10:00-22:00" />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </Form>
+            </div>
+            <Separator />
+            <div className="space-y-2">
               <h3 className="text-sm font-semibold text-foreground">📱 LINE 預約導流</h3>
               <Label className="text-sm font-medium">預約頁網址（LINE 用）</Label>
               <Input value={bookingPageUrlInput} onChange={(e) => setBookingPageUrlInput(e.target.value)} placeholder="例：https://你的網站.vercel.app/booking" />
@@ -1381,6 +1486,31 @@ export default function AdminPage() {
                 填寫後，LINE 歡迎訊息、查詢結果、功能選單會顯示「立即預約」連結，導流客人到官網預約
               </p>
             </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">老闆 LINE User ID</Label>
+              <Input value={lineAdminUserIdInput} onChange={(e) => setLineAdminUserIdInput(e.target.value)} placeholder="例：U1234567890abcdef" />
+              <p className="text-xs text-muted-foreground">
+                填寫後，新預約成立時會推播通知到老闆的 LINE（需先加官方帳號為好友取得 User ID）
+              </p>
+            </div>
+            <Separator />
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-foreground">🔌 進階串接設定 (API)</h3>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Google Calendar Webhook URL</Label>
+                <Input value={googleCalendarWebhookInput} onChange={(e) => setGoogleCalendarWebhookInput(e.target.value)} placeholder="例：https://..." />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">LINE Channel Access Token</Label>
+                <Input type="password" value={lineChannelTokenInput} onChange={(e) => setLineChannelTokenInput(e.target.value)} placeholder="多店時可覆寫 Supabase Secrets" autoComplete="off" />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">LINE Channel Secret</Label>
+                <Input type="password" value={lineChannelSecretInput} onChange={(e) => setLineChannelSecretInput(e.target.value)} placeholder="多店時可覆寫 Supabase Secrets" autoComplete="off" />
+              </div>
+              <p className="text-xs text-muted-foreground">多租戶時可在此設定各店專屬 LINE 憑證，留空則使用全域 Secrets</p>
+            </div>
+            <Separator />
             <div className="space-y-2">
               <Label className="text-sm font-medium">師傅抽成比例</Label>
               <div className="flex items-center gap-2">
@@ -1391,7 +1521,8 @@ export default function AdminPage() {
                 目前設定：師傅 {rateInput}% / 店家 {100 - (parseInt(rateInput) || 0)}%
               </p>
             </div>
-            <div className="border-t border-border pt-4 space-y-4">
+            <Separator />
+            <div className="space-y-4">
               <h3 className="text-sm font-semibold text-foreground">預約時段設定</h3>
               <div className="space-y-2">
                 <Label className="text-sm font-medium">預約間隔緩衝時間</Label>
@@ -1424,6 +1555,7 @@ export default function AdminPage() {
                 </p>
               </div>
             </div>
+            <Separator />
             <div className="space-y-2">
               <Label className="text-sm font-medium">Google 日曆注意事項</Label>
               <Textarea
@@ -1436,7 +1568,8 @@ export default function AdminPage() {
                 此內容會顯示在客人加入 Google 日曆時的事件描述底部
               </p>
             </div>
-            <div className="border-t border-border pt-4 space-y-2">
+            <Separator />
+            <div className="space-y-2">
               <Label className="text-sm font-medium">修改管理員密碼</Label>
               <Input
                 type="password"
