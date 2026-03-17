@@ -19,6 +19,7 @@ import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useStore } from "@/contexts/StoreContext";
 
 interface DbService {
   id: string;
@@ -43,6 +44,7 @@ interface DbAddon {
 
 export default function BookingPage() {
   const navigate = useNavigate();
+  const { storeId } = useStore();
   const { notes: calendarNotes } = useCalendarNotes();
   const { info: shopInfo } = useShopInfo();
   const { settings: bookingSettings } = useBookingSettings();
@@ -80,14 +82,14 @@ export default function BookingPage() {
   useEffect(() => {
     const load = async () => {
       const [{ data: s }, { data: a }] = await Promise.all([
-        supabase.from("services").select("*").eq("is_active", true).order("sort_order"),
-        supabase.from("addons").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("services").select("*").eq("is_active", true).eq("store_id", storeId).order("sort_order"),
+        supabase.from("addons").select("*").eq("is_active", true).eq("store_id", storeId).order("sort_order"),
       ]);
       if (s) setDbServices(s as DbService[]);
       if (a) setDbAddons(a as DbAddon[]);
     };
     load();
-  }, []);
+  }, [storeId]);
 
   // Filter addons based on selected service category
   const availableAddons = useMemo(() => {
@@ -145,11 +147,11 @@ export default function BookingPage() {
     if (!date || !selectedService) return;
     const dateStr = format(date, "yyyy-MM-dd");
     setLoadingSlots(true);
-    getAvailableSlots(dateStr, totalDuration).then(slots => {
+    getAvailableSlots(dateStr, totalDuration, storeId).then(slots => {
       setAvailableSlots(slots);
       setLoadingSlots(false);
     });
-  }, [date, totalDuration, selectedService]);
+  }, [date, totalDuration, selectedService, storeId]);
 
   const handleAddonToggle = (addonName: string) => {
     setSelectedAddons(prev =>
@@ -186,6 +188,7 @@ export default function BookingPage() {
       .from("customers")
       .select("is_blacklisted, blacklist_action")
       .eq("phone", phone.trim())
+      .eq("store_id", storeId)
       .maybeSingle();
 
     if (customerData?.is_blacklisted) {
@@ -209,6 +212,7 @@ export default function BookingPage() {
       addons: allAddons,
       duration: totalDuration,
       total_price: totalPrice,
+      store_id: storeId,
       ...(email.trim() && { email: email.trim() }),
     };
 

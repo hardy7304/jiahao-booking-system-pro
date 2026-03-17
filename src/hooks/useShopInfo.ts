@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useStore } from "@/contexts/StoreContext";
 
 export interface ShopInfo {
   store_name: string;
@@ -18,13 +19,15 @@ const DEFAULTS: ShopInfo = {
 const KEYS = Object.keys(DEFAULTS) as (keyof ShopInfo)[];
 
 export function useShopInfo() {
+  const { storeId } = useStore();
   const [info, setInfo] = useState<ShopInfo>(DEFAULTS);
 
   const fetchInfo = useCallback(async () => {
     const { data } = await supabase
       .from("system_config")
       .select("key, value")
-      .in("key", KEYS);
+      .in("key", KEYS)
+      .eq("store_id", storeId);
     if (data) {
       const updated = { ...DEFAULTS };
       data.forEach((row) => {
@@ -34,7 +37,7 @@ export function useShopInfo() {
       });
       setInfo(updated);
     }
-  }, []);
+  }, [storeId]);
 
   useEffect(() => { fetchInfo(); }, [fetchInfo]);
 
@@ -44,7 +47,8 @@ export function useShopInfo() {
       await supabase
         .from("system_config")
         .update({ value: newInfo[key], updated_at: now } as any)
-        .eq("key", key);
+        .eq("key", key)
+        .eq("store_id", storeId);
     }
     setInfo(newInfo);
   };

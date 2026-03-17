@@ -12,6 +12,7 @@ import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useStore } from "@/contexts/StoreContext";
 
 interface Booking {
   id: string;
@@ -30,6 +31,7 @@ interface Booking {
 
 export default function MyBookingsPage() {
   const navigate = useNavigate();
+  const { storeId } = useStore();
   const [phone, setPhone] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [searched, setSearched] = useState(false);
@@ -69,6 +71,7 @@ export default function MyBookingsPage() {
         .from("bookings")
         .select("id, date, start_time_str, name, phone, service, addons, duration, total_price, status, cancelled_at, cancel_reason")
         .eq("phone", cleaned)
+        .eq("store_id", storeId)
         .order("date", { ascending: false })
         .order("start_hour", { ascending: false });
       if (error) throw error;

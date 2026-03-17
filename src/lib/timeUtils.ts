@@ -28,24 +28,25 @@ async function getBookingConfig(): Promise<{ buffer_minutes: number; free_addon_
   return config;
 }
 
-export async function getAvailableSlots(dateStr: string, totalDuration: number): Promise<number[]> {
+export async function getAvailableSlots(dateStr: string, totalDuration: number, storeId?: string): Promise<number[]> {
   const config = await getBookingConfig();
 
-  // Fetch active bookings for this date (exclude cancelled)
-  const { data: bookings } = await supabase
+  let bookingsQuery = supabase
     .from('bookings')
     .select('start_hour, duration, cancelled_at')
     .eq('date', dateStr)
     .is('cancelled_at', null);
+  if (storeId) bookingsQuery = bookingsQuery.eq('store_id', storeId);
+  const { data: bookings } = await bookingsQuery;
 
-  // 營業日區間固定為 14:00~26:00，前一天資料不應影響當天 14:00 後時段
   const allBookings = bookings || [];
 
-  // Fetch holidays
-  const { data: holidays } = await supabase
+  let holidaysQuery = supabase
     .from('holidays')
     .select('date, type, start_hour, end_hour')
     .eq('date', dateStr);
+  if (storeId) holidaysQuery = holidaysQuery.eq('store_id', storeId);
+  const { data: holidays } = await holidaysQuery;
 
   // Check if full day holiday
   if (holidays?.some(h => h.type === '整天公休')) {
