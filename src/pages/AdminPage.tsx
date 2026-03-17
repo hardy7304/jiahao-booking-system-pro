@@ -28,6 +28,7 @@ import { format, parseISO } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useStore } from "@/contexts/StoreContext";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -77,6 +78,7 @@ interface Holiday {
 }
 
 export default function AdminPage() {
+  const { storeId } = useStore();
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -168,23 +170,23 @@ export default function AdminPage() {
   // Load admin password from DB & Google Calendar ID
   useEffect(() => {
     const loadConfig = async () => {
-      const { data } = await supabase.from("system_config").select("value").eq("key", "admin_password").single();
+      const { data } = await supabase.from("system_config").select("value").eq("key", "admin_password").eq("store_id", storeId).single();
       if (data?.value) setAdminPasswordFromDb(data.value);
     };
     loadConfig();
-  }, []);
+  }, [storeId]);
 
   useEffect(() => {
     if (authenticated) {
       const fetchCalendarId = async () => {
         try {
-          const res = await adminApi("config.get_calendar_id");
+          const res = await adminApi("config.get_calendar_id", {}, storeId);
           if (res.calendar_id) setGoogleCalendarId(res.calendar_id.trim());
         } catch {}
       };
       fetchCalendarId();
     }
-  }, [authenticated]);
+  }, [authenticated, storeId]);
 
   const runDiagnostic = useCallback(async () => {
     setDiagnosticLoading(true);
@@ -236,29 +238,29 @@ export default function AdminPage() {
 
   const fetchBookings = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase.from("bookings").select("*").order("date", { ascending: false });
+    const { data } = await supabase.from("bookings").select("*").eq("store_id", storeId).order("date", { ascending: false });
     if (data) setBookings(data as Booking[]);
     setLoading(false);
-  }, []);
+  }, [storeId]);
 
   const fetchHolidays = useCallback(async () => {
-    const { data } = await supabase.from("holidays").select("*").order("date", { ascending: false });
+    const { data } = await supabase.from("holidays").select("*").eq("store_id", storeId).order("date", { ascending: false });
     if (data) setHolidays(data as Holiday[]);
-  }, []);
+  }, [storeId]);
 
   const fetchServices = useCallback(async () => {
     const [{ data: svcData }, { data: addonData }] = await Promise.all([
-      supabase.from("services").select("*").eq("is_active", true).order("sort_order"),
-      supabase.from("addons").select("*").eq("is_active", true).order("sort_order"),
+      supabase.from("services").select("*").eq("is_active", true).eq("store_id", storeId).order("sort_order"),
+      supabase.from("addons").select("*").eq("is_active", true).eq("store_id", storeId).order("sort_order"),
     ]);
     if (svcData) setServicesList(svcData);
     if (addonData) setAddonsList(addonData);
-  }, []);
+  }, [storeId]);
 
   const fetchBlacklist = useCallback(async () => {
-    const { data } = await supabase.from("customers").select("phone").eq("is_blacklisted", true);
+    const { data } = await supabase.from("customers").select("phone").eq("is_blacklisted", true).eq("store_id", storeId);
     if (data) setBlacklistedPhones(new Set(data.map((c: any) => c.phone)));
-  }, []);
+  }, [storeId]);
 
   useEffect(() => {
     if (authenticated) {
@@ -272,7 +274,7 @@ export default function AdminPage() {
   // CRUD actions via Edge Function
   const softDeleteBooking = async (id: string, reason: string) => {
     try {
-      await adminApi("booking.cancel", { id, reason });
+      await adminApi("booking.cancel", { id, reason }, storeId);
       setCancellingId(null);
       fetchBookings();
       toast.success("已取消預約");
@@ -281,7 +283,7 @@ export default function AdminPage() {
 
   const restoreBooking = async (id: string) => {
     try {
-      await adminApi("booking.restore", { id });
+      await adminApi("booking.restore", { id }, storeId);
       fetchBookings();
       toast.success("已復原預約");
     } catch (e: any) { toast.error(e.message); }
@@ -289,7 +291,7 @@ export default function AdminPage() {
 
   const completeBooking = async (id: string) => {
     try {
-      await adminApi("booking.complete", { id });
+      await adminApi("booking.complete", { id }, storeId);
       fetchBookings();
       toast.success("已標記完成");
     } catch (e: any) { toast.error(e.message); }
@@ -297,7 +299,7 @@ export default function AdminPage() {
 
   const uncompleteBooking = async (id: string) => {
     try {
-      await adminApi("booking.uncomplete", { id });
+      await adminApi("booking.uncomplete", { id }, storeId);
       fetchBookings();
       toast.success("已改回確認狀態");
     } catch (e: any) { toast.error(e.message); }
@@ -324,7 +326,7 @@ export default function AdminPage() {
           duration: editForm.duration, total_price: editForm.total_price,
           addons: editForm.addons, source: editForm.source, oil_bonus: editForm.oil_bonus,
         },
-      });
+      }, storeId);
       setEditingBooking(null);
       fetchBookings();
       toast.success("已更新預約");
@@ -333,7 +335,7 @@ export default function AdminPage() {
 
   const permanentDeleteBooking = async (id: string) => {
     try {
-      await adminApi("booking.delete", { id });
+      await adminApi("booking.delete", { id }, storeId);
       fetchBookings();
       toast.success("已永久刪除");
     } catch (e: any) { toast.error(e.message); }
@@ -342,7 +344,7 @@ export default function AdminPage() {
   const saveNote = async () => {
     if (!noteBookingId) return;
     try {
-      await adminApi("booking.note", { id: noteBookingId, note: noteText });
+      await adminApi("booking.note", { id: noteBookingId, note: noteText }, storeId);
       setNoteBookingId(null);
       setNoteText("");
       fetchBookings();
@@ -352,7 +354,7 @@ export default function AdminPage() {
 
   const deleteHoliday = async (id: string) => {
     try {
-      await adminApi("holiday.delete", { id });
+      await adminApi("holiday.delete", { id }, storeId);
       fetchHolidays();
       toast.success("已刪除公休");
     } catch (e: any) { toast.error(e.message); }
@@ -367,7 +369,7 @@ export default function AdminPage() {
       holiday.end_hour = parseFloat(hEnd);
     }
     try {
-      await adminApi("holiday.create", { holiday });
+      await adminApi("holiday.create", { holiday }, storeId);
       fetchHolidays();
       setHDate(undefined);
       setHNote("");
@@ -406,7 +408,7 @@ export default function AdminPage() {
       const holidays = Array.from(pendingHolidayDates).map(date => ({
         date, type: "整天公休" as const, note: null,
       }));
-      await adminApi("holiday.create_batch", { holidays });
+      await adminApi("holiday.create_batch", { holidays }, storeId);
       setPendingHolidayDates(new Set());
       fetchHolidays();
       toast.success(`已新增 ${holidays.length} 筆公休`);
@@ -426,7 +428,7 @@ export default function AdminPage() {
       holiday.end_hour = parseFloat(holidayDialogEnd);
     }
     try {
-      await adminApi("holiday.create", { holiday });
+      await adminApi("holiday.create", { holiday }, storeId);
       fetchHolidays();
       setHolidayClickedDate(null);
       toast.success("已新增公休");
@@ -446,8 +448,9 @@ export default function AdminPage() {
           start_time_str: formatHourToTime(manualForm.start_hour),
           duration: manualForm.duration, total_price: manualForm.total_price,
           addons: manualForm.addons, status: "confirmed", source: manualForm.source,
+          store_id: storeId,
         },
-      });
+      }, storeId);
       setShowManualBooking(false);
       setManualForm({ name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [], source: "admin" });
       fetchBookings();
@@ -471,7 +474,7 @@ export default function AdminPage() {
       if (adminPasswordInput.trim()) {
         configs.push({ key: "admin_password", value: adminPasswordInput.trim() });
       }
-      await adminApi("config.update", { configs });
+      await adminApi("config.update", { configs }, storeId);
       // Update local state
       commission.refetch();
       calendarNotesHook.refetch();
@@ -576,7 +579,7 @@ export default function AdminPage() {
               setBufferInput(bookingSettingsHook.settings.buffer_minutes.toString());
               setFreeAddonInput(bookingSettingsHook.settings.free_addon_duration.toString());
               setPreBlockInput(bookingSettingsHook.settings.pre_block_minutes.toString());
-              const { data: urlRow } = await supabase.from("system_config").select("value").eq("key", "booking_page_url").maybeSingle();
+              const { data: urlRow } = await supabase.from("system_config").select("value").eq("key", "booking_page_url").eq("store_id", storeId).maybeSingle();
               setBookingPageUrlInput(urlRow?.value || "");
               setShowSettings(true);
             }}>
@@ -1167,7 +1170,7 @@ export default function AdminPage() {
               setRateInput(Math.round(commission.commissionRate * 100).toString());
               setCalendarNotesInput(calendarNotesHook.notes);
               setShopInfoInput(shopInfoHook.info);
-              const { data: urlRow } = await supabase.from("system_config").select("value").eq("key", "booking_page_url").maybeSingle();
+              const { data: urlRow } = await supabase.from("system_config").select("value").eq("key", "booking_page_url").eq("store_id", storeId).maybeSingle();
               setBookingPageUrlInput(urlRow?.value || "");
               setShowSettings(true);
             }} />

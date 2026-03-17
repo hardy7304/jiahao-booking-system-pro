@@ -1,6 +1,6 @@
-
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useStore } from "@/contexts/StoreContext";
 import { adminApi } from "@/lib/adminApi";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -145,6 +145,7 @@ function getAutoTier(visitCount: number): { label: string; color: string } {
 }
 
 export default function CustomerTracking() {
+  const { storeId } = useStore();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -193,12 +194,12 @@ export default function CustomerTracking() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     const [{ data: c }, { data: t }, { data: n }, { data: bk }, { data: cf }, { data: cfv }] = await Promise.all([
-      supabase.from("customers").select("*").order("updated_at", { ascending: false }),
-      supabase.from("customer_tags").select("*"),
-      supabase.from("customer_notes").select("*").order("created_at", { ascending: false }),
-      supabase.from("bookings").select("phone, total_price, status"),
-      supabase.from("customer_custom_fields").select("*").order("sort_order"),
-      supabase.from("customer_field_values").select("*"),
+      supabase.from("customers").select("*").eq("store_id", storeId).order("updated_at", { ascending: false }),
+      supabase.from("customer_tags").select("*").eq("store_id", storeId),
+      supabase.from("customer_notes").select("*").eq("store_id", storeId).order("created_at", { ascending: false }),
+      supabase.from("bookings").select("phone, total_price, status").eq("store_id", storeId),
+      supabase.from("customer_custom_fields").select("*").eq("store_id", storeId).order("sort_order"),
+      supabase.from("customer_field_values").select("*").eq("store_id", storeId),
     ]);
     if (c) setCustomers(c as Customer[]);
     if (t) setAllTags(t as CustomerTag[]);
@@ -212,13 +213,14 @@ export default function CustomerTracking() {
     });
     setSpendingByPhone(sMap);
     setLoading(false);
-  }, []);
+  }, [storeId]);
 
   const seedFromBookings = async () => {
     setLoading(true);
     const { data: bookings } = await supabase
       .from("bookings")
-      .select("phone, name, date, status, cancel_reason");
+      .select("phone, name, date, status, cancel_reason")
+      .eq("store_id", storeId);
 
     if (bookings && bookings.length > 0) {
       const phoneMap = new Map<string, {
@@ -244,8 +246,9 @@ export default function CustomerTracking() {
           customer: {
             phone, name: stats.name, visit_count: stats.visit_count,
             no_show_count: stats.no_show_count, cancel_count: stats.cancel_count, last_visit_date: stats.last_visit_date,
+            store_id: storeId,
           },
-        });
+        }, storeId);
       }
     }
     await fetchAll();
@@ -382,7 +385,7 @@ export default function CustomerTracking() {
   const addTag = async (customerId: string, tag: string) => {
     if (!tag.trim()) return;
     try {
-      const result = await adminApi("customer_tag.add", { tag: { customer_id: customerId, tag: tag.trim() } });
+      const result = await adminApi("customer_tag.add", { tag: { customer_id: customerId, tag: tag.trim(), store_id: storeId } }, storeId);
       setAllTags(prev => [...prev, result.tag || { id: crypto.randomUUID(), customer_id: customerId, tag: tag.trim() }]);
       setNewTag("");
       toast.success(`已新增標籤「${tag.trim()}」`);
@@ -393,7 +396,7 @@ export default function CustomerTracking() {
   };
 
   const removeTag = async (tagId: string) => {
-    await adminApi("customer_tag.remove", { id: tagId });
+    await adminApi("customer_tag.remove", { id: tagId }, storeId);
     setAllTags(prev => prev.filter(t => t.id !== tagId));
   };
 
@@ -401,7 +404,7 @@ export default function CustomerTracking() {
   const addNote = async (customerId: string) => {
     if (!newNote.trim()) return;
     try {
-      const result = await adminApi("customer_note.add", { note: { customer_id: customerId, content: newNote.trim() } });
+      const result = await adminApi("customer_note.add", { note: { customer_id: customerId, content: newNote.trim(), store_id: storeId } }, storeId);
       if (result.note) setAllNotes(prev => [result.note as CustomerNote, ...prev]);
       setNewNote("");
       toast.success("備註已新增");
@@ -409,7 +412,7 @@ export default function CustomerTracking() {
   };
 
   const deleteNote = async (noteId: string) => {
-    await adminApi("customer_note.remove", { id: noteId });
+    await adminApi("customer_note.remove", { id: noteId }, storeId);
     setAllNotes(prev => prev.filter(n => n.id !== noteId));
   };
 
@@ -423,7 +426,7 @@ export default function CustomerTracking() {
       updates.blacklist_reason = null;
       updates.blacklist_action = "warn";
     }
-    await adminApi("customer.update", { id: customer.id, updates });
+    await adminApi("customer.update", { id: customer.id, updates }, storeId);
     setCustomers(prev => prev.map(c => c.id === customer.id ? { ...c, ...updates } : c));
     if (selectedCustomer?.id === customer.id) {
       setSelectedCustomer({ ...customer, ...updates });
@@ -450,6 +453,7 @@ export default function CustomerTracking() {
       .from("bookings")
       .select("id, date, start_time_str, service, addons, status, total_price, cancel_reason, source, name, phone")
       .eq("phone", c.phone)
+      .eq("store_id", storeId)
       .order("date", { ascending: false })
       .order("start_hour", { ascending: false });
     setCustomerBookings((data as BookingRecord[]) || []);
@@ -465,7 +469,7 @@ export default function CustomerTracking() {
       pressure_preference: editPressure,
       area: editArea || null,
     };
-    await adminApi("customer.update", { id: customerId, updates });
+    await adminApi("customer.update", { id: customerId, updates }, storeId);
     setCustomers(prev => prev.map(c => c.id === customerId ? { ...c, ...updates } : c));
     if (selectedCustomer?.id === customerId) {
       setSelectedCustomer(prev => prev ? { ...prev, ...updates } : null);
@@ -474,7 +478,7 @@ export default function CustomerTracking() {
   };
 
   const saveCustomFieldValue = async (customerId: string, fieldId: string, value: string) => {
-    await adminApi("custom_field_value.upsert", { customer_id: customerId, field_id: fieldId, value });
+    await adminApi("custom_field_value.upsert", { customer_id: customerId, field_id: fieldId, value }, storeId);
     setCustomFieldValues(prev => {
       const existing = prev.find(v => v.customer_id === customerId && v.field_id === fieldId);
       if (existing) return prev.map(v => v.customer_id === customerId && v.field_id === fieldId ? { ...v, value } : v);
@@ -489,7 +493,7 @@ export default function CustomerTracking() {
       if (newFieldType === "select" && newFieldOptions.trim()) {
         field.options = newFieldOptions.split(",").map((o: string) => o.trim()).filter(Boolean);
       }
-      const res = await adminApi("custom_field.create", { field });
+      const res = await adminApi("custom_field.create", { field: { ...field, store_id: storeId } }, storeId);
       if (res.field) setCustomFields(prev => [...prev, res.field as CustomField]);
       setNewFieldName("");
       setNewFieldOptions("");
@@ -498,7 +502,7 @@ export default function CustomerTracking() {
   };
 
   const deleteCustomField = async (id: string) => {
-    await adminApi("custom_field.delete", { id });
+    await adminApi("custom_field.delete", { id }, storeId);
     setCustomFields(prev => prev.filter(f => f.id !== id));
     setCustomFieldValues(prev => prev.filter(v => v.field_id !== id));
     toast.success("欄位已刪除");
@@ -508,7 +512,8 @@ export default function CustomerTracking() {
     // Fetch all bookings for stats calculation
     const { data: allBookings } = await supabase
       .from("bookings")
-      .select("phone, service, total_price, status, date");
+      .select("phone, service, total_price, status, date")
+      .eq("store_id", storeId);
 
     const bookingsByPhone = new Map<string, typeof allBookings>();
     (allBookings || []).forEach((b: any) => {

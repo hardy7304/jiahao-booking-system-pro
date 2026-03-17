@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useStore } from "@/contexts/StoreContext";
 
 interface ServiceDeduction {
   name: string;
@@ -13,6 +14,7 @@ interface AddonPrice {
 }
 
 export function useCommission() {
+  const { storeId } = useStore();
   const [commissionRate, setCommissionRate] = useState(0.6);
   const [serviceDeductions, setServiceDeductions] = useState<ServiceDeduction[]>([]);
   const [addonPrices, setAddonPrices] = useState<AddonPrice[]>([]);
@@ -22,19 +24,20 @@ export function useCommission() {
       .from("system_config")
       .select("*")
       .eq("key", "commission_rate")
+      .eq("store_id", storeId)
       .single();
     if (data) setCommissionRate(parseFloat(data.value as string) || 0.6);
-  }, []);
+  }, [storeId]);
 
   const fetchDeductions = useCallback(async () => {
-    const { data } = await supabase.from("services").select("name, deduction");
+    const { data } = await supabase.from("services").select("name, deduction").eq("store_id", storeId);
     if (data) setServiceDeductions(data as ServiceDeduction[]);
-  }, []);
+  }, [storeId]);
 
   const fetchAddonPrices = useCallback(async () => {
-    const { data } = await supabase.from("addons").select("name, extra_price, deduction");
+    const { data } = await supabase.from("addons").select("name, extra_price, deduction").eq("store_id", storeId);
     if (data) setAddonPrices(data as AddonPrice[]);
-  }, []);
+  }, [storeId]);
 
   useEffect(() => {
     fetchConfig();
@@ -81,7 +84,7 @@ export function useCommission() {
   };
 
   const updateRate = async (rate: number) => {
-    await supabase.from("system_config").update({ value: rate.toString(), updated_at: new Date().toISOString() } as any).eq("key", "commission_rate");
+    await supabase.from("system_config").update({ value: rate.toString(), updated_at: new Date().toISOString() } as any).eq("key", "commission_rate").eq("store_id", storeId);
     setCommissionRate(rate);
   };
 

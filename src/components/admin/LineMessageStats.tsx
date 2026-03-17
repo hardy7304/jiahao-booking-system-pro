@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useStore } from "@/contexts/StoreContext";
 import { adminApi } from "@/lib/adminApi";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -30,6 +31,7 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 export default function LineMessageStats() {
+  const { storeId } = useStore();
   const [loading, setLoading] = useState(true);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [monthlyUsed, setMonthlyUsed] = useState(0);
@@ -60,15 +62,17 @@ export default function LineMessageStats() {
           .select("id", { count: "exact", head: true })
           .eq("cost_counted", true)
           .eq("success", true)
+          .eq("store_id", storeId)
           .gte("sent_at", monthStart),
         supabase
           .from("line_message_log")
           .select("*")
+          .eq("store_id", storeId)
           .order("sent_at", { ascending: false })
           .limit(30),
-        supabase.from("system_config").select("value").eq("key", "line_monthly_quota").maybeSingle(),
-        supabase.from("system_config").select("value").eq("key", "line_quota_alert_threshold").maybeSingle(),
-        supabase.from("system_config").select("value").eq("key", "line_notify_vip_only").maybeSingle(),
+        supabase.from("system_config").select("value").eq("key", "line_monthly_quota").eq("store_id", storeId).maybeSingle(),
+        supabase.from("system_config").select("value").eq("key", "line_quota_alert_threshold").eq("store_id", storeId).maybeSingle(),
+        supabase.from("system_config").select("value").eq("key", "line_notify_vip_only").eq("store_id", storeId).maybeSingle(),
       ]);
 
       const q = parseInt(quotaRow?.value || "200") || 200;
@@ -87,7 +91,7 @@ export default function LineMessageStats() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [storeId]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -100,7 +104,7 @@ export default function LineMessageStats() {
           { key: "line_quota_alert_threshold", value: editThreshold },
           { key: "line_notify_vip_only", value: vipOnly ? "true" : "false" },
         ],
-      });
+      }, storeId);
       toast.success("LINE 設定已儲存");
       setQuota(parseInt(editQuota) || 200);
       setAlertThreshold(parseInt(editThreshold) || 180);

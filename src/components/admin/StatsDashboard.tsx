@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { adminApi } from "@/lib/adminApi";
+import { useStore } from "@/contexts/StoreContext";
 import { toast } from "sonner";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -60,6 +61,7 @@ export default function StatsDashboard({
   loading: boolean;
   commission?: CommissionHelpers;
 }) {
+  const { storeId } = useStore();
   const now = new Date();
   const [preset, setPreset] = useState<Preset>("thisMonth");
   const [customFrom, setCustomFrom] = useState<Date>(startOfMonth(now));
@@ -532,7 +534,7 @@ export default function StatsDashboard({
         <Button variant="outline" disabled={syncing} onClick={async () => {
           setSyncing(true);
           try {
-            const res = await adminApi("calendar.full_sync");
+            const res = await adminApi("calendar.full_sync", {}, storeId);
             toast.success(`同步完成：新增 ${res.synced} 筆、移除 ${res.deleted} 筆`);
           } catch (e: any) {
             toast.error(`同步失敗：${e.message}`);

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useStore } from "@/contexts/StoreContext";
 import { useCommission } from "@/hooks/useCommission";
 import { adminApi } from "@/lib/adminApi";
 import { Button } from "@/components/ui/button";
@@ -67,6 +68,7 @@ const APPLICABLE_CAT_OPTIONS = [
 ];
 
 export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?: () => void }) {
+  const { storeId } = useStore();
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [addons, setAddons] = useState<AddonRow[]>([]);
   const { commissionRate } = useCommission();
@@ -85,33 +87,33 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
 
   const fetchAll = async () => {
     const [{ data: s }, { data: a }] = await Promise.all([
-      supabase.from("services").select("*").order("sort_order"),
-      supabase.from("addons").select("*").order("sort_order"),
+      supabase.from("services").select("*").eq("store_id", storeId).order("sort_order"),
+      supabase.from("addons").select("*").eq("store_id", storeId).order("sort_order"),
     ]);
     if (s) setServices(s as ServiceRow[]);
     if (a) setAddons(a as AddonRow[]);
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => { fetchAll(); }, [storeId]);
 
   const activeServiceCount = services.filter(s => s.is_active).length;
   const activeAddonCount = addons.filter(a => a.is_active).length;
 
   // ===== Services CRUD =====
   const toggleServiceActive = async (s: ServiceRow) => {
-    await adminApi("service.update", { service: { id: s.id, is_active: !s.is_active } });
+    await adminApi("service.update", { service: { id: s.id, is_active: !s.is_active } }, storeId);
     fetchAll();
   };
 
   const deleteService = async (id: string) => {
-    await adminApi("service.delete", { id });
+    await adminApi("service.delete", { id }, storeId);
     fetchAll();
     toast.success("已刪除服務");
   };
 
   const saveEditService = async () => {
     if (!editingService) return;
-    await adminApi("service.update", { service: editingService });
+    await adminApi("service.update", { service: editingService }, storeId);
     setEditingService(null);
     fetchAll();
     toast.success("已更新服務");
@@ -120,7 +122,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
   const createService = async () => {
     if (!newService.name.trim()) { toast.error("請輸入服務名稱"); return; }
     const maxOrder = services.length > 0 ? Math.max(...services.map(s => s.sort_order)) + 1 : 0;
-    await adminApi("service.create", { service: { ...newService, sort_order: maxOrder } });
+    await adminApi("service.create", { service: { ...newService, sort_order: maxOrder, store_id: storeId } }, storeId);
     setShowServiceDialog(false);
     setNewService({ name: "", duration: 60, price: 1000, category: "foot", is_active: true, deduction: 0 });
     fetchAll();
@@ -128,7 +130,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
   };
 
   const updateDeduction = async (s: ServiceRow, val: number) => {
-    await adminApi("service.update", { service: { id: s.id, deduction: val } });
+    await adminApi("service.update", { service: { id: s.id, deduction: val } }, storeId);
     setServices(prev => prev.map(x => x.id === s.id ? { ...x, deduction: val } : x));
     toast.success(`已更新「${s.name}」差價為 NT$${val}`);
   };
@@ -137,27 +139,27 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
     const target = index + direction;
     if (target < 0 || target >= services.length) return;
     await Promise.all([
-      adminApi("service.update", { service: { id: services[index].id, sort_order: services[target].sort_order } }),
-      adminApi("service.update", { service: { id: services[target].id, sort_order: services[index].sort_order } }),
+      adminApi("service.update", { service: { id: services[index].id, sort_order: services[target].sort_order } }, storeId),
+      adminApi("service.update", { service: { id: services[target].id, sort_order: services[index].sort_order } }, storeId),
     ]);
     fetchAll();
   };
 
   // ===== Addons CRUD =====
   const toggleAddonActive = async (a: AddonRow) => {
-    await adminApi("addon.update", { addon: { id: a.id, is_active: !a.is_active } });
+    await adminApi("addon.update", { addon: { id: a.id, is_active: !a.is_active } }, storeId);
     fetchAll();
   };
 
   const deleteAddon = async (id: string) => {
-    await adminApi("addon.delete", { id });
+    await adminApi("addon.delete", { id }, storeId);
     fetchAll();
     toast.success("已刪除加購項目");
   };
 
   const saveEditAddon = async () => {
     if (!editingAddon) return;
-    await adminApi("addon.update", { addon: editingAddon });
+    await adminApi("addon.update", { addon: editingAddon }, storeId);
     setEditingAddon(null);
     fetchAll();
     toast.success("已更新加購項目");
@@ -166,7 +168,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
   const createAddon = async () => {
     if (!newAddon.name.trim()) { toast.error("請輸入加購名稱"); return; }
     const maxOrder = addons.length > 0 ? Math.max(...addons.map(a => a.sort_order)) + 1 : 0;
-    await adminApi("addon.create", { addon: { ...newAddon, sort_order: maxOrder } });
+    await adminApi("addon.create", { addon: { ...newAddon, sort_order: maxOrder, store_id: storeId } }, storeId);
     setShowAddonDialog(false);
     setNewAddon({ name: "", extra_duration: 0, extra_price: 0, deduction: 0, applicable_categories: [], addon_type: "加購", is_active: true });
     fetchAll();
@@ -177,8 +179,8 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
     const target = index + direction;
     if (target < 0 || target >= addons.length) return;
     await Promise.all([
-      adminApi("addon.update", { addon: { id: addons[index].id, sort_order: addons[target].sort_order } }),
-      adminApi("addon.update", { addon: { id: addons[target].id, sort_order: addons[index].sort_order } }),
+      adminApi("addon.update", { addon: { id: addons[index].id, sort_order: addons[target].sort_order } }, storeId),
+      adminApi("addon.update", { addon: { id: addons[target].id, sort_order: addons[index].sort_order } }, storeId),
     ]);
     fetchAll();
   };

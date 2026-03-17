@@ -31,14 +31,12 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { action, password, ...data } = body;
+    const { action, password, store_id: storeId, ...data } = body;
 
     // Verify admin password
-    const { data: configRow } = await supabase
-      .from("system_config")
-      .select("value")
-      .eq("key", "admin_password")
-      .single();
+    let configQuery = supabase.from("system_config").select("value").eq("key", "admin_password");
+    if (storeId) configQuery = configQuery.eq("store_id", storeId);
+    const { data: configRow } = await configQuery.single();
     const adminPassword = configRow?.value || "bulaosong2024";
     if (password !== adminPassword) {
       return jsonResponse({ error: "密碼錯誤" }, 401);
@@ -115,7 +113,9 @@ Deno.serve(async (req) => {
         break;
       }
       case "booking.create_manual": {
-        const { data: inserted, error } = await supabase.from("bookings").insert(data.booking).select().single();
+        const bookingPayload = { ...data.booking };
+        if (storeId && !bookingPayload.store_id) bookingPayload.store_id = storeId;
+        const { data: inserted, error } = await supabase.from("bookings").insert(bookingPayload).select().single();
         if (error) throw error;
         // Sync to Google Calendar
         try {
@@ -141,7 +141,9 @@ Deno.serve(async (req) => {
 
       // ===== Holidays =====
       case "holiday.create": {
-        const { data: inserted, error } = await supabase.from("holidays").insert(data.holiday).select().single();
+        const holidayPayload = { ...data.holiday };
+        if (storeId && !holidayPayload.store_id) holidayPayload.store_id = storeId;
+        const { data: inserted, error } = await supabase.from("holidays").insert(holidayPayload).select().single();
         if (error) throw error;
         // Sync to Google Calendar
         try {
@@ -155,7 +157,8 @@ Deno.serve(async (req) => {
         break;
       }
       case "holiday.create_batch": {
-        const { data: inserted, error } = await supabase.from("holidays").insert(data.holidays).select();
+        const holidaysPayload = (data.holidays || []).map((h: any) => (storeId && !h.store_id ? { ...h, store_id: storeId } : h));
+        const { data: inserted, error } = await supabase.from("holidays").insert(holidaysPayload).select();
         if (error) throw error;
         // Sync each to Google Calendar
         for (const h of (inserted || [])) {
@@ -189,7 +192,9 @@ Deno.serve(async (req) => {
 
       // ===== Services =====
       case "service.create": {
-        const { error } = await supabase.from("services").insert(data.service);
+        const servicePayload = { ...data.service };
+        if (storeId && !servicePayload.store_id) servicePayload.store_id = storeId;
+        const { error } = await supabase.from("services").insert(servicePayload);
         if (error) throw error;
         break;
       }
@@ -207,7 +212,9 @@ Deno.serve(async (req) => {
 
       // ===== Addons =====
       case "addon.create": {
-        const { error } = await supabase.from("addons").insert(data.addon);
+        const addonPayload = { ...data.addon };
+        if (storeId && !addonPayload.store_id) addonPayload.store_id = storeId;
+        const { error } = await supabase.from("addons").insert(addonPayload);
         if (error) throw error;
         break;
       }
@@ -225,7 +232,9 @@ Deno.serve(async (req) => {
 
       // ===== Customers =====
       case "customer.upsert": {
-        const { error } = await supabase.from("customers").upsert(data.customer, { onConflict: "phone" });
+        const customerPayload = { ...data.customer };
+        if (storeId && !customerPayload.store_id) customerPayload.store_id = storeId;
+        const { error } = await supabase.from("customers").upsert(customerPayload, { onConflict: "phone" });
         if (error) throw error;
         break;
       }
@@ -235,7 +244,9 @@ Deno.serve(async (req) => {
         break;
       }
       case "customer_tag.add": {
-        const { data: inserted, error } = await supabase.from("customer_tags").insert(data.tag).select().single();
+        const tagPayload = { ...data.tag };
+        if (storeId && !tagPayload.store_id) tagPayload.store_id = storeId;
+        const { data: inserted, error } = await supabase.from("customer_tags").insert(tagPayload).select().single();
         if (error) throw error;
         result = { success: true, tag: inserted };
         break;
@@ -246,7 +257,9 @@ Deno.serve(async (req) => {
         break;
       }
       case "customer_note.add": {
-        const { data: inserted, error } = await supabase.from("customer_notes").insert(data.note).select().single();
+        const notePayload = { ...data.note };
+        if (storeId && !notePayload.store_id) notePayload.store_id = storeId;
+        const { data: inserted, error } = await supabase.from("customer_notes").insert(notePayload).select().single();
         if (error) throw error;
         result = { success: true, note: inserted };
         break;
@@ -259,7 +272,9 @@ Deno.serve(async (req) => {
 
       // ===== Custom Fields =====
       case "custom_field.create": {
-        const { data: inserted, error } = await supabase.from("customer_custom_fields").insert(data.field).select().single();
+        const fieldPayload = { ...data.field };
+        if (storeId && !fieldPayload.store_id) fieldPayload.store_id = storeId;
+        const { data: inserted, error } = await supabase.from("customer_custom_fields").insert(fieldPayload).select().single();
         if (error) throw error;
         result = { success: true, field: inserted };
         break;
@@ -277,8 +292,10 @@ Deno.serve(async (req) => {
       }
       case "custom_field_value.upsert": {
         const { customer_id, field_id, value } = data;
+        const upsertPayload: any = { customer_id, field_id, value, updated_at: new Date().toISOString() };
+        if (storeId) upsertPayload.store_id = storeId;
         const { error } = await supabase.from("customer_field_values").upsert(
-          { customer_id, field_id, value, updated_at: new Date().toISOString() },
+          upsertPayload,
           { onConflict: "customer_id,field_id" }
         );
         if (error) throw error;
@@ -288,9 +305,9 @@ Deno.serve(async (req) => {
       // ===== System Config =====
       case "config.update": {
         for (const { key, value } of data.configs) {
-          const { error } = await supabase.from("system_config").upsert({
-            key, value, updated_at: new Date().toISOString(),
-          });
+          const upsertPayload: any = { key, value, updated_at: new Date().toISOString() };
+          if (storeId) upsertPayload.store_id = storeId;
+          const { error } = await supabase.from("system_config").upsert(upsertPayload);
           if (error) throw error;
         }
         break;
@@ -305,11 +322,9 @@ Deno.serve(async (req) => {
         let errors: string[] = [];
 
         // 1. Sync all active bookings without google_calendar_event_id
-        const { data: unsyncedBookings } = await supabase
-          .from("bookings")
-          .select("*")
-          .is("google_calendar_event_id", null)
-          .in("status", ["confirmed", "completed"]);
+        let unsyncedQuery = supabase.from("bookings").select("*").is("google_calendar_event_id", null).in("status", ["confirmed", "completed"]);
+        if (storeId) unsyncedQuery = unsyncedQuery.eq("store_id", storeId);
+        const { data: unsyncedBookings } = await unsyncedQuery;
 
         for (const bk of (unsyncedBookings || [])) {
           try {
@@ -319,11 +334,9 @@ Deno.serve(async (req) => {
         }
 
         // 2. Delete calendar events for cancelled bookings that still have event IDs
-        const { data: cancelledWithEvents } = await supabase
-          .from("bookings")
-          .select("*")
-          .eq("status", "cancelled")
-          .not("google_calendar_event_id", "is", null);
+        let cancelledQuery = supabase.from("bookings").select("*").eq("status", "cancelled").not("google_calendar_event_id", "is", null);
+        if (storeId) cancelledQuery = cancelledQuery.eq("store_id", storeId);
+        const { data: cancelledWithEvents } = await cancelledQuery;
 
         for (const bk of (cancelledWithEvents || [])) {
           try {
@@ -334,10 +347,9 @@ Deno.serve(async (req) => {
         }
 
         // 3. Sync holidays without event IDs
-        const { data: unsyncedHolidays } = await supabase
-          .from("holidays")
-          .select("*")
-          .is("google_calendar_event_id", null);
+        let holidaysQuery = supabase.from("holidays").select("*").is("google_calendar_event_id", null);
+        if (storeId) holidaysQuery = holidaysQuery.eq("store_id", storeId);
+        const { data: unsyncedHolidays } = await holidaysQuery;
 
         for (const h of (unsyncedHolidays || [])) {
           try {
