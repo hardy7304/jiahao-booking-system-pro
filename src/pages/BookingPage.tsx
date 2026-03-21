@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase, supabaseUrl, supabaseAnonKey } from "@/integrations/supabase/client";
 import { formatHourToTime } from "@/lib/services";
 import { getAvailableSlots, generateGoogleCalendarLink } from "@/lib/timeUtils";
@@ -42,8 +42,20 @@ interface DbAddon {
   sort_order: number;
 }
 
+/** LINE 內建瀏覽器對 target=_blank 支援不佳，改為直接導向 Google 日曆 */
+function openGoogleCalendarLink(url: string) {
+  const isLine = /Line\//i.test(navigator.userAgent || "");
+  if (isLine) {
+    window.location.assign(url);
+  } else {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}
+
 export default function BookingPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isLineCalendarEntry = /^\/mylinecalendar$/i.test(location.pathname);
   const { storeId, currentStore } = useStore();
   const { notes: calendarNotes } = useCalendarNotes();
   const { info: shopInfo } = useShopInfo();
@@ -77,6 +89,16 @@ export default function BookingPage() {
     setPhone(value);
     if (phoneError) setPhoneError(validatePhone(value));
   };
+
+  useEffect(() => {
+    if (!isLineCalendarEntry) return;
+    const base = currentStore?.name ?? shopInfo.store_name ?? "線上預約";
+    const prev = document.title;
+    document.title = `${base}｜預約日曆`;
+    return () => {
+      document.title = prev;
+    };
+  }, [isLineCalendarEntry, currentStore?.name, shopInfo.store_name]);
 
   // Load services and addons from DB
   useEffect(() => {
@@ -284,12 +306,15 @@ export default function BookingPage() {
             <div className="flex justify-between border-t border-border pt-2"><span className="text-muted-foreground">金額</span><span className="font-bold text-primary text-lg">NT$ {success.total_price.toLocaleString()}</span></div>
           </div>
           <div className="mt-6 space-y-3">
-            <a href={success.calendarLink} target="_blank" rel="noopener noreferrer">
-              <Button className="w-full" variant="outline">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                加入 Google 日曆
-              </Button>
-            </a>
+            <Button
+              type="button"
+              className="w-full"
+              variant="outline"
+              onClick={() => openGoogleCalendarLink(success.calendarLink)}
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              加入 Google 日曆
+            </Button>
             <Button className="w-full" onClick={() => {
               setSuccess(null);
               setSelectedService(null);
@@ -488,7 +513,7 @@ export default function BookingPage() {
 
         <div className="text-center mt-6 space-y-2">
           <button
-            onClick={() => navigate("/my-bookings")}
+            onClick={() => navigate(isLineCalendarEntry ? "/mylinebookings" : "/my-bookings")}
             className="text-sm text-primary underline underline-offset-4 hover:text-primary/80"
           >
             查詢 / 取消我的預約
