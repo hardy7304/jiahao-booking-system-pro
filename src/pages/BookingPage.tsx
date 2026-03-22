@@ -19,7 +19,7 @@ import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useStore } from "@/contexts/StoreContext";
+import { useStore, FALLBACK_STORE_ID } from "@/contexts/StoreContext";
 
 interface DbService {
   id: string;
@@ -57,6 +57,8 @@ export default function BookingPage() {
   const location = useLocation();
   const isLineCalendarEntry = /^\/mylinecalendar$/i.test(location.pathname);
   const { storeId, currentStore } = useStore();
+  const effectiveStoreId =
+    typeof storeId === "string" && storeId.trim() !== "" ? storeId.trim() : FALLBACK_STORE_ID;
   const { notes: calendarNotes } = useCalendarNotes();
   const { info: shopInfo } = useShopInfo();
   const { settings: bookingSettings } = useBookingSettings();
@@ -111,7 +113,7 @@ export default function BookingPage() {
       if (a) setDbAddons(a as DbAddon[]);
     };
     load();
-  }, [storeId]);
+  }, [effectiveStoreId]);
 
   // Filter addons based on selected service category
   const availableAddons = useMemo(() => {
@@ -169,11 +171,11 @@ export default function BookingPage() {
     if (!date || !selectedService) return;
     const dateStr = format(date, "yyyy-MM-dd");
     setLoadingSlots(true);
-    getAvailableSlots(dateStr, totalDuration, storeId).then(slots => {
+    getAvailableSlots(dateStr, totalDuration, effectiveStoreId).then(slots => {
       setAvailableSlots(slots);
       setLoadingSlots(false);
     });
-  }, [date, totalDuration, selectedService, storeId]);
+  }, [date, totalDuration, selectedService, effectiveStoreId]);
 
   const handleAddonToggle = (addonName: string) => {
     setSelectedAddons(prev =>
@@ -210,7 +212,7 @@ export default function BookingPage() {
       .from("customers")
       .select("is_blacklisted, blacklist_action")
       .eq("phone", phone.trim())
-      .eq("store_id", storeId)
+      .eq("store_id", effectiveStoreId)
       .maybeSingle();
 
     if (customerData?.is_blacklisted) {
@@ -234,7 +236,7 @@ export default function BookingPage() {
       addons: allAddons,
       duration: totalDuration,
       total_price: totalPrice,
-      store_id: storeId,
+      store_id: effectiveStoreId,
       ...(email.trim() && { email: email.trim() }),
     };
 

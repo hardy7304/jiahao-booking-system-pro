@@ -535,9 +535,12 @@ export default function StatsDashboard({
           setSyncing(true);
           try {
             const res = await adminApi("calendar.full_sync", {}, storeId);
-            toast.success(`同步完成：新增 ${res.synced} 筆、移除 ${res.deleted} 筆`);
-          } catch (e: any) {
-            toast.error(`同步失敗：${e.message}`);
+            const synced = typeof res.synced === "number" ? res.synced : 0;
+            const deleted = typeof res.deleted === "number" ? res.deleted : 0;
+            toast.success(`同步完成：新增 ${synced} 筆、移除 ${deleted} 筆`);
+          } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            toast.error(`同步失敗：${msg}`);
           } finally {
             setSyncing(false);
           }

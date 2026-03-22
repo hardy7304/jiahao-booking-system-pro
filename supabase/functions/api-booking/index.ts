@@ -1,5 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+/** 與前端 StoreContext FALLBACK_STORE_ID 一致；body 未帶或空字串時使用 */
+const FALLBACK_STORE_ID = "8e8388bf-860e-44f7-8e14-35b76c64fb52";
+
 function formatHourToTime(hour: number): string {
   const displayHour = hour >= 24 ? hour - 24 : hour;
   const h = Math.floor(displayHour);
@@ -38,15 +41,24 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
       }
 
+      const resolvedStoreId =
+        typeof store_id === "string" && store_id.trim() !== "" ? store_id.trim() : FALLBACK_STORE_ID;
+
       // Fetch buffer_minutes from system_config
-      const { data: configRows } = await supabase.from("system_config").select("key, value").eq("key", "buffer_minutes").maybeSingle();
+      const { data: configRows } = await supabase
+        .from("system_config")
+        .select("key, value")
+        .eq("key", "buffer_minutes")
+        .eq("store_id", resolvedStoreId)
+        .maybeSingle();
       const bufferMinutes = configRows?.value ? parseInt(configRows.value) || 10 : 10;
 
       // Holiday check: block bookings on public holidays
       const { data: holidays } = await supabase
         .from("holidays")
         .select("type, start_hour, end_hour")
-        .eq("date", date);
+        .eq("date", date)
+        .eq("store_id", resolvedStoreId);
 
       if (holidays?.some((h: { type: string }) => h.type === "整天公休")) {
         return new Response(
@@ -74,7 +86,8 @@ Deno.serve(async (req) => {
         .from("bookings")
         .select("start_hour, duration")
         .eq("date", date)
-        .is("cancelled_at", null);
+        .is("cancelled_at", null)
+        .eq("store_id", resolvedStoreId);
 
       const hasConflict = (existingBookings || []).some((b: { start_hour: number; duration: number }) => {
         const bEnd = b.start_hour + (b.duration + bufferMinutes) / 60;
@@ -98,8 +111,11 @@ Deno.serve(async (req) => {
         addons: addons || [],
         duration,
         total_price,
+        store_id: resolvedStoreId,
       };
 
+      // customers 列由 DB 觸發器 update_customer_on_booking_change 依 booking.store_id 同步；
+      // 若出現 customers.store_id NOT NULL 錯誤，請套用 migration 20260315120000_fix_customer_trigger_store_id.sql
       const { data, error } = await supabase.from("bookings").insert(bookingData).select().single();
       if (error) throw error;
 
@@ -125,12 +141,23 @@ Deno.serve(async (req) => {
         ? email.trim()
         : null;
       if (!sendToEmail) {
-        const { data: customer } = await supabase.from("customers").select("email").eq("phone", phone).maybeSingle();
+        // TODO: 多租戶下應依 store_id 篩選 customers，避免同電話跨店誤用 email
+        const { data: customer } = await supabase
+          .from("customers")
+          .select("email")
+          .eq("phone", phone)
+          .eq("store_id", resolvedStoreId)
+          .maybeSingle();
         if (customer?.email) sendToEmail = customer.email;
       }
       if (sendToEmail) {
         try {
-          const { data: storeRow } = await supabase.from("system_config").select("value").eq("key", "store_name").maybeSingle();
+          const { data: storeRow } = await supabase
+            .from("system_config")
+            .select("value")
+            .eq("key", "store_name")
+            .eq("store_id", resolvedStoreId)
+            .maybeSingle();
           const storeName = storeRow?.value || "不老松足湯";
           const emailResp = await fetch(
             `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-booking-email`,
@@ -155,7 +182,12 @@ Deno.serve(async (req) => {
           {
             method: "POST",
             headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
-            body: JSON.stringify({ type: "booking_confirmed", phone, booking: data, store_id: data?.store_id ?? store_id }),
+            body: JSON.stringify({
+              type: "booking_confirmed",
+              phone,
+              booking: data,
+              store_id: data?.store_id ?? resolvedStoreId,
+            }),
           }
         );
       } catch (lineErr) {
@@ -173,12 +205,16 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Missing booking id" }), { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
       }
 
-      // Read optional cancel_reason from request body
+      // Read optional cancel_reason and store_id from request body
       let cancelReason: string | null = null;
+      let bodyStoreId: string | undefined;
       try {
-        const body = await req.json();
+        const body = (await req.json()) as Record<string, unknown>;
         if (body?.cancel_reason && typeof body.cancel_reason === "string") {
           cancelReason = body.cancel_reason.trim().slice(0, 200) || null;
+        }
+        if (body?.store_id && typeof body.store_id === "string") {
+          bodyStoreId = body.store_id;
         }
       } catch {
         // No body or invalid JSON — that's fine, cancel_reason stays null
@@ -186,6 +222,13 @@ Deno.serve(async (req) => {
 
       // Fetch the booking first to get the google_calendar_event_id
       const { data: bookingData } = await supabase.from("bookings").select("*").eq("id", id).single();
+
+      if (bodyStoreId && bookingData?.store_id && bookingData.store_id !== bodyStoreId) {
+        return new Response(JSON.stringify({ error: "預約不屬於此店家" }), {
+          status: 403,
+          headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        });
+      }
 
       const updatePayload: Record<string, unknown> = { cancelled_at: new Date().toISOString() };
       if (cancelReason) updatePayload.cancel_reason = cancelReason;
@@ -230,11 +273,16 @@ Deno.serve(async (req) => {
       // Send cancellation email (fire-and-forget)
       if (bookingData?.phone) {
         let sendToEmail: string | null = null;
-        const { data: customer } = await supabase.from("customers").select("email").eq("phone", bookingData.phone).maybeSingle();
+        let delCustQuery = supabase.from("customers").select("email").eq("phone", bookingData.phone);
+        const bid = bookingData.store_id as string | undefined;
+        if (bid) delCustQuery = delCustQuery.eq("store_id", bid);
+        const { data: customer } = await delCustQuery.maybeSingle();
         if (customer?.email) sendToEmail = customer.email;
         if (sendToEmail) {
           try {
-            const { data: storeRow } = await supabase.from("system_config").select("value").eq("key", "store_name").maybeSingle();
+            let delNameQuery = supabase.from("system_config").select("value").eq("key", "store_name");
+            if (bid) delNameQuery = delNameQuery.eq("store_id", bid);
+            const { data: storeRow } = await delNameQuery.maybeSingle();
             const storeName = storeRow?.value || "不老松足湯";
             await fetch(
               `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-booking-email`,

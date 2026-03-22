@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { supabase, supabaseUrl } from "@/integrations/supabase/client";
+import { supabase, supabaseAnonKey, supabaseUrl } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -107,8 +107,14 @@ export default function MyBookingsPage() {
     try {
       const resp = await fetch(`${supabaseUrl}/functions/v1/api-booking?id=${cancelTarget.id}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cancel_reason: cancelReason.trim() || undefined }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${supabaseAnonKey}`,
+        },
+        body: JSON.stringify({
+          cancel_reason: cancelReason.trim() || undefined,
+          store_id: storeId,
+        }),
       });
       if (!resp.ok) throw new Error("取消失敗");
 

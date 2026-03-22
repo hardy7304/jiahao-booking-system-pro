@@ -1,0 +1,383 @@
+  {
+    "name": "安平不老松 Lead 自動化",
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "anping-line-lead",
+          "responseMode": "responseNode",
+          "options": {}
+        },
+        "id": "webhook-line-trigger",
+        "name": "① LINE Webhook 接收",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 2,
+        "position": [0, 300],
+        "webhookId": "anping-line-lead",
+        "notes": "LINE 平台將訊息 POST 到此 URL。需在 LINE Developers Console 設定此 Webhook URL。"
+      },
+      {
+        "parameters": {
+          "jsCode": "// ② 解析 LINE 事件，篩選關鍵字：下載、衛教、簡報\nconst body = $input.first().json.body || $input.first().json;\nconst events = body.events || [];\nconst keywords = ['下載', '衛教', '簡報'];\n\nfor (const ev of events) {\n  if (ev.type === 'message' && ev.message?.type === 'text') {\n    const text = (ev.message.text || '').trim();\n    const matched = keywords.some(k => text.includes(k));\n    if (matched) {\n      return [{ json: { replyToken: ev.replyToken, userId: ev.source?.userId, messageText: text } }];\n    }\n  }\n}\nreturn [];"
+        },
+        "id": "code-parse-keywords",
+        "name": "② 解析關鍵字",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [220, 300],
+        "notes": "檢查訊息是否包含「下載」「衛教」「簡報」，若有則輸出 replyToken 與 userId。"
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "options": {
+              "caseSensitive": true,
+              "leftValue": "",
+              "typeValidation": "strict"
+            },
+            "conditions": [
+              {
+                "id": "has-reply-token",
+                "leftValue": "={{ $json.replyToken }}",
+                "rightValue": "",
+                "operator": {
+                  "type": "string",
+                  "operation": "notEmpty"
+                }
+              }
+            ],
+            "combinator": "and"
+          },
+          "options": {}
+        },
+        "id": "if-keyword-matched",
+        "name": "③ 關鍵字符合？",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 2,
+        "position": [440, 300],
+        "notes": "若無 replyToken 表示關鍵字不符，走 False 分支結束。"
+      },
+      {
+        "parameters": {
+          "resource": "databasePage",
+          "operation": "getAll",
+          "databaseId": {
+            "__rl": true,
+            "value": "d890103879f1400f9874cde12ae5b8de",
+            "mode": "id"
+          },
+          "filterType": "json",
+          "filterJson": "{\"property\":\"狀態\",\"select\":{\"equals\":\"上線中\"}}",
+          "returnAll": true
+        },
+        "id": "notion-query",
+        "name": "④ Notion 查詢素材",
+        "type": "n8n-nodes-base.notion",
+        "typeVersion": 2.2,
+        "position": [660, 200],
+        "credentials": {
+          "notionApi": {
+            "id": "notion-anping",
+            "name": "Notion 安平"
+          }
+        },
+        "notes": "查詢 Database ID d890103879f1400f9874cde12ae5b8de，篩選 狀態=上線中。"
+      },
+      {
+        "parameters": {
+          "jsCode": "// ⑤ 組裝 LINE Flex Message（素材名稱+圖片）\nconst items = $input.all();\nconst replyToken = $('② 解析關鍵字').first().json.replyToken;\n\nconst bubbles = items.map((item, i) => {\n  const j = item.json;\n  const title = j.properties?.名稱?.title?.[0]?.plain_text || j.properties?.Name?.title?.[0]?.plain_text || j.title || '素材';\n  const imgUrl = j.properties?.圖片?.url || j.properties?.封面?.files?.[0]?.file?.url || j.cover?.file?.url || '';\n  const link = j.properties?.連結?.url || j.url || '';\n  const formBase = $env.N8N_FORM_URL || 'https://your-n8n.com/form/xxx';\n  const formUrl = `${formBase}?materialId=${j.id}&materialName=${encodeURIComponent(title)}`;\n  \n  return {\n    type: 'bubble',\n    hero: imgUrl ? { type: 'image', url: imgUrl, size: 'full', aspectRatio: '20:13', aspectMode: 'cover' } : undefined,\n    body: {\n      type: 'box',\n      layout: 'vertical',\n      contents: [\n        { type: 'text', text: title, weight: 'bold', size: 'lg' },\n        { type: 'button', action: { type: 'uri', label: '填寫表單領取', uri: formUrl }, style: 'primary' }\n      ]\n    }\n  };\n});\n\nconst flex = {\n  type: 'carousel',\n  contents: bubbles.length ? bubbles : [{ type: 'bubble', body: { type: 'box', layout: 'vertical', contents: [{ type: 'text', text: '目前暫無上線素材' }] } }]\n};\n\nreturn [{ json: { replyToken, flex } }];"
+        },
+        "id": "code-build-flex",
+        "name": "⑤ 組裝 Flex Message",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [880, 200],
+        "notes": "將 Notion 結果轉成 LINE Flex Carousel，每則顯示素材名稱、圖片、領取按鈕（連結到表單）。"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.line.me/v2/bot/message/reply",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": []
+          },
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"replyToken\": \"{{ $json.replyToken }}\",\n  \"messages\": [\n    {\n      \"type\": \"flex\",\n      \"altText\": \"安平不老松 衛教素材\",\n      \"contents\": {{ JSON.stringify($json.flex) }}\n    }\n  ]\n}"
+        },
+        "id": "http-line-reply",
+        "name": "⑥ LINE 回覆 Flex",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [1100, 200],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "line-access-token",
+            "name": "LINE Access Token"
+          }
+        },
+        "notes": "使用 LINE Reply API 回傳 Flex Message 給使用者。"
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={{ { \"success\": true } }}"
+        },
+        "id": "respond-webhook",
+        "name": "⑦ Webhook 回應",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1.1,
+        "position": [1320, 200],
+        "notes": "回傳 200 給 LINE 平台，避免重試。"
+      },
+      {
+        "parameters": {
+          "formTitle": "安平不老松 領取素材",
+          "formDescription": "填寫以下資料即可領取衛教素材",
+          "formFields": {
+            "values": [
+              {
+                "fieldLabel": "materialId",
+                "fieldType": "hiddenField",
+                "fieldName": "materialId",
+                "requiredField": false
+              },
+              {
+                "fieldLabel": "姓名",
+                "fieldType": "text",
+                "requiredField": true
+              },
+              {
+                "fieldLabel": "Email",
+                "fieldType": "email",
+                "requiredField": true
+              },
+              {
+                "fieldLabel": "素材名稱",
+                "fieldType": "text",
+                "defaultValue": "={{ $parameter.query?.materialName || '' }}",
+                "requiredField": true
+              }
+            ]
+          },
+          "options": {
+            "submitButtonLabel": "送出"
+          }
+        },
+        "id": "form-trigger",
+        "name": "⑧ Form 表單",
+        "type": "n8n-nodes-base.formTrigger",
+        "typeVersion": 1.1,
+        "position": [0, 600],
+        "notes": "收集 姓名、Email。素材名稱可從 URL 參數 ?materialName=xxx 帶入。"
+      },
+      {
+        "parameters": {
+          "resource": "databasePage",
+          "operation": "get",
+          "pageId": {
+            "__rl": true,
+            "value": "={{ $json.materialId }}",
+            "mode": "id"
+          }
+        },
+        "id": "notion-get",
+        "name": "⑨ Notion 取得素材詳情",
+        "type": "n8n-nodes-base.notion",
+        "typeVersion": 2.2,
+        "position": [220, 600],
+        "credentials": {
+          "notionApi": {
+            "id": "notion-anping",
+            "name": "Notion 安平"
+          }
+        },
+        "notes": "依 Form 傳入的 materialId 取得 Notion 頁面（主旨、內容、連結）。"
+      },
+      {
+        "parameters": {
+          "fromEmail": "onboarding@resend.dev",
+          "toEmail": "jiahaojhang@xn--w4r56s931b.tw",
+          "subject": "安平不老松新 Lead",
+          "emailFormat": "text",
+          "message": "=姓名：{{ $('⑧ Form 表單').item.json.姓名 }}\nEmail：{{ $('⑧ Form 表單').item.json.Email }}\n素材：{{ $('⑧ Form 表單').item.json.素材名稱 || $('⑨ Notion 取得素材詳情').item.json.properties?.名稱?.title?.[0]?.plain_text }}"
+        },
+        "id": "resend-store",
+        "name": "⑩ Resend 通知店家",
+        "type": "n8n-nodes-base.resend",
+        "typeVersion": 1,
+        "position": [440, 500],
+        "credentials": {
+          "resendApi": {
+            "id": "resend-anping",
+            "name": "Resend API"
+          }
+        },
+        "notes": "寄信至 jiahaojhang@xn--w4r56s931b.tw，主旨「安平不老松新 Lead」。"
+      },
+      {
+        "parameters": {
+          "fromEmail": "onboarding@resend.dev",
+          "toEmail": "={{ $('⑧ Form 表單').item.json.Email }}",
+          "subject": "={{ $('⑨ Notion 取得素材詳情').item.json.properties?.主旨?.rich_text?.[0]?.plain_text || '安平不老松 衛教素材' }}",
+          "emailFormat": "html",
+          "message": "={{ $('⑨ Notion 取得素材詳情').item.json.properties?.內容?.rich_text?.[0]?.plain_text || '感謝您的索取' }}\n\n連結：{{ $('⑨ Notion 取得素材詳情').item.json.properties?.連結?.url || $('⑨ Notion 取得素材詳情').item.json.url }}"
+        },
+        "id": "resend-lead",
+        "name": "⑪ Resend 寄給 Lead",
+        "type": "n8n-nodes-base.resend",
+        "typeVersion": 1,
+        "position": [440, 700],
+        "credentials": {
+          "resendApi": {
+            "id": "resend-anping",
+            "name": "Resend API"
+          }
+        },
+        "notes": "依 Notion 的主旨、內容、連結寄送給填表者。"
+      },
+      {
+        "parameters": {
+          "operation": "append",
+          "documentId": {
+            "__rl": true,
+            "value": "",
+            "mode": "list"
+          },
+          "sheetName": {
+            "__rl": true,
+            "value": "工作表1",
+            "mode": "list"
+          },
+          "columns": {
+            "mappingMode": "defineBelow",
+            "value": {
+              "姓名": "={{ $('⑧ Form 表單').item.json.姓名 }}",
+              "Email": "={{ $('⑧ Form 表單').item.json.Email }}",
+              "素材名稱": "={{ $('⑧ Form 表單').item.json.素材名稱 || $('⑨ Notion 取得素材詳情').item.json.properties?.名稱?.title?.[0]?.plain_text }}",
+              "時間": "={{ $now.format('yyyy-MM-dd HH:mm') }}"
+            }
+          }
+        },
+        "id": "sheets-append",
+        "name": "⑫ Google Sheets 存 Lead",
+        "type": "n8n-nodes-base.googleSheets",
+        "typeVersion": 4.5,
+        "position": [660, 600],
+        "credentials": {
+          "googleSheetsOAuth2Api": {
+            "id": "sheets-anping",
+            "name": "Google Sheets"
+          }
+        },
+        "notes": "將 Lead 寫入 Google Sheets，欄位：姓名、Email、素材名稱、時間。"
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.line.me/v2/bot/message/push",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendBody": true,
+          "specifyBody": "json",
+          "jsonBody": "={\n  \"to\": \"U9919bb03801e15c5bed8f2739346d2ec\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"🆕 新Lead！\\n姓名：{{ $('⑧ Form 表單').item.json.姓名 }}\\nEmail：{{ $('⑧ Form 表單').item.json.Email }}\\n素材：{{ $('⑧ Form 表單').item.json.素材名稱 }}\"\n    }\n  ]\n}"
+        },
+        "id": "line-notify-admin",
+        "name": "⑬ LINE 通知老闆",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2,
+        "position": [880, 600],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "line-access-token",
+            "name": "LINE Access Token"
+          }
+        },
+        "notes": "Push 訊息至 U9919bb03801e15c5bed8f2739346d2ec 通知新 Lead。"
+      }
+    ],
+    "connections": {
+      "① LINE Webhook 接收": {
+        "main": [
+          [{ "node": "② 解析關鍵字", "type": "main", "index": 0 }]
+        ]
+      },
+      "② 解析關鍵字": {
+        "main": [
+          [{ "node": "③ 關鍵字符合？", "type": "main", "index": 0 }]
+        ]
+      },
+      "③ 關鍵字符合？": {
+        "main": [
+          [{ "node": "④ Notion 查詢素材", "type": "main", "index": 0 }],
+          []
+        ]
+      },
+      "④ Notion 查詢素材": {
+        "main": [
+          [{ "node": "⑤ 組裝 Flex Message", "type": "main", "index": 0 }]
+        ]
+      },
+      "⑤ 組裝 Flex Message": {
+        "main": [
+          [{ "node": "⑥ LINE 回覆 Flex", "type": "main", "index": 0 }]
+        ]
+      },
+      "⑥ LINE 回覆 Flex": {
+        "main": [
+          [{ "node": "⑦ Webhook 回應", "type": "main", "index": 0 }]
+        ]
+      },
+      "⑦ Webhook 回應": {
+        "main": []
+      },
+      "⑧ Form 表單": {
+        "main": [
+          [
+            { "node": "⑨ Notion 取得素材詳情", "type": "main", "index": 0 }
+          ]
+        ]
+      },
+      "⑨ Notion 取得素材詳情": {
+        "main": [
+          [
+            { "node": "⑩ Resend 通知店家", "type": "main", "index": 0 },
+            { "node": "⑪ Resend 寄給 Lead", "type": "main", "index": 0 },
+            { "node": "⑫ Google Sheets 存 Lead", "type": "main", "index": 0 }
+          ]
+        ]
+      },
+      "⑩ Resend 通知店家": {
+        "main": []
+      },
+      "⑪ Resend 寄給 Lead": {
+        "main": []
+      },
+      "⑫ Google Sheets 存 Lead": {
+        "main": [
+          [{ "node": "⑬ LINE 通知老闆", "type": "main", "index": 0 }]
+        ]
+      }
+    },
+    "pinData": {},
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "tags": [],
+    "triggerCount": 2,
+    "meta": {
+      "templateCredsSetupCompleted": false
+    }
+  }

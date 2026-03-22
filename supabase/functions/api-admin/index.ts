@@ -234,7 +234,9 @@ Deno.serve(async (req) => {
       case "customer.upsert": {
         const customerPayload = { ...data.customer };
         if (storeId && !customerPayload.store_id) customerPayload.store_id = storeId;
-        const { error } = await supabase.from("customers").upsert(customerPayload, { onConflict: "phone" });
+        const { error } = await supabase.from("customers").upsert(customerPayload, {
+          onConflict: "store_id,phone",
+        });
         if (error) throw error;
         break;
       }

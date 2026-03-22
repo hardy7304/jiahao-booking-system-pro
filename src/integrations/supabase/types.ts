@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -26,6 +26,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           sort_order: number | null
+          store_id: string
         }
         Insert: {
           addon_type?: string | null
@@ -38,6 +39,7 @@ export type Database = {
           is_active?: boolean | null
           name: string
           sort_order?: number | null
+          store_id: string
         }
         Update: {
           addon_type?: string | null
@@ -50,41 +52,17 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           sort_order?: number | null
+          store_id?: string
         }
-        Relationships: []
-      }
-      coaches: {
-        Row: {
-          id: string
-          store_id: string | null
-          name: string
-          phone: string | null
-          specialty: string | null
-          password_hash: string | null
-          is_active: boolean | null
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          store_id?: string | null
-          name: string
-          phone?: string | null
-          specialty?: string | null
-          password_hash?: string | null
-          is_active?: boolean | null
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          store_id?: string | null
-          name?: string
-          phone?: string | null
-          specialty?: string | null
-          password_hash?: string | null
-          is_active?: boolean | null
-          created_at?: string | null
-        }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "addons_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       bookings: {
         Row: {
@@ -107,6 +85,7 @@ export type Database = {
           start_hour: number
           start_time_str: string
           status: string | null
+          store_id: string
           total_price: number
         }
         Insert: {
@@ -129,6 +108,7 @@ export type Database = {
           start_hour: number
           start_time_str: string
           status?: string | null
+          store_id: string
           total_price: number
         }
         Update: {
@@ -151,9 +131,18 @@ export type Database = {
           start_hour?: number
           start_time_str?: string
           status?: string | null
+          store_id?: string
           total_price?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bookings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customer_custom_fields: {
         Row: {
@@ -164,6 +153,7 @@ export type Database = {
           is_active: boolean | null
           options: string[] | null
           sort_order: number | null
+          store_id: string
         }
         Insert: {
           created_at?: string | null
@@ -173,6 +163,7 @@ export type Database = {
           is_active?: boolean | null
           options?: string[] | null
           sort_order?: number | null
+          store_id: string
         }
         Update: {
           created_at?: string | null
@@ -182,8 +173,17 @@ export type Database = {
           is_active?: boolean | null
           options?: string[] | null
           sort_order?: number | null
+          store_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customer_custom_fields_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       customer_field_values: {
         Row: {
@@ -191,6 +191,7 @@ export type Database = {
           customer_id: string
           field_id: string
           id: string
+          store_id: string
           updated_at: string | null
           value: string | null
         }
@@ -199,6 +200,7 @@ export type Database = {
           customer_id: string
           field_id: string
           id?: string
+          store_id: string
           updated_at?: string | null
           value?: string | null
         }
@@ -207,6 +209,7 @@ export type Database = {
           customer_id?: string
           field_id?: string
           id?: string
+          store_id?: string
           updated_at?: string | null
           value?: string | null
         }
@@ -225,43 +228,14 @@ export type Database = {
             referencedRelation: "customer_custom_fields"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "customer_field_values_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
         ]
-      }
-      line_message_log: {
-        Row: {
-          id: string
-          customer_phone: string | null
-          line_user_id: string | null
-          message_type: string
-          booking_id: string | null
-          sent_at: string | null
-          success: boolean | null
-          cost_counted: boolean | null
-          error_message: string | null
-        }
-        Insert: {
-          id?: string
-          customer_phone?: string | null
-          line_user_id?: string | null
-          message_type: string
-          booking_id?: string | null
-          sent_at?: string | null
-          success?: boolean | null
-          cost_counted?: boolean | null
-          error_message?: string | null
-        }
-        Update: {
-          id?: string
-          customer_phone?: string | null
-          line_user_id?: string | null
-          message_type?: string
-          booking_id?: string | null
-          sent_at?: string | null
-          success?: boolean | null
-          cost_counted?: boolean | null
-          error_message?: string | null
-        }
-        Relationships: []
       }
       customer_notes: {
         Row: {
@@ -269,18 +243,21 @@ export type Database = {
           created_at: string | null
           customer_id: string
           id: string
+          store_id: string
         }
         Insert: {
           content: string
           created_at?: string | null
           customer_id: string
           id?: string
+          store_id: string
         }
         Update: {
           content?: string
           created_at?: string | null
           customer_id?: string
           id?: string
+          store_id?: string
         }
         Relationships: [
           {
@@ -290,6 +267,13 @@ export type Database = {
             referencedRelation: "customers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "customer_notes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
         ]
       }
       customer_tags: {
@@ -297,18 +281,21 @@ export type Database = {
           created_at: string | null
           customer_id: string
           id: string
+          store_id: string
           tag: string
         }
         Insert: {
           created_at?: string | null
           customer_id: string
           id?: string
+          store_id: string
           tag: string
         }
         Update: {
           created_at?: string | null
           customer_id?: string
           id?: string
+          store_id?: string
           tag?: string
         }
         Relationships: [
@@ -317,6 +304,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_tags_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -339,6 +333,7 @@ export type Database = {
           no_show_count: number
           phone: string
           pressure_preference: string | null
+          store_id: string
           updated_at: string | null
           visit_count: number
         }
@@ -359,6 +354,7 @@ export type Database = {
           no_show_count?: number
           phone: string
           pressure_preference?: string | null
+          store_id: string
           updated_at?: string | null
           visit_count?: number
         }
@@ -379,10 +375,19 @@ export type Database = {
           no_show_count?: number
           phone?: string
           pressure_preference?: string | null
+          store_id?: string
           updated_at?: string | null
           visit_count?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       holidays: {
         Row: {
@@ -393,6 +398,7 @@ export type Database = {
           id: string
           note: string | null
           start_hour: number | null
+          store_id: string
           type: string
         }
         Insert: {
@@ -403,6 +409,7 @@ export type Database = {
           id?: string
           note?: string | null
           start_hour?: number | null
+          store_id: string
           type: string
         }
         Update: {
@@ -413,9 +420,72 @@ export type Database = {
           id?: string
           note?: string | null
           start_hour?: number | null
+          store_id?: string
           type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "holidays_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      line_message_log: {
+        Row: {
+          booking_id: string | null
+          cost_counted: boolean | null
+          customer_phone: string | null
+          error_message: string | null
+          id: string
+          line_user_id: string | null
+          message_type: string
+          sent_at: string | null
+          store_id: string
+          success: boolean | null
+        }
+        Insert: {
+          booking_id?: string | null
+          cost_counted?: boolean | null
+          customer_phone?: string | null
+          error_message?: string | null
+          id?: string
+          line_user_id?: string | null
+          message_type: string
+          sent_at?: string | null
+          store_id: string
+          success?: boolean | null
+        }
+        Update: {
+          booking_id?: string | null
+          cost_counted?: boolean | null
+          customer_phone?: string | null
+          error_message?: string | null
+          id?: string
+          line_user_id?: string | null
+          message_type?: string
+          sent_at?: string | null
+          store_id?: string
+          success?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "line_message_log_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "line_message_log_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       services: {
         Row: {
@@ -428,6 +498,7 @@ export type Database = {
           name: string
           price: number
           sort_order: number | null
+          store_id: string
         }
         Insert: {
           category: string
@@ -439,6 +510,7 @@ export type Database = {
           name: string
           price: number
           sort_order?: number | null
+          store_id: string
         }
         Update: {
           category?: string
@@ -450,26 +522,85 @@ export type Database = {
           name?: string
           price?: number
           sort_order?: number | null
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stores: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          owner_email: string | null
+          phone: string | null
+          plan: string | null
+          settings: Json | null
+          slug: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          owner_email?: string | null
+          phone?: string | null
+          plan?: string | null
+          settings?: Json | null
+          slug: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          owner_email?: string | null
+          phone?: string | null
+          plan?: string | null
+          settings?: Json | null
+          slug?: string
         }
         Relationships: []
       }
       system_config: {
         Row: {
           key: string
+          store_id: string
           updated_at: string | null
           value: string
         }
         Insert: {
           key: string
+          store_id: string
           updated_at?: string | null
           value: string
         }
         Update: {
           key?: string
+          store_id?: string
           updated_at?: string | null
           value?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "system_config_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
