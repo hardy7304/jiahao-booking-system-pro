@@ -19,6 +19,7 @@ import BookingCalendarView from "@/components/admin/BookingCalendarView";
 import StatsDashboard from "@/components/admin/StatsDashboard";
 import CustomerTracking from "@/components/admin/CustomerTracking";
 import LineMessageStats from "@/components/admin/LineMessageStats";
+import AdminChartsDashboard from "@/components/admin/AdminChartsDashboard";
 import BookingFiltersBar, { type BookingFilters, type SortField } from "@/components/admin/BookingFilters";
 import { useCommission } from "@/hooks/useCommission";
 import { useCalendarNotes } from "@/hooks/useCalendarNotes";
@@ -638,14 +639,16 @@ export default function AdminPage() {
         </div>
 
         <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === "today" || v === "stats") commission.refetch(); }}>
-          <TabsList className="w-full flex-wrap h-auto">
-            <TabsTrigger value="today" className="flex-1">今日總覽</TabsTrigger>
-            <TabsTrigger value="bookings" className="flex-1">預約列表</TabsTrigger>
-            <TabsTrigger value="holidays" className="flex-1">公休設定</TabsTrigger>
-            <TabsTrigger value="services" className="flex-1">服務管理</TabsTrigger>
-            <TabsTrigger value="stats" className="flex-1">統計</TabsTrigger>
-            <TabsTrigger value="customers" className="flex-1">客戶</TabsTrigger>
-            <TabsTrigger value="line" className="flex-1">LINE</TabsTrigger>
+          {/* 2×4 網格：避免過多 flex-1 導致小螢幕分頁被擠到難以點選；儀表板固定為第二個（今日總覽後） */}
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 h-auto p-1">
+            <TabsTrigger value="today" className="w-full">今日總覽</TabsTrigger>
+            <TabsTrigger value="dashboard" className="w-full">儀表板</TabsTrigger>
+            <TabsTrigger value="bookings" className="w-full">預約列表</TabsTrigger>
+            <TabsTrigger value="holidays" className="w-full">公休設定</TabsTrigger>
+            <TabsTrigger value="services" className="w-full">服務管理</TabsTrigger>
+            <TabsTrigger value="stats" className="w-full">統計</TabsTrigger>
+            <TabsTrigger value="customers" className="w-full">客戶</TabsTrigger>
+            <TabsTrigger value="line" className="w-full">LINE</TabsTrigger>
           </TabsList>
 
           {/* TODAY */}
@@ -660,6 +663,19 @@ export default function AdminPage() {
               onUncomplete={uncompleteBooking}
               onCancel={(id, reason) => softDeleteBooking(id, reason)}
               onEdit={(b) => { openEditBooking(b as Booking); }}
+            />
+          </TabsContent>
+
+          {/* 儀表板：本月四指標快速總覽（資料與統計分頁同源） */}
+          <TabsContent value="dashboard" className="mt-4 focus-visible:outline-none">
+            <AdminChartsDashboard
+              bookings={bookings}
+              loading={loading}
+              onGoToStats={() => {
+                setTab("stats");
+                commission.refetch();
+              }}
+              onRefresh={fetchBookings}
             />
           </TabsContent>
 
