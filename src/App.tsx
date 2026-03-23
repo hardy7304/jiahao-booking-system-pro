@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { StoreProvider } from "@/contexts/StoreContext";
+import { SkipLink } from "@/components/SkipLink";
 import LandingPage from "./pages/LandingPage";
 import BookingPage from "./pages/BookingPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
@@ -19,7 +20,9 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
+          <SkipLink />
+          <div id="main-content" tabIndex={-1} className="outline-none">
+            <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/booking" element={<BookingPage />} />
             {/* LINE 圖文選單 / 訊息連結常用短網址（與 /booking 相同） */}
@@ -30,7 +33,8 @@ const App = () => (
             <Route path="/my-line-bookings" element={<Navigate to="/mylinebookings" replace />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="*" element={<NotFound />} />
-          </Routes>
+            </Routes>
+          </div>
         </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>

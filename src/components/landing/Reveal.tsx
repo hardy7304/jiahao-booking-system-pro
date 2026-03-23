@@ -1,4 +1,4 @@
-import { motion, type HTMLMotionProps } from "framer-motion";
+import { motion, useReducedMotion, type HTMLMotionProps } from "framer-motion";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +9,12 @@ type RevealProps = {
 } & Omit<HTMLMotionProps<"div">, "children">;
 
 export function Reveal({ children, className, delay = 0, ...rest }: RevealProps) {
+  const reduceMotion = useReducedMotion();
+
+  if (reduceMotion) {
+    return <div className={cn(className)} {...rest}>{children}</div>;
+  }
+
   return (
     <motion.div
       className={cn(className)}

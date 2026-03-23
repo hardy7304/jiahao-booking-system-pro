@@ -176,7 +176,11 @@ export default function BrandStatsSection({
                 </span>
                 累積解除痠痛
               </p>
-              <p className="mt-2 text-3xl font-light text-amber-100/95 md:text-4xl">
+              <p
+                className="mt-2 text-3xl font-light text-amber-100/95 md:text-4xl"
+                aria-live="polite"
+                aria-atomic="true"
+              >
                 {hasEnteredView ? (
                   <CountUp
                     start={0}
@@ -209,7 +213,11 @@ export default function BrandStatsSection({
                 </span>
                 客戶五星好評
               </p>
-              <p className="mt-2 text-3xl font-light text-amber-100/95 md:text-4xl">
+              <p
+                className="mt-2 text-3xl font-light text-amber-100/95 md:text-4xl"
+                aria-live="polite"
+                aria-atomic="true"
+              >
                 {hasEnteredView ? (
                   <CountUp
                     start={0}
@@ -248,6 +256,8 @@ export default function BrandStatsSection({
                 initial={{ opacity: 0, y: 12 }}
                 animate={hasEnteredView ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
                 transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+                aria-live="polite"
+                aria-atomic="true"
               >
                 {hasEnteredView ? techniquesDisplay : "—"}
               </motion.p>
