@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { supabase, supabaseUrl, supabaseAnonKey } from "@/integrations/supabase/client";
 import { formatHourToTime } from "@/lib/services";
 import { getAvailableSlots, generateGoogleCalendarLink } from "@/lib/timeUtils";
@@ -14,7 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, CheckCircle2, Clock, DollarSign, ExternalLink } from "lucide-react";
+import { ArrowLeft, CalendarIcon, CheckCircle2, Clock, DollarSign, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -288,7 +288,15 @@ export default function BookingPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <div className="mb-4 w-full max-w-md">
+          <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground" asChild>
+            <Link to="/">
+              <ArrowLeft className="h-4 w-4" />
+              回首頁
+            </Link>
+          </Button>
+        </div>
         <div className="bg-card rounded-xl shadow-lg p-6 max-w-md w-full animate-fade-in">
           <div className="text-center mb-6">
             <CheckCircle2 className="w-16 h-16 text-primary mx-auto mb-3" />
@@ -330,6 +338,9 @@ export default function BookingPage() {
             }}>
               再次預約
             </Button>
+            <Button variant="outline" className="w-full" asChild>
+              <Link to="/">返回首頁</Link>
+            </Button>
           </div>
         </div>
       </div>
@@ -339,6 +350,14 @@ export default function BookingPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-lg mx-auto px-4 py-6">
+        <div className="mb-4">
+          <Button variant="ghost" size="sm" className="gap-1.5 -ml-2 text-muted-foreground hover:text-foreground" asChild>
+            <Link to="/">
+              <ArrowLeft className="h-4 w-4" />
+              回首頁
+            </Link>
+          </Button>
+        </div>
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-foreground">{currentStore?.name ?? shopInfo.store_name ?? "線上預約"}</h1>
           <p className="text-muted-foreground mt-1">{shopInfo.frontend_subtitle || "線上預約系統"}</p>

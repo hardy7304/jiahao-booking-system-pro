@@ -1,89 +1,96 @@
 import { Link } from "react-router-dom";
+import { motion, useReducedMotion } from "framer-motion";
 import { useStore } from "@/contexts/StoreContext";
-import { useShopInfo } from "@/hooks/useShopInfo";
-import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
-import DynamicLobsterDashboard from "@/components/DynamicLobsterDashboard";
+import { useStoreSettings } from "@/hooks/useStoreSettings";
+import BrandStatsSection from "@/components/BrandStatsSection";
+import { LandingHero } from "@/components/landing/LandingHero";
+import { LandingServicesSection } from "@/components/landing/LandingServicesSection";
+import { LandingTherapistSection } from "@/components/landing/LandingTherapistSection";
+import { LandingFooterCta } from "@/components/landing/LandingFooterCta";
+import { Reveal } from "@/components/landing/Reveal";
+import { Skeleton } from "@/components/ui/skeleton";
 
 /**
- * 首頁 — 禪意／極簡 SaaS 著陸：留白、低飽和、專業信任感
+ * 首頁 — 深色質感 Landing，內容由 store_settings（CMS）驅動
  */
+function PageAmbientOrbs() {
+  const reduceMotion = useReducedMotion();
+  if (reduceMotion) return null;
+  return (
+    <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden>
+      <motion.div
+        className="absolute -left-[20%] top-[40%] h-[min(80vw,520px)] w-[min(80vw,520px)] rounded-full bg-amber-600/[0.05] blur-[120px]"
+        animate={{ x: [0, 40, 0], y: [0, -30, 0] }}
+        transition={{ duration: 28, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="absolute -right-[15%] bottom-[10%] h-[min(70vw,420px)] w-[min(70vw,420px)] rounded-full bg-amber-400/[0.045] blur-[100px]"
+        animate={{ x: [0, -35, 0], y: [0, 25, 0] }}
+        transition={{ duration: 24, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+      />
+    </div>
+  );
+}
+
 const LandingPage = () => {
   const { currentStore } = useStore();
-  const { info: config } = useShopInfo();
+  const { content, loading } = useStoreSettings();
 
-  const mainTitle = currentStore?.name ?? "線上預約";
-  const subtitle = config.frontend_subtitle || "線上預約系統";
-  const businessHours = config.business_hours || "尚未設定營業時間";
+  const navLabel = currentStore?.name ?? "線上預約";
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0c0a10] text-stone-100">
+        <div className="mx-auto max-w-4xl space-y-6 px-6 py-24">
+          <Skeleton className="mx-auto h-8 w-48 bg-white/10" />
+          <Skeleton className="mx-auto h-14 w-full max-w-lg bg-white/10" />
+          <Skeleton className="mx-auto h-24 w-full max-w-2xl bg-white/10" />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#f7f6f3] text-stone-800 antialiased">
-      {/* 極淡紙質感底紋 */}
+    <div className="relative min-h-screen flex flex-col bg-[#0c0a10] text-stone-100 antialiased">
+      <PageAmbientOrbs />
       <div
-        className="pointer-events-none fixed inset-0 opacity-[0.35]"
+        className="pointer-events-none fixed inset-0 z-0 opacity-[0.4]"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E")`,
         }}
         aria-hidden
       />
 
-      <header className="relative z-10 border-b border-stone-200/80 bg-[#f7f6f3]/80 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-5">
-          <span className="text-xs font-medium tracking-[0.25em] text-stone-400">預約</span>
-          <Button
-            asChild
-            variant="ghost"
-            size="sm"
-            className="text-stone-500 hover:bg-stone-200/50 hover:text-stone-800"
-          >
-            <Link to="/booking">前往預約</Link>
-          </Button>
-        </div>
-      </header>
+      <main className="relative z-[1] flex flex-1 flex-col">
+        <LandingHero content={content} navLabel={navLabel} />
+        <LandingServicesSection services={content.services} />
 
-      <main className="relative z-10 flex flex-1 flex-col">
-        <motion.section
-          className="flex flex-1 flex-col items-center justify-center px-6 py-20 md:py-28"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <div className="mx-auto max-w-lg text-center">
-            <p className="mb-8 text-[11px] font-medium uppercase tracking-[0.35em] text-stone-400">
-              靜心 · 簡約 · 可靠
-            </p>
+        <BrandStatsSection
+          title={content.brand_stats_title}
+          subtitle={content.brand_stats_subtitle}
+          reliefCount={content.relief_count}
+          reviewPercent={content.review_percent}
+          techniquesDisplay={content.techniques_display}
+        />
 
-            <div className="mx-auto mb-10 h-px w-12 bg-stone-300" aria-hidden />
-
-            <h1 className="text-[2rem] font-light leading-snug tracking-tight text-stone-900 md:text-4xl md:leading-tight">
-              {mainTitle}
-            </h1>
-
-            <p className="mx-auto mt-8 max-w-md text-base font-normal leading-relaxed text-stone-500 md:text-lg">
-              {subtitle}
-            </p>
-
-            <p className="mt-10 text-sm text-stone-400">{businessHours}</p>
-
-            <div className="mt-14">
-              <Button
-                asChild
-                size="lg"
-                className="rounded-none border border-stone-800 bg-stone-900 px-10 text-sm font-normal tracking-wide text-[#f7f6f3] shadow-none transition-colors hover:bg-stone-800"
-              >
-                <Link to="/booking">立即預約</Link>
-              </Button>
-            </div>
-          </div>
-        </motion.section>
-
-        <div className="border-t border-stone-200/90" />
-
-        <DynamicLobsterDashboard />
+        <LandingTherapistSection content={content} />
+        <LandingFooterCta content={content} />
       </main>
 
-      <footer className="relative z-10 border-t border-stone-200/80 py-8 text-center">
-        <p className="text-xs text-stone-400">© {new Date().getFullYear()}</p>
+      <footer className="relative z-[1] border-t border-white/[0.06] bg-[#08070b] py-10">
+        <div className="mx-auto max-w-6xl px-6">
+          <Reveal>
+            <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
+              <p className="text-xs text-stone-500">© {new Date().getFullYear()} {navLabel}</p>
+              <Link
+                to="/booking"
+                className="text-xs font-medium tracking-wide text-amber-200/80 hover:text-amber-100"
+              >
+                前往預約 →
+              </Link>
+            </div>
+          </Reveal>
+        </div>
       </footer>
     </div>
   );

@@ -19,6 +19,7 @@ import BookingCalendarView from "@/components/admin/BookingCalendarView";
 import StatsDashboard from "@/components/admin/StatsDashboard";
 import CustomerTracking from "@/components/admin/CustomerTracking";
 import LineMessageStats from "@/components/admin/LineMessageStats";
+import LandingPageSettings from "@/components/admin/LandingPageSettings";
 import AdminChartsDashboard from "@/components/admin/AdminChartsDashboard";
 import BookingFiltersBar, { type BookingFilters, type SortField } from "@/components/admin/BookingFilters";
 import { useCommission } from "@/hooks/useCommission";
@@ -640,12 +641,13 @@ export default function AdminPage() {
 
         <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === "today" || v === "stats") commission.refetch(); }}>
           {/* 2×4 網格：避免過多 flex-1 導致小螢幕分頁被擠到難以點選；儀表板固定為第二個（今日總覽後） */}
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 h-auto p-1">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 gap-1 h-auto p-1">
             <TabsTrigger value="today" className="w-full">今日總覽</TabsTrigger>
             <TabsTrigger value="dashboard" className="w-full">儀表板</TabsTrigger>
             <TabsTrigger value="bookings" className="w-full">預約列表</TabsTrigger>
             <TabsTrigger value="holidays" className="w-full">公休設定</TabsTrigger>
             <TabsTrigger value="services" className="w-full">服務管理</TabsTrigger>
+            <TabsTrigger value="landing" className="w-full">首頁 CMS</TabsTrigger>
             <TabsTrigger value="stats" className="w-full">統計</TabsTrigger>
             <TabsTrigger value="customers" className="w-full">客戶</TabsTrigger>
             <TabsTrigger value="line" className="w-full">LINE</TabsTrigger>
@@ -1228,6 +1230,10 @@ export default function AdminPage() {
           </TabsContent>
 
           {/* SERVICES */}
+          <TabsContent value="landing" className="mt-4 focus-visible:outline-none">
+            <LandingPageSettings />
+          </TabsContent>
+
           <TabsContent value="services" className="mt-4">
             <ServiceManagement onOpenSettings={async () => {
               setRateInput(Math.round(commission.commissionRate * 100).toString());

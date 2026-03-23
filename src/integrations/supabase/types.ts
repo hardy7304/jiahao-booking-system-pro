@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -572,6 +572,113 @@ export type Database = {
           slug?: string
         }
         Relationships: []
+      }
+      store_settings: {
+        Row: {
+          anping_section_body: string | null
+          anping_section_title: string | null
+          boxing_cta_label: string | null
+          boxing_cta_url: string | null
+          boxing_section_body: string | null
+          boxing_section_title: string | null
+          brand_stats_subtitle: string | null
+          brand_stats_title: string | null
+          business_hours_display: string | null
+          created_at: string
+          footer_cta_body: string | null
+          footer_cta_title: string | null
+          hero_hours_badge_short: string | null
+          hero_late_night_note: string | null
+          hero_starting_price_label: string | null
+          hero_subtitle: string | null
+          hero_title: string | null
+          is_roushou_visible: boolean
+          roushou_intro: string | null
+          roushou_section_body: string | null
+          roushou_section_title: string | null
+          services: Json
+          stats: Json
+          store_id: string
+          studios_shell: Json
+          therapist_highlights: Json
+          therapist_section_body: string | null
+          therapist_section_title: string | null
+          therapist_tags_line: string | null
+          updated_at: string
+        }
+        Insert: {
+          anping_section_body?: string | null
+          anping_section_title?: string | null
+          boxing_cta_label?: string | null
+          boxing_cta_url?: string | null
+          boxing_section_body?: string | null
+          boxing_section_title?: string | null
+          brand_stats_subtitle?: string | null
+          brand_stats_title?: string | null
+          business_hours_display?: string | null
+          created_at?: string
+          footer_cta_body?: string | null
+          footer_cta_title?: string | null
+          hero_hours_badge_short?: string | null
+          hero_late_night_note?: string | null
+          hero_starting_price_label?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          is_roushou_visible?: boolean
+          roushou_intro?: string | null
+          roushou_section_body?: string | null
+          roushou_section_title?: string | null
+          services?: Json
+          stats?: Json
+          store_id: string
+          studios_shell?: Json
+          therapist_highlights?: Json
+          therapist_section_body?: string | null
+          therapist_section_title?: string | null
+          therapist_tags_line?: string | null
+          updated_at?: string
+        }
+        Update: {
+          anping_section_body?: string | null
+          anping_section_title?: string | null
+          boxing_cta_label?: string | null
+          boxing_cta_url?: string | null
+          boxing_section_body?: string | null
+          boxing_section_title?: string | null
+          brand_stats_subtitle?: string | null
+          brand_stats_title?: string | null
+          business_hours_display?: string | null
+          created_at?: string
+          footer_cta_body?: string | null
+          footer_cta_title?: string | null
+          hero_hours_badge_short?: string | null
+          hero_late_night_note?: string | null
+          hero_starting_price_label?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          is_roushou_visible?: boolean
+          roushou_intro?: string | null
+          roushou_section_body?: string | null
+          roushou_section_title?: string | null
+          services?: Json
+          stats?: Json
+          store_id?: string
+          studios_shell?: Json
+          therapist_highlights?: Json
+          therapist_section_body?: string | null
+          therapist_section_title?: string | null
+          therapist_tags_line?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_settings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       system_config: {
         Row: {
