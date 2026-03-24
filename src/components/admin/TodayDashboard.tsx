@@ -18,6 +18,7 @@ interface Booking {
   start_hour: number;
   start_time_str: string;
   name: string;
+  needs_pair?: boolean;
   phone: string;
   service: string;
   addons: string[];
@@ -396,6 +397,11 @@ export default function TodayDashboard({
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {b.service}
+                        {b.needs_pair ? (
+                          <span className="ml-1 inline-flex rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] text-amber-700">
+                            雙人單
+                          </span>
+                        ) : null}
                         {b.addons && b.addons.filter(a => !a.includes("精油香味")).length > 0 && (
                           <span className="text-blue-600 ml-1">
                             +{b.addons.filter(a => !a.includes("精油香味")).map(a => {

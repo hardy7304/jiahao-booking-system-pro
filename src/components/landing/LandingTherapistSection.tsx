@@ -1,12 +1,32 @@
+import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { type LandingContent } from "@/lib/landingContent";
+import { supabase } from "@/integrations/supabase/client";
+import { useStore } from "@/contexts/StoreContext";
 
 export function LandingTherapistSection({ content }: { content: LandingContent }) {
   const reduceMotion = useReducedMotion();
+  const { storeId } = useStore();
+  const [coaches, setCoaches] = useState<Array<{ id: string; name: string; specialty: string | null; portrait_url: string | null }>>([]);
   const tags = content.therapist_tags_line
     .split(/[·｜|、,，]/)
     .map((s) => s.trim())
     .filter(Boolean);
+
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase
+        .from("coaches")
+        .select("id,name,specialty,portrait_url")
+        .eq("store_id", storeId)
+        .eq("is_active", true)
+        .eq("landing_visible", true)
+        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: true });
+      setCoaches((data || []) as Array<{ id: string; name: string; specialty: string | null; portrait_url: string | null }>);
+    };
+    load();
+  }, [storeId]);
 
   return (
     <section className="relative border-b border-white/[0.06] bg-[#0f0d14] py-20 md:py-28">
@@ -64,6 +84,25 @@ export function LandingTherapistSection({ content }: { content: LandingContent }
               </motion.li>
             ))}
           </ul>
+          {coaches.length > 1 ? (
+            <div className="mt-8 grid gap-3 sm:grid-cols-2">
+              {coaches.slice(1).map((coach) => (
+                <div key={coach.id} className="rounded-lg border border-white/[0.08] bg-black/20 px-4 py-3">
+                  <div className="mx-auto mb-2 h-16 w-16 overflow-hidden rounded-full border border-white/20">
+                    <img
+                      src={coach.portrait_url?.trim() || "https://images.unsplash.com/photo-1541534401786-2077eed87a72?auto=format&fit=crop&q=80&w=300"}
+                      alt={coach.name}
+                      className="h-full w-full object-contain object-center bg-black/20 p-1"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </div>
+                  <p className="text-sm font-medium text-stone-100">{coach.name}</p>
+                  <p className="text-xs text-stone-400 mt-1">{coach.specialty || "搭配師傅"}</p>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </motion.div>
       </div>
     </section>

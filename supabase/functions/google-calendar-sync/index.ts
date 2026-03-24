@@ -121,6 +121,9 @@ interface BookingData {
   addons?: string[];
   total_price: number;
   google_calendar_event_id?: string;
+  needs_pair?: boolean;
+  primary_coach_name?: string | null;
+  secondary_coach_name?: string | null;
 }
 
 interface HolidayData {
@@ -139,15 +142,18 @@ async function createCalendarEvent(accessToken: string, calendarId: string, book
   const endTime = formatHourToTimeISO(booking.date, endHour);
   const addonsText = booking.addons && booking.addons.length > 0 ? `\n加購項目：${booking.addons.join("、")}` : "";
   const event = {
-    summary: `安平不老松72號張嘉豪師傅行程表 - ${booking.name}`,
+    summary: `${booking.needs_pair ? "[雙人] " : ""}安平不老松72號張嘉豪師傅行程表 - ${booking.name}`,
     description: [
       `👤 客戶：${booking.name}`,
       `📞 電話：${booking.phone}`,
       `💆 服務：${booking.service}${addonsText}`,
       `⏱ 時長：${booking.duration} 分鐘`,
       `💰 金額：$${booking.total_price}`,
+      booking.needs_pair ? `👥 型態：雙人預約` : `👤 型態：單人預約`,
+      booking.primary_coach_name ? `👨‍🔧 主師傅：${booking.primary_coach_name}` : null,
+      booking.secondary_coach_name ? `🧑‍🔧 搭班師傅：${booking.secondary_coach_name}` : null,
       `📋 預約編號：${booking.id}`,
-    ].join("\n"),
+    ].filter(Boolean).join("\n"),
     start: { dateTime: startTime, timeZone: "Asia/Taipei" },
     end: { dateTime: endTime, timeZone: "Asia/Taipei" },
     reminders: { useDefault: false, overrides: [{ method: "popup", minutes: 30 }] },

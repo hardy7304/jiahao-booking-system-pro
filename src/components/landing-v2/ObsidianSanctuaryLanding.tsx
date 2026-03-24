@@ -1,7 +1,9 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, useReducedMotion, type Variants } from "framer-motion";
 import type { LandingContent, LandingServiceItem } from "@/lib/landingContent";
+import { supabase } from "@/integrations/supabase/client";
+import { useStore } from "@/contexts/StoreContext";
 
 const MotionLink = motion(Link);
 
@@ -352,7 +354,7 @@ function ServiceCard({ service, index }: { service: StitchServiceCardModel; inde
         <img
           src={service.image}
           alt={service.name}
-          className="h-full w-full object-cover transition-transform duration-700 grayscale-[30%] group-hover:scale-110 group-hover:grayscale-0"
+          className="h-full w-full object-cover object-center transition-transform duration-700 grayscale-[30%] group-hover:scale-110 group-hover:grayscale-0"
           loading="lazy"
           decoding="async"
         />
@@ -397,20 +399,37 @@ function ServiceCard({ service, index }: { service: StitchServiceCardModel; inde
 function TeamSection({
   eyebrow,
   title,
-  name,
-  role,
-  bio,
-  tags,
-  imageUrl,
+  mainCoach,
+  supportCoaches,
 }: {
   eyebrow: string;
   title: string;
-  name: string;
-  role: string;
-  bio: string;
-  tags: string[];
-  imageUrl: string;
+  mainCoach: {
+    id: string;
+    name: string;
+    role: string;
+    bio: string;
+    tags: string[];
+    imageUrl: string;
+  };
+  supportCoaches: Array<{
+    id: string;
+    name: string;
+    role: string;
+    bio: string;
+    tags: string[];
+    imageUrl: string;
+    isActive: boolean;
+    availableToday: boolean;
+    bookingLink: string;
+  }>;
 }) {
+  const getStatus = (coach: { isActive: boolean; availableToday: boolean }) => {
+    if (!coach.isActive) return { label: "休假中", active: false };
+    if (!coach.availableToday) return { label: "今日未值班", active: false };
+    return { label: "今日可搭班", active: true };
+  };
+
   return (
     <section className="bg-[#0c0a10] px-6 py-24" aria-labelledby="stitch-team-heading">
       <div className="mx-auto max-w-7xl">
@@ -426,26 +445,32 @@ function TeamSection({
           </h2>
         </V2Reveal>
         <V2Reveal delay={0.08}>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            <div className="col-span-1 rounded-[2.5rem] border border-white/5 bg-[#151219] p-8 text-center transition-colors hover:bg-[#1d1a21] md:col-span-1">
-              <div className="mx-auto mb-8 h-40 w-40 overflow-hidden rounded-full border-2 border-[#f59e0b]/20 p-2">
+          <div className="space-y-8">
+            <div className="mx-auto max-w-2xl rounded-[2.5rem] border border-[#f59e0b]/30 bg-[#19151f] p-8 text-center shadow-[0_0_0_1px_rgba(245,158,11,0.12)]">
+              <div className="mx-auto mb-8 h-44 w-44 overflow-hidden rounded-full border-2 border-[#f59e0b]/30 p-2">
                 <img
-                  src={imageUrl}
-                  alt={name}
-                  className="h-full w-full rounded-full object-cover"
+                  src={mainCoach.imageUrl}
+                  alt={mainCoach.name}
+                  className="h-full w-full rounded-full object-contain object-center bg-black/20 p-1"
                   loading="lazy"
                   decoding="async"
                 />
               </div>
-              <h3 className="mb-2 font-manrope text-2xl font-bold text-white">{name}</h3>
+              <h3 className="mb-2 font-manrope text-3xl font-bold text-white">
+                {mainCoach.name}
+                <span className="ml-2 text-xs text-[#f59e0b]">主師傅</span>
+              </h3>
               <p className="mb-3 font-manrope text-sm uppercase tracking-widest text-[#f59e0b]">
-                {role}
+                {mainCoach.role}
               </p>
-              {bio ? (
-                <p className="mb-6 font-manrope text-sm leading-relaxed text-[#d8c3ad]/75">{bio}</p>
+              <div className="mx-auto mb-3 inline-flex rounded-full border border-[#f59e0b]/40 bg-[#f59e0b]/10 px-3 py-1 text-xs text-[#ffd39c]">
+                以主師傅為主（雙人單才啟用搭班）
+              </div>
+              {mainCoach.bio ? (
+                <p className="mb-6 font-manrope text-sm leading-relaxed text-[#d8c3ad]/80">{mainCoach.bio}</p>
               ) : null}
               <div className="flex flex-wrap justify-center gap-2">
-                {tags.map((tag) => (
+                {mainCoach.tags.map((tag) => (
                   <span
                     key={tag}
                     className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 font-manrope text-xs text-[#d8c3ad]"
@@ -454,6 +479,62 @@ function TeamSection({
                   </span>
                 ))}
               </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {supportCoaches.map((coach) => {
+              const status = getStatus(coach);
+              const dimClass = status.active ? "" : "opacity-55 saturate-50";
+              return (
+              <button
+                key={coach.id}
+                type="button"
+                onClick={() => {
+                  const ok = window.confirm(
+                    `要以「${coach.name}」作為搭班師傅進入雙人預約嗎？`,
+                  );
+                  if (ok) window.location.assign(coach.bookingLink);
+                }}
+                className={`col-span-1 block w-full rounded-[2rem] border border-white/5 bg-[#151219] p-6 text-center transition-colors hover:bg-[#1d1a21] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70 ${dimClass}`}
+              >
+                <div className="mx-auto mb-8 h-40 w-40 overflow-hidden rounded-full border-2 border-[#f59e0b]/20 p-2">
+                  <img
+                    src={coach.imageUrl}
+                    alt={coach.name}
+                    className="h-full w-full rounded-full object-contain object-center bg-black/20 p-1"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+                <h3 className="mb-2 font-manrope text-2xl font-bold text-white">
+                  {coach.name}
+                </h3>
+                <p className="mb-3 font-manrope text-sm uppercase tracking-widest text-[#f59e0b]">
+                  {coach.role}
+                </p>
+                <div className={`mx-auto mb-3 inline-flex rounded-full border px-3 py-1 text-xs ${
+                  status.active
+                    ? "border-emerald-300/50 bg-emerald-500/15 text-emerald-300"
+                    : "border-amber-300/40 bg-amber-500/10 text-amber-200"
+                }`}>
+                  {status.label}
+                </div>
+                {coach.bio ? (
+                  <p className="mb-6 font-manrope text-sm leading-relaxed text-[#d8c3ad]/75">{coach.bio}</p>
+                ) : null}
+                <div className="flex flex-wrap justify-center gap-2">
+                  {coach.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 font-manrope text-xs text-[#d8c3ad]"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </button>
+            );
+            })}
             </div>
           </div>
         </V2Reveal>
@@ -496,7 +577,40 @@ function StitchFooter({ brandName }: { brandName: string }) {
  * Stitch「Obsidian Sanctuary」版型 + CMS；Framer Motion 對齊主站質感（easing、Reveal、減少動態、單層 Hero 光暈）。
  */
 export function ObsidianSanctuaryLanding({ brandName, content }: ObsidianSanctuaryLandingProps) {
+  const { storeId } = useStore();
+  const [visibleCoaches, setVisibleCoaches] = useState<
+    Array<{
+      id: string;
+      name: string;
+      specialty: string | null;
+      portrait_url: string | null;
+      display_order: number;
+      is_active: boolean;
+      available_today: boolean;
+    }>
+  >([]);
   const services = useMemo(() => mapCmsServicesToStitch(content.services), [content.services]);
+  useEffect(() => {
+    const loadCoaches = async () => {
+      const { data } = await supabase
+        .from("coaches")
+        .select("id,name,specialty,portrait_url,display_order,is_active,available_today")
+        .eq("store_id", storeId)
+        .eq("landing_visible", true)
+        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: true });
+      setVisibleCoaches((data || []) as Array<{
+        id: string;
+        name: string;
+        specialty: string | null;
+        portrait_url: string | null;
+        display_order: number;
+        is_active: boolean;
+        available_today: boolean;
+      }>);
+    };
+    loadCoaches();
+  }, [storeId]);
 
   const therapistTags = useMemo(() => {
     const fromLine = parseTherapistTags(content.therapist_tags_line);
@@ -528,6 +642,32 @@ export function ObsidianSanctuaryLanding({ brandName, content }: ObsidianSanctua
   const therapistFallback =
     "https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?auto=format&fit=crop&q=80&w=800";
   const therapistImage = content.therapist_portrait_url?.trim() || therapistFallback;
+  const mainCoachCard = useMemo(() => {
+    return {
+      id: "main-therapist",
+      name: therapistName,
+      role: therapistRole,
+      bio: therapistBio,
+      tags: therapistTags,
+      imageUrl: therapistImage,
+    };
+  }, [therapistBio, therapistImage, therapistName, therapistRole, therapistTags]);
+
+  const supportCoachCards = useMemo(() => {
+    return visibleCoaches
+      .filter((coach) => coach.name.trim() && coach.name.trim() !== therapistName.trim())
+      .map((coach) => ({
+        id: coach.id,
+        name: coach.name,
+        role: coach.specialty?.trim() ? coach.specialty.trim() : "搭配師傅",
+        bio: "",
+        tags: coach.specialty?.trim() ? [coach.specialty.trim()] : ["協作調理", "預約支援"],
+        imageUrl: coach.portrait_url?.trim() ? coach.portrait_url.trim() : therapistFallback,
+        isActive: !!coach.is_active,
+        availableToday: !!coach.available_today,
+        bookingLink: `/booking?pair=1&coach=${encodeURIComponent(coach.id)}&coachName=${encodeURIComponent(coach.name)}`,
+      }));
+  }, [therapistFallback, therapistName, visibleCoaches]);
 
   const closingGalleryUrls = useMemo(() => {
     if (content.closing_gallery_mode === "hidden") return null;
@@ -587,11 +727,8 @@ export function ObsidianSanctuaryLanding({ brandName, content }: ObsidianSanctua
           <TeamSection
             eyebrow={teamEyebrow}
             title={teamTitle}
-            name={therapistName}
-            role={therapistRole}
-            bio={therapistBio}
-            tags={therapistTags}
-            imageUrl={therapistImage}
+            mainCoach={mainCoachCard}
+            supportCoaches={supportCoachCards}
           />
 
           <section className="relative overflow-hidden bg-[#151219] px-6 py-32 text-center">

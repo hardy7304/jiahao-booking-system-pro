@@ -70,6 +70,7 @@ export type Database = {
           admin_note: string | null
           cancel_reason: string | null
           cancelled_at: string | null
+          coach_id: string | null
           completed_at: string | null
           created_at: string
           date: string
@@ -77,6 +78,7 @@ export type Database = {
           google_calendar_event_id: string | null
           id: string
           name: string
+          needs_pair: boolean
           oil_bonus: number
           order_time: string
           phone: string
@@ -86,6 +88,7 @@ export type Database = {
           start_time_str: string
           status: string | null
           store_id: string
+          secondary_coach_id: string | null
           total_price: number
         }
         Insert: {
@@ -93,6 +96,7 @@ export type Database = {
           admin_note?: string | null
           cancel_reason?: string | null
           cancelled_at?: string | null
+          coach_id?: string | null
           completed_at?: string | null
           created_at?: string
           date: string
@@ -100,6 +104,7 @@ export type Database = {
           google_calendar_event_id?: string | null
           id?: string
           name: string
+          needs_pair?: boolean
           oil_bonus?: number
           order_time?: string
           phone: string
@@ -109,6 +114,7 @@ export type Database = {
           start_time_str: string
           status?: string | null
           store_id: string
+          secondary_coach_id?: string | null
           total_price: number
         }
         Update: {
@@ -116,6 +122,7 @@ export type Database = {
           admin_note?: string | null
           cancel_reason?: string | null
           cancelled_at?: string | null
+          coach_id?: string | null
           completed_at?: string | null
           created_at?: string
           date?: string
@@ -123,6 +130,7 @@ export type Database = {
           google_calendar_event_id?: string | null
           id?: string
           name?: string
+          needs_pair?: boolean
           oil_bonus?: number
           order_time?: string
           phone?: string
@@ -132,11 +140,88 @@ export type Database = {
           start_time_str?: string
           status?: string | null
           store_id?: string
+          secondary_coach_id?: string | null
           total_price?: number
         }
         Relationships: [
           {
+            foreignKeyName: "bookings_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_secondary_coach_id_fkey"
+            columns: ["secondary_coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coaches: {
+        Row: {
+          available_today: boolean
+          available_tonight: boolean
+          created_at: string | null
+          display_order: number
+          id: string
+          is_active: boolean | null
+          landing_visible: boolean
+          name: string
+          password_hash: string | null
+          phone: string | null
+          portrait_url: string | null
+          shift_end_hour: number
+          shift_start_hour: number
+          specialty: string | null
+          store_id: string | null
+        }
+        Insert: {
+          available_today?: boolean
+          available_tonight?: boolean
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean | null
+          landing_visible?: boolean
+          name: string
+          password_hash?: string | null
+          phone?: string | null
+          portrait_url?: string | null
+          shift_end_hour?: number
+          shift_start_hour?: number
+          specialty?: string | null
+          store_id?: string | null
+        }
+        Update: {
+          available_today?: boolean
+          available_tonight?: boolean
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean | null
+          landing_visible?: boolean
+          name?: string
+          password_hash?: string | null
+          phone?: string | null
+          portrait_url?: string | null
+          shift_end_hour?: number
+          shift_start_hour?: number
+          specialty?: string | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coaches_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"

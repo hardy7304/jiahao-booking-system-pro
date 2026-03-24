@@ -13,6 +13,9 @@ interface Booking {
   addons?: string[];
   duration: number;
   total_price: number;
+  needs_pair?: boolean;
+  primary_coach_name?: string | null;
+  secondary_coach_name?: string | null;
 }
 
 function formatHourToTime(hour: number): string {
@@ -37,6 +40,9 @@ const emailStyles = `
 function buildCustomerEmailHtml(booking: Booking, storeName: string): string {
   const startTime = booking.start_time_str ?? (booking.start_hour != null ? formatHourToTime(booking.start_hour) : "—");
   const addonsStr = (booking.addons?.length ?? 0) > 0 ? booking.addons!.join("、") : "無";
+  const coachText = booking.needs_pair
+    ? `${booking.primary_coach_name || "主師傅"} + ${booking.secondary_coach_name || "搭班師傅"}`
+    : (booking.primary_coach_name || "主師傅");
   return `
 <!DOCTYPE html>
 <html>
@@ -50,6 +56,8 @@ function buildCustomerEmailHtml(booking: Booking, storeName: string): string {
     <div class="row"><span class="label">日期</span><span class="value">${booking.date}</span></div>
     <div class="row"><span class="label">時段</span><span class="value">${startTime}</span></div>
     <div class="row"><span class="label">服務</span><span class="value">${booking.service}</span></div>
+    <div class="row"><span class="label">預約型態</span><span class="value">${booking.needs_pair ? "雙人" : "單人"}</span></div>
+    <div class="row"><span class="label">安排師傅</span><span class="value">${coachText}</span></div>
     <div class="row"><span class="label">加購</span><span class="value">${addonsStr}</span></div>
     <div class="row"><span class="label">時長</span><span class="value">${booking.duration} 分鐘</span></div>
     <div class="row"><span class="label">金額</span><span class="value">NT$ ${booking.total_price.toLocaleString()}</span></div>
@@ -118,6 +126,9 @@ function buildStoreCancelNotificationHtml(booking: CancelBooking, storeName: str
 function buildStoreNotificationHtml(booking: Booking, storeName: string): string {
   const startTime = booking.start_time_str ?? (booking.start_hour != null ? formatHourToTime(booking.start_hour) : "—");
   const addonsStr = (booking.addons?.length ?? 0) > 0 ? booking.addons!.join("、") : "無";
+  const coachText = booking.needs_pair
+    ? `${booking.primary_coach_name || "主師傅"} + ${booking.secondary_coach_name || "搭班師傅"}`
+    : (booking.primary_coach_name || "主師傅");
   return `
 <!DOCTYPE html>
 <html>
@@ -132,6 +143,8 @@ function buildStoreNotificationHtml(booking: Booking, storeName: string): string
     <div class="row"><span class="label">日期</span><span class="value">${booking.date}</span></div>
     <div class="row"><span class="label">時段</span><span class="value">${startTime}</span></div>
     <div class="row"><span class="label">服務</span><span class="value">${booking.service}</span></div>
+    <div class="row"><span class="label">預約型態</span><span class="value">${booking.needs_pair ? "雙人" : "單人"}</span></div>
+    <div class="row"><span class="label">安排師傅</span><span class="value">${coachText}</span></div>
     <div class="row"><span class="label">加購</span><span class="value">${addonsStr}</span></div>
     <div class="row"><span class="label">時長</span><span class="value">${booking.duration} 分鐘</span></div>
     <div class="row"><span class="label">金額</span><span class="value">NT$ ${booking.total_price.toLocaleString()}</span></div>

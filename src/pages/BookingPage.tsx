@@ -20,6 +20,8 @@ import { zhTW } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useStore, FALLBACK_STORE_ID } from "@/contexts/StoreContext";
+import { useStoreSettings } from "@/hooks/useStoreSettings";
+import { resolveMainCoachFromCoachRows } from "@/lib/mainCoachResolution";
 
 interface DbService {
   id: string;
@@ -42,6 +44,22 @@ interface DbAddon {
   sort_order: number;
 }
 
+interface CoachOption {
+  id: string;
+  name: string;
+  is_active: boolean;
+  available_today: boolean;
+  shift_start_hour?: number;
+  shift_end_hour?: number;
+  display_order: number;
+}
+
+const formatCoachHour = (hour?: number) => {
+  const raw = Number.isFinite(hour) ? Number(hour) : 14;
+  const normalized = raw >= 24 ? raw - 24 : raw;
+  return `${String(Math.floor(normalized)).padStart(2, "0")}:00`;
+};
+
 /** LINE 內建瀏覽器對 target=_blank 支援不佳，改為直接導向 Google 日曆 */
 function openGoogleCalendarLink(url: string) {
   const isLine = /Line\//i.test(navigator.userAgent || "");
@@ -61,6 +79,7 @@ export default function BookingPage() {
     typeof storeId === "string" && storeId.trim() !== "" ? storeId.trim() : FALLBACK_STORE_ID;
   const { notes: calendarNotes } = useCalendarNotes();
   const { info: shopInfo } = useShopInfo();
+  const { content: landingContent } = useStoreSettings();
   const { settings: bookingSettings } = useBookingSettings();
   const [dbServices, setDbServices] = useState<DbService[]>([]);
   const [dbAddons, setDbAddons] = useState<DbAddon[]>([]);
@@ -69,7 +88,12 @@ export default function BookingPage() {
   const [selectedAroma, setSelectedAroma] = useState<string>("");
   const [date, setDate] = useState<Date>();
   const [availableSlots, setAvailableSlots] = useState<number[]>([]);
+  const [singleModeSlots, setSingleModeSlots] = useState<number[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+  const [partySize, setPartySize] = useState<"1" | "2">("1");
+  const [coaches, setCoaches] = useState<CoachOption[]>([]);
+  const [preferredBackupCoachId, setPreferredBackupCoachId] = useState<string>("none");
+  const [preferredBackupCoachName, setPreferredBackupCoachName] = useState<string>("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -77,6 +101,9 @@ export default function BookingPage() {
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [success, setSuccess] = useState<any>(null);
   const [phoneError, setPhoneError] = useState("");
+  const [showUnavailableDetails, setShowUnavailableDetails] = useState(false);
+  const [genericPairSlotCount, setGenericPairSlotCount] = useState(0);
+  const [predictedPairBackupName, setPredictedPairBackupName] = useState<string | null>(null);
 
   const validatePhone = (value: string): string => {
     const cleaned = value.replace(/[\s\-()]/g, "");
@@ -105,15 +132,112 @@ export default function BookingPage() {
   // Load services and addons from DB
   useEffect(() => {
     const load = async () => {
-      const [{ data: s }, { data: a }] = await Promise.all([
+      const [{ data: s }, { data: a }, coachResp] = await Promise.all([
         supabase.from("services").select("*").eq("is_active", true).eq("store_id", storeId).order("sort_order"),
         supabase.from("addons").select("*").eq("is_active", true).eq("store_id", storeId).order("sort_order"),
+        supabase
+          .from("coaches")
+          .select("id,name,is_active,available_today,shift_start_hour,shift_end_hour,display_order")
+          .eq("store_id", storeId)
+          .eq("is_active", true)
+          .order("display_order", { ascending: true })
+          .order("created_at", { ascending: true }),
       ]);
       if (s) setDbServices(s as DbService[]);
       if (a) setDbAddons(a as DbAddon[]);
+      if (coachResp.error?.message?.includes("shift_start_hour")) {
+        const fallback = await supabase
+          .from("coaches")
+          .select("id,name,is_active,available_today,display_order")
+          .eq("store_id", storeId)
+          .eq("is_active", true)
+          .order("display_order", { ascending: true })
+          .order("created_at", { ascending: true });
+        if (fallback.data) {
+          setCoaches(
+            (fallback.data as Array<Omit<CoachOption, "shift_start_hour" | "shift_end_hour">>).map((x) => ({
+              ...x,
+              shift_start_hour: 14,
+              shift_end_hour: 26,
+            })),
+          );
+        }
+      } else if (coachResp.data) {
+        setCoaches(coachResp.data as CoachOption[]);
+      }
     };
     load();
   }, [effectiveStoreId]);
+
+  /** 與 CMS 調理師標題 + api-booking 一致（服務管理皆為搭班池，主師傅由此比對 coaches.name） */
+  const resolvedMainCoach = useMemo(() => {
+    return resolveMainCoachFromCoachRows(
+      coaches,
+      landingContent.therapist_section_title || "",
+      shopInfo.therapist_name,
+    );
+  }, [coaches, landingContent.therapist_section_title, shopInfo.therapist_name]);
+
+  const mainCoachNameForSlots = useMemo(() => {
+    const cms = (landingContent.therapist_section_title || "").trim();
+    const sys = (shopInfo.therapist_name || "").trim();
+    return cms || sys || undefined;
+  }, [landingContent.therapist_section_title, shopInfo.therapist_name]);
+
+  const backupCoachOptions = useMemo(() => {
+    if (!resolvedMainCoach) return [];
+    return coaches.filter((coach) => coach.id !== resolvedMainCoach.id && coach.is_active);
+  }, [coaches, resolvedMainCoach]);
+
+  /** 不指定時，今日可能進入自動分配池的搭班師傅（僅說明用） */
+  const autoAssignBackupPoolLabel = useMemo(() => {
+    if (!resolvedMainCoach) return "";
+    const pool = coaches.filter(
+      (c) => c.id !== resolvedMainCoach.id && c.is_active && c.available_today,
+    );
+    if (pool.length === 0) return "今日暫無其他已開班搭班師傅";
+    return pool.map((c) => c.name).join("、");
+  }, [coaches, resolvedMainCoach]);
+
+  useEffect(() => {
+    if (partySize !== "2") {
+      setPreferredBackupCoachId("none");
+    }
+  }, [partySize]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const pair = params.get("pair");
+    const coach = params.get("coach");
+    const coachName = params.get("coachName");
+    if (pair === "1") {
+      setPartySize("2");
+    }
+    if (coach) {
+      setPreferredBackupCoachId(coach);
+    }
+    if (coachName) {
+      setPreferredBackupCoachName(coachName);
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    if (preferredBackupCoachId === "none") return;
+    const exists = backupCoachOptions.some((coach) => coach.id === preferredBackupCoachId);
+    if (!exists && backupCoachOptions.length > 0) {
+      setPreferredBackupCoachId("none");
+      setPreferredBackupCoachName("");
+    }
+  }, [backupCoachOptions, preferredBackupCoachId]);
+
+  useEffect(() => {
+    if (!resolvedMainCoach || preferredBackupCoachId === "none") return;
+    if (preferredBackupCoachId === resolvedMainCoach.id) {
+      setPreferredBackupCoachId("none");
+      setPreferredBackupCoachName("");
+      toast.info("主師傅無法指定為搭班，已改為不指定。");
+    }
+  }, [resolvedMainCoach?.id, preferredBackupCoachId]);
 
   // Filter addons based on selected service category
   const availableAddons = useMemo(() => {
@@ -150,6 +274,113 @@ export default function BookingPage() {
   // Total duration including free addon (for slot calculation & booking)
   const totalDuration = serviceDuration + (selectedService ? bookingSettings.free_addon_duration : 0);
 
+  // 雙人 + 不指定：依後端規則預估該時段會配到哪一位搭班師傅（與 api-booking 一致）
+  useEffect(() => {
+    if (
+      partySize !== "2" ||
+      preferredBackupCoachId !== "none" ||
+      selectedSlot === null ||
+      !date ||
+      !selectedService ||
+      !resolvedMainCoach ||
+      totalDuration <= 0
+    ) {
+      setPredictedPairBackupName(null);
+      return;
+    }
+    let cancelled = false;
+    const run = async () => {
+      const dateStr = format(date, "yyyy-MM-dd");
+      const { data: cfgRows } = await supabase
+        .from("system_config")
+        .select("key,value")
+        .eq("store_id", effectiveStoreId)
+        .in("key", ["buffer_minutes"]);
+      const bufferMinutes =
+        parseInt(cfgRows?.find((r) => r.key === "buffer_minutes")?.value || "10", 10) || 10;
+
+      const { data: bookingRows } = await supabase
+        .from("bookings")
+        .select("coach_id,start_hour,duration")
+        .eq("store_id", effectiveStoreId)
+        .eq("date", dateStr)
+        .is("cancelled_at", null);
+
+      if (cancelled) return;
+      const allBookings = (bookingRows || []) as Array<{
+        coach_id: string | null;
+        start_hour: number;
+        duration: number;
+      }>;
+
+      const slotOverlap = (
+        startHour: number,
+        durationMin: number,
+        rows: Array<{ start_hour: number; duration: number }>,
+      ) => {
+        const newEnd = startHour + durationMin / 60;
+        return rows.some((b) => {
+          const bEnd = b.start_hour + (b.duration + bufferMinutes) / 60;
+          return startHour < bEnd && newEnd > b.start_hour;
+        });
+      };
+
+      const mainCoach = resolvedMainCoach;
+      if (!mainCoach) {
+        setPredictedPairBackupName(null);
+        return;
+      }
+
+      const sorted = [...coaches].sort((a, b) => a.display_order - b.display_order);
+      const newEnd = selectedSlot + totalDuration / 60;
+      const mainBookings = allBookings
+        .filter((b) => b.coach_id === mainCoach.id || b.coach_id == null)
+        .map((b) => ({ start_hour: b.start_hour, duration: b.duration }));
+      if (slotOverlap(selectedSlot, totalDuration, mainBookings)) {
+        setPredictedPairBackupName(null);
+        return;
+      }
+
+      const backupPool = sorted.filter(
+        (c) =>
+          c.id !== mainCoach.id &&
+          c.available_today &&
+          selectedSlot >= (c.shift_start_hour ?? 14) &&
+          newEnd <= (c.shift_end_hour ?? 26),
+      );
+
+      const picks = backupPool
+        .map((coach) => {
+          const coachBookings = allBookings
+            .filter((b) => b.coach_id === coach.id)
+            .map((b) => ({ start_hour: b.start_hour, duration: b.duration }));
+          return {
+            name: coach.name,
+            canTake: !slotOverlap(selectedSlot, totalDuration, coachBookings),
+            dailyLoad: coachBookings.length,
+          };
+        })
+        .filter((x) => x.canTake)
+        .sort((a, b) => a.dailyLoad - b.dailyLoad);
+
+      setPredictedPairBackupName(picks[0]?.name ?? null);
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    partySize,
+    preferredBackupCoachId,
+    selectedSlot,
+    date,
+    selectedService,
+    resolvedMainCoach,
+    coaches,
+    totalDuration,
+    effectiveStoreId,
+  ]);
+
   const totalPrice = useMemo(() => {
     if (!selectedService) return 0;
     const addonPrice = dbAddons
@@ -168,14 +399,93 @@ export default function BookingPage() {
   }, [date, totalDuration]);
 
   useEffect(() => {
+    setShowUnavailableDetails(false);
+  }, [date, partySize, selectedService, preferredBackupCoachId]);
+
+  useEffect(() => {
     if (!date || !selectedService) return;
     const dateStr = format(date, "yyyy-MM-dd");
     setLoadingSlots(true);
-    getAvailableSlots(dateStr, totalDuration, effectiveStoreId).then(slots => {
-      setAvailableSlots(slots);
-      setLoadingSlots(false);
+    if (partySize === "2") {
+      if (preferredBackupCoachId !== "none") {
+        Promise.all([
+          getAvailableSlots(
+            dateStr,
+            totalDuration,
+            effectiveStoreId,
+            true,
+            preferredBackupCoachId,
+            mainCoachNameForSlots,
+          ),
+          getAvailableSlots(
+            dateStr,
+            totalDuration,
+            effectiveStoreId,
+            true,
+            undefined,
+            mainCoachNameForSlots,
+          ),
+          getAvailableSlots(dateStr, totalDuration, effectiveStoreId, false),
+        ]).then(([pairSlotsPreferred, pairSlotsGeneric, singleSlots]) => {
+          setAvailableSlots(pairSlotsPreferred);
+          setGenericPairSlotCount(pairSlotsGeneric.length);
+          setSingleModeSlots(singleSlots);
+          setLoadingSlots(false);
+        });
+      } else {
+        Promise.all([
+          getAvailableSlots(
+            dateStr,
+            totalDuration,
+            effectiveStoreId,
+            true,
+            undefined,
+            mainCoachNameForSlots,
+          ),
+          getAvailableSlots(dateStr, totalDuration, effectiveStoreId, false),
+        ]).then(([pairSlots, singleSlots]) => {
+          setAvailableSlots(pairSlots);
+          setGenericPairSlotCount(pairSlots.length);
+          setSingleModeSlots(singleSlots);
+          setLoadingSlots(false);
+        });
+      }
+    } else {
+      getAvailableSlots(dateStr, totalDuration, effectiveStoreId, false).then(slots => {
+        setAvailableSlots(slots);
+        setGenericPairSlotCount(0);
+        setSingleModeSlots(slots);
+        setLoadingSlots(false);
+      });
+    }
+  }, [date, totalDuration, selectedService, effectiveStoreId, partySize, preferredBackupCoachId, mainCoachNameForSlots]);
+
+  const allCandidateSlots = useMemo(() => {
+    const result: number[] = [];
+    for (let hour = 14; hour < 26; hour += 0.5) result.push(hour);
+    return result;
+  }, []);
+
+  const unavailablePairSlots = useMemo(() => {
+    if (partySize !== "2") return [];
+    return allCandidateSlots
+      .filter((slot) => !availableSlots.includes(slot))
+      .map((slot) => ({
+        slot,
+        reason: singleModeSlots.includes(slot) ? "今天搭班師傅未開班" : "主師傅該時段已額滿或公休",
+      }));
+  }, [allCandidateSlots, availableSlots, partySize, singleModeSlots]);
+
+  const unavailablePairSummary = useMemo(() => {
+    if (partySize !== "2") return { backupOff: 0, mainBusy: 0 };
+    let backupOff = 0;
+    let mainBusy = 0;
+    unavailablePairSlots.forEach((x) => {
+      if (x.reason.includes("搭班師傅")) backupOff += 1;
+      else mainBusy += 1;
     });
-  }, [date, totalDuration, selectedService, effectiveStoreId]);
+    return { backupOff, mainBusy };
+  }, [partySize, unavailablePairSlots]);
 
   const handleAddonToggle = (addonName: string) => {
     setSelectedAddons(prev =>
@@ -237,6 +547,10 @@ export default function BookingPage() {
       duration: totalDuration,
       total_price: totalPrice,
       store_id: effectiveStoreId,
+      needs_pair: partySize === "2",
+      ...(partySize === "2" && preferredBackupCoachId !== "none"
+        ? { preferred_backup_coach_id: preferredBackupCoachId }
+        : {}),
       ...(email.trim() && { email: email.trim() }),
     };
 
@@ -261,8 +575,12 @@ export default function BookingPage() {
         }
         toast.error(errMsg);
       } else {
+        const okData = await resp.json();
         setSuccess({
           ...bookingData,
+          party_size: partySize === "2" ? 2 : 1,
+          primary_coach_name: okData?.assignment?.primaryCoachName || shopInfo.therapist_name,
+          secondary_coach_name: okData?.assignment?.secondaryCoachName || null,
           start_time_str: formatHourToTime(selectedSlot),
           calendarLink: generateGoogleCalendarLink({
             date: dateStr,
@@ -273,6 +591,9 @@ export default function BookingPage() {
             phone: phone.trim(),
             addons: allAddons,
             total_price: totalPrice,
+            needs_pair: partySize === "2",
+            primaryCoachName: okData?.assignment?.primaryCoachName || shopInfo.therapist_name,
+            secondaryCoachName: okData?.assignment?.secondaryCoachName || undefined,
             calendarNotes,
             storeName: shopInfo.store_name,
             therapistName: shopInfo.therapist_name,
@@ -309,6 +630,10 @@ export default function BookingPage() {
             <div className="flex justify-between"><span className="text-muted-foreground">姓名</span><span className="font-medium">{success.name}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">電話</span><span className="font-medium">{success.phone}</span></div>
             <div className="flex justify-between"><span className="text-muted-foreground">服務</span><span className="font-medium text-right max-w-[200px]">{success.service}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">人數</span><span className="font-medium">{success.party_size} 位</span></div>
+            {success.party_size === 2 ? (
+              <div className="flex justify-between"><span className="text-muted-foreground">安排師傅</span><span className="font-medium text-right max-w-[200px]">{success.primary_coach_name} + {success.secondary_coach_name}</span></div>
+            ) : null}
             {success.addons.length > 0 && (
               <div className="flex justify-between"><span className="text-muted-foreground">加購</span><span className="font-medium text-right max-w-[200px]">{success.addons.join(', ')}</span></div>
             )}
@@ -335,6 +660,7 @@ export default function BookingPage() {
               setName("");
               setPhone("");
               setEmail("");
+              setPartySize("1");
             }}>
               再次預約
             </Button>
@@ -379,6 +705,78 @@ export default function BookingPage() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Party size - show immediately after selecting service */}
+          <div className="space-y-2 animate-fade-in">
+            <Label className="text-sm font-semibold">預約人數 *</Label>
+            <RadioGroup value={partySize} onValueChange={(v) => setPartySize(v as "1" | "2")} className="grid grid-cols-2 gap-2">
+              <div className="flex items-center space-x-2 rounded-md border p-2">
+                <RadioGroupItem value="1" id="party-one" />
+                <label htmlFor="party-one" className="text-sm cursor-pointer">1 位（主師傅）</label>
+              </div>
+              <div className="flex items-center space-x-2 rounded-md border p-2">
+                <RadioGroupItem value="2" id="party-two" />
+                <label htmlFor="party-two" className="text-sm cursor-pointer">2 位（雙人）</label>
+              </div>
+            </RadioGroup>
+            {partySize === "2" ? (
+              <p className="text-xs text-amber-600">雙人預約需主師傅與搭班師傅同時可接，時段會較少。</p>
+            ) : null}
+            {partySize === "2" ? (
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">指定搭班師傅（選填）</Label>
+                <Select
+                  value={preferredBackupCoachId}
+                  onValueChange={(v) => {
+                    setPreferredBackupCoachId(v);
+                    const found = backupCoachOptions.find((coach) => coach.id === v);
+                    setPreferredBackupCoachName(found?.name || "");
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="不指定，系統自動安排" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">不指定，系統自動安排</SelectItem>
+                    {preferredBackupCoachId !== "none" &&
+                    !backupCoachOptions.some((coach) => coach.id === preferredBackupCoachId) ? (
+                      <SelectItem value={preferredBackupCoachId}>
+                        {preferredBackupCoachName || "指定師傅"}（目前不可選）
+                      </SelectItem>
+                    ) : null}
+                    {backupCoachOptions.map((coach) => (
+                      <SelectItem key={coach.id} value={coach.id}>
+                        {coach.name}
+                        {!coach.available_today
+                          ? "（今日未值班）"
+                          : coach.shift_start_hour != null && coach.shift_end_hour != null
+                            ? `（${formatCoachHour(coach.shift_start_hour)}-${formatCoachHour(coach.shift_end_hour)}）`
+                            : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  主師傅以 Landing/CMS「調理師區標題」為準，並比對服務管理師傅姓名（目前：「
+                  {resolvedMainCoach?.name ||
+                    landingContent.therapist_section_title?.trim() ||
+                    shopInfo.therapist_name ||
+                    "—"}
+                  」）；此處僅選搭班師傅。
+                </p>
+                {preferredBackupCoachId === "none" ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    不指定時，搭班由系統自動安排：會從今日已開班名單中，優先選當日預約較少者。可能人選包含：{autoAssignBackupPoolLabel}
+                    。選好日期與時段後，下方會顯示該時段預估搭班師傅（仍以送出成功頁為準）。
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-amber-600">
+                    已指定搭班師傅：{preferredBackupCoachName || "該師傅"}。若顯示無法預約，通常是「今日未值班」、班表時段不含該格，或該時段已有預約。
+                  </p>
+                )}
+              </div>
+            ) : null}
           </div>
 
           {/* Add-ons */}
@@ -472,9 +870,35 @@ export default function BookingPage() {
               {loadingSlots ? (
                 <p className="text-sm text-muted-foreground">載入可用時段中...</p>
               ) : availableSlots.length === 0 ? (
-                <p className="text-sm text-destructive">該日無可用時段</p>
+                <div className="space-y-2">
+                  <p className="text-sm text-destructive">
+                    {partySize === "2" ? "目前此日期沒有雙人可預約時段，建議改為 1 位或更換日期" : "該日無可用時段"}
+                  </p>
+                  {partySize === "2" && preferredBackupCoachId !== "none" && genericPairSlotCount > 0 ? (
+                    <button
+                      type="button"
+                      className="text-xs text-primary underline underline-offset-2"
+                      onClick={() => {
+                        setPreferredBackupCoachId("none");
+                        setPreferredBackupCoachName("");
+                      }}
+                    >
+                      指定師傅該日無可接時段，改為「不指定系統安排」可預約 {genericPairSlotCount} 個時段
+                    </button>
+                  ) : null}
+                </div>
               ) : (
                 <div>
+                  {partySize === "2" && (
+                    <div className="mb-2 rounded-md border border-amber-300/40 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                      雙人模式：需「主師傅 {resolvedMainCoach?.name ?? "—"}」與至少一位搭班師傅同時可接。
+                      {preferredBackupCoachId === "none" && selectedSlot !== null && predictedPairBackupName ? (
+                        <span className="mt-1 block font-medium text-amber-900">
+                          此時段預估搭班：{predictedPairBackupName}（預覽，以送出成功為準）
+                        </span>
+                      ) : null}
+                    </div>
+                  )}
                   {availableSlots.some(s => s >= 24) && (
                     <p className="text-xs text-amber-600 mb-2">⚠️ 00:00～02:00 時段為當天深夜（隔日凌晨），非次日白天</p>
                   )}
@@ -488,9 +912,40 @@ export default function BookingPage() {
                         className={`text-xs ${slot >= 24 ? "border-amber-400 text-amber-700" : ""}`}
                       >
                         {formatHourToTime(slot)}{slot >= 24 ? " 🌙" : ""}
+                        {partySize === "2" ? " 👥" : ""}
                       </Button>
                     ))}
                   </div>
+                  {partySize === "2" && unavailablePairSlots.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      <p className="text-xs text-muted-foreground">雙人不可約摘要：</p>
+                      <div className="flex flex-wrap gap-2">
+                        <div className="rounded border border-border bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground">
+                          搭班師傅未開班：{unavailablePairSummary.backupOff} 個時段
+                        </div>
+                        <div className="rounded border border-border bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground">
+                          主師傅滿檔或公休：{unavailablePairSummary.mainBusy} 個時段
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="text-[11px] text-primary underline underline-offset-2"
+                        onClick={() => setShowUnavailableDetails((v) => !v)}
+                      >
+                        {showUnavailableDetails ? "收起時段明細" : "展開時段明細"}
+                      </button>
+                      {showUnavailableDetails ? (
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                          {unavailablePairSlots.slice(0, 10).map(({ slot, reason }) => (
+                            <div key={`unavailable-${slot}`} className="rounded border border-border bg-muted/40 px-2 py-1 text-[11px] text-muted-foreground">
+                              <span className="font-medium">{formatHourToTime(slot)}</span>
+                              <span className="ml-1">· {reason}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

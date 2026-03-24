@@ -54,6 +54,7 @@ interface Booking {
   start_hour: number;
   start_time_str: string;
   name: string;
+  needs_pair: boolean;
   phone: string;
   service: string;
   addons: string[];
@@ -116,13 +117,13 @@ export default function AdminPage() {
   // Edit booking dialog
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [editForm, setEditForm] = useState({
-    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "customer", oil_bonus: 0,
+    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "customer", oil_bonus: 0, needs_pair: false,
   });
 
   // Manual booking dialog
   const [showManualBooking, setShowManualBooking] = useState(false);
   const [manualForm, setManualForm] = useState({
-    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "admin",
+    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "admin", needs_pair: false,
   });
 
   // Holiday form
@@ -326,7 +327,7 @@ export default function AdminPage() {
     setEditForm({
       name: b.name, phone: b.phone, service: b.service, date: b.date,
       start_hour: b.start_hour, duration: b.duration, total_price: b.total_price,
-      addons: b.addons || [], source: b.source || "customer", oil_bonus: b.oil_bonus || 0,
+      addons: b.addons || [], source: b.source || "customer", oil_bonus: b.oil_bonus || 0, needs_pair: !!b.needs_pair,
     });
   };
 
@@ -340,7 +341,7 @@ export default function AdminPage() {
           date: editForm.date, start_hour: editForm.start_hour,
           start_time_str: formatHourToTime(editForm.start_hour),
           duration: editForm.duration, total_price: editForm.total_price,
-          addons: editForm.addons, source: editForm.source, oil_bonus: editForm.oil_bonus,
+          addons: editForm.addons, source: editForm.source, oil_bonus: editForm.oil_bonus, needs_pair: editForm.needs_pair,
         },
       }, storeId);
       setEditingBooking(null);
@@ -463,12 +464,12 @@ export default function AdminPage() {
           date: manualForm.date, start_hour: manualForm.start_hour,
           start_time_str: formatHourToTime(manualForm.start_hour),
           duration: manualForm.duration, total_price: manualForm.total_price,
-          addons: manualForm.addons, status: "confirmed", source: manualForm.source,
+          addons: manualForm.addons, status: "confirmed", source: manualForm.source, needs_pair: manualForm.needs_pair,
           store_id: storeId,
         },
       }, storeId);
       setShowManualBooking(false);
-      setManualForm({ name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [], source: "admin" });
+      setManualForm({ name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [], source: "admin", needs_pair: false });
       fetchBookings();
       toast.success("已新增預約");
     } catch (e: any) { toast.error(e.message); }
@@ -858,7 +859,14 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td className="p-2">{b.phone}</td>
-                          <td className="p-2 max-w-[140px] truncate">{b.service}</td>
+                          <td className="p-2 max-w-[180px]">
+                            <div className="truncate">{b.service}</div>
+                            {b.needs_pair ? (
+                              <Badge variant="outline" className="mt-1 text-[10px] border-amber-300 text-amber-700 bg-amber-50">
+                                雙人單
+                              </Badge>
+                            ) : null}
+                          </td>
                           <td className="p-2 max-w-[100px] truncate">{b.addons?.join(", ") || "-"}</td>
                           <td className="p-2">{b.duration}分</td>
                           <td className="p-2 font-medium text-primary">NT${b.total_price.toLocaleString()}</td>
@@ -1424,6 +1432,10 @@ export default function AdminPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={manualForm.needs_pair} onCheckedChange={(v) => setManualForm({ ...manualForm, needs_pair: v })} />
+              <Label className="text-sm">雙人單（才啟用搭配師傅）</Label>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowManualBooking(false)}>取消</Button>
@@ -1660,6 +1672,10 @@ export default function AdminPage() {
                   <SelectItem value="front_desk">櫃檯代訂</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={editForm.needs_pair} onCheckedChange={(v) => setEditForm({ ...editForm, needs_pair: v })} />
+              <Label className="text-sm">雙人單（才啟用搭配師傅）</Label>
             </div>
             <div className="space-y-1">
               <Label className="text-sm">精油推薦獎金</Label>
