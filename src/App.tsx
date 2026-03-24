@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { StoreProvider } from "@/contexts/StoreContext";
 import { SkipLink } from "@/components/SkipLink";
 import LandingPage from "./pages/LandingPage";
+import LandingPageStitch from "./pages/LandingPageStitch";
 import BookingPage from "./pages/BookingPage";
 import MyBookingsPage from "./pages/MyBookingsPage";
 import AdminPage from "./pages/AdminPage";
@@ -24,6 +25,8 @@ const App = () => (
           <div id="main-content" tabIndex={-1} className="outline-none">
             <Routes>
             <Route path="/" element={<LandingPage />} />
+            {/* Stitch 新版 Landing 預覽（不取代正式首頁） */}
+            <Route path="/landing-v2" element={<LandingPageStitch />} />
             <Route path="/booking" element={<BookingPage />} />
             {/* LINE 圖文選單 / 訊息連結常用短網址（與 /booking 相同） */}
             <Route path="/mylinecalendar" element={<BookingPage />} />

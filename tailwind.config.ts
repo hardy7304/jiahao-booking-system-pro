@@ -84,6 +84,7 @@ export default {
       },
       fontFamily: {
         sans: ['"Noto Sans TC"', '"Microsoft JhengHei"', 'sans-serif'],
+        manrope: ['Manrope', '"Noto Sans TC"', '"Microsoft JhengHei"', 'sans-serif'],
       },
     },
   },

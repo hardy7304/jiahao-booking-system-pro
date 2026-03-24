@@ -34,6 +34,10 @@ function buildStoreSettingsUpsertPayload(
     footer_cta_body: next.footer_cta_body,
     brand_stats_title: next.brand_stats_title,
     brand_stats_subtitle: next.brand_stats_subtitle,
+    therapist_portrait_url: next.therapist_portrait_url,
+    closing_gallery_mode: next.closing_gallery_mode,
+    closing_image_url_1: next.closing_image_url_1,
+    closing_image_url_2: next.closing_image_url_2,
   };
   const servicesPayload: Json = next.services as unknown as Json;
 

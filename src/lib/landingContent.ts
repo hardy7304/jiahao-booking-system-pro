@@ -11,8 +11,13 @@ export interface LandingServiceItem {
   description: string;
   featured?: boolean;
   starting_price_label?: string;
+  /** 服務卡片主圖（Landing v2 / 後台可上傳或貼網址） */
+  image_url?: string;
   tiers: LandingServiceTier[];
 }
+
+/** Landing v2 尾段 CTA 上方「環境圖」區塊 */
+export type ClosingGalleryMode = "default" | "custom" | "hidden";
 
 export interface LandingStatTargets {
   relief_count: number;
@@ -114,6 +119,12 @@ export interface LandingContent extends LandingStatTargets {
   footer_cta_body: string;
   brand_stats_title: string;
   brand_stats_subtitle: string;
+  /** Landing v2 調理師頭像（空白則用版型預設示意圖） */
+  therapist_portrait_url: string;
+  closing_gallery_mode: ClosingGalleryMode;
+  /** 自訂環境圖 1（僅 closing_gallery_mode === custom 時使用） */
+  closing_image_url_1: string;
+  closing_image_url_2: string;
   is_roushou_visible: boolean;
   studios_shell: StudiosShell;
 }
@@ -151,6 +162,10 @@ export const LANDING_DEFAULTS: Omit<LandingContent, "store_id"> = {
   footer_cta_body: "線上預約 24 小時開放，選一個方便的時段。",
   brand_stats_title: "神之手 · 專業實績",
   brand_stats_subtitle: "用數據見證每一次的極致放鬆",
+  therapist_portrait_url: "",
+  closing_gallery_mode: "default",
+  closing_image_url_1: "",
+  closing_image_url_2: "",
   is_roushou_visible: true,
   studios_shell: { ...STUDIOS_SHELL_DEFAULTS },
 };
@@ -230,6 +245,7 @@ export function parseServicesJson(raw: Json | undefined): LandingServiceItem[] {
       const price = typeof t.price === "string" ? t.price : "";
       if (label && price) tiers.push({ label, price });
     }
+    const imageUrlRaw = typeof item.image_url === "string" ? item.image_url.trim() : "";
     out.push({
       name,
       tagline: typeof item.tagline === "string" ? item.tagline : undefined,
@@ -239,6 +255,7 @@ export function parseServicesJson(raw: Json | undefined): LandingServiceItem[] {
         typeof item.starting_price_label === "string"
           ? item.starting_price_label
           : undefined,
+      image_url: imageUrlRaw !== "" ? imageUrlRaw : undefined,
       tiers,
     });
   }
@@ -253,9 +270,22 @@ export function parseHighlightsJson(raw: Json | undefined): string[] {
 /**
  * 補齊 studios_shell、services、therapist_highlights，避免舊資料／快取缺欄導致 CMS 讀 undefined 白屏。
  */
+function coerceClosingGalleryMode(v: unknown, fallback: ClosingGalleryMode): ClosingGalleryMode {
+  if (v === "custom" || v === "hidden" || v === "default") return v;
+  return fallback;
+}
+
 export function normalizeLandingContent(c: LandingContent): LandingContent {
+  const d = LANDING_DEFAULTS;
   return {
     ...c,
+    closing_gallery_mode: coerceClosingGalleryMode(c.closing_gallery_mode, d.closing_gallery_mode),
+    therapist_portrait_url:
+      typeof c.therapist_portrait_url === "string" ? c.therapist_portrait_url : d.therapist_portrait_url,
+    closing_image_url_1:
+      typeof c.closing_image_url_1 === "string" ? c.closing_image_url_1 : d.closing_image_url_1,
+    closing_image_url_2:
+      typeof c.closing_image_url_2 === "string" ? c.closing_image_url_2 : d.closing_image_url_2,
     studios_shell: parseStudiosShellJson(c.studios_shell as unknown as Json),
     services: Array.isArray(c.services) ? c.services : [...LANDING_DEFAULTS.services],
     therapist_highlights: Array.isArray(c.therapist_highlights)
@@ -409,6 +439,31 @@ export function mergeLandingContent(
       "brand_stats_subtitle",
       "brand_stats_subtitle",
       d.brand_stats_subtitle,
+    ),
+    therapist_portrait_url: pickEmbeddedString(
+      row,
+      statsRecord,
+      "therapist_portrait_url",
+      "therapist_portrait_url",
+      d.therapist_portrait_url,
+    ),
+    closing_gallery_mode: coerceClosingGalleryMode(
+      statsRecord.closing_gallery_mode ?? row.closing_gallery_mode,
+      d.closing_gallery_mode,
+    ),
+    closing_image_url_1: pickEmbeddedString(
+      row,
+      statsRecord,
+      "closing_image_url_1",
+      "closing_image_url_1",
+      d.closing_image_url_1,
+    ),
+    closing_image_url_2: pickEmbeddedString(
+      row,
+      statsRecord,
+      "closing_image_url_2",
+      "closing_image_url_2",
+      d.closing_image_url_2,
     ),
     is_roushou_visible: coerceRoushouVisible(row.is_roushou_visible, d.is_roushou_visible),
     studios_shell,

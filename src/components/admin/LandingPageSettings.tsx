@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
+import { useStore } from "@/contexts/StoreContext";
 import { useStoreSettings, type LandingContent, type LandingServiceItem } from "@/hooks/useStoreSettings";
+import type { ClosingGalleryMode } from "@/lib/landingContent";
+import { AdminLandingImageField } from "@/components/admin/AdminLandingImageField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +15,13 @@ import {
 } from "@/components/ui/accordion";
 import { toast } from "sonner";
 import { Plus, Trash2, Loader2, Copy, ChevronDown } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Collapsible,
   CollapsibleContent,
@@ -80,6 +90,7 @@ function StatNumberField({
 }
 
 export default function LandingPageSettings() {
+  const { storeId } = useStore();
   const { content, loading, saveSettings, refetch } = useStoreSettings();
   const [draft, setDraft] = useState<LandingContent | null>(null);
   const [saving, setSaving] = useState(false);
@@ -104,6 +115,7 @@ export default function LandingPageSettings() {
           ...s,
           name: s.name.trim(),
           description: s.description.trim(),
+          image_url: s.image_url?.trim() ? s.image_url.trim() : undefined,
           tiers: s.tiers.filter((t) => t.label.trim() && t.price.trim()),
         }))
         .filter((s) => s.name && s.description);
@@ -351,6 +363,15 @@ export default function LandingPageSettings() {
                     onChange={(e) => setService(si, { ...svc, description: e.target.value })}
                   />
                 </div>
+                <AdminLandingImageField
+                  storeId={typeof storeId === "string" ? storeId : ""}
+                  label="服務卡片主圖（Landing v2，選填）"
+                  hint="留白則使用預設示意圖。可貼公開圖片網址，或使用「上傳」（需已執行 Supabase migration 建立 landing-images 貯體並部署 api-admin）。"
+                  value={svc.image_url ?? ""}
+                  onChange={(url) =>
+                    setService(si, { ...svc, image_url: url.trim() ? url.trim() : undefined })
+                  }
+                />
                 <div className="flex flex-wrap items-center gap-3">
                   <label className="flex items-center gap-2 text-xs">
                     <input
@@ -530,6 +551,15 @@ export default function LandingPageSettings() {
                 }
               />
             </div>
+            <AdminLandingImageField
+              storeId={typeof storeId === "string" ? storeId : ""}
+              label="調理師頭像（Landing v2，選填）"
+              hint="顯示於 /landing-v2「匠心大師」區塊。留白則使用預設示意圖。"
+              value={draft.therapist_portrait_url ?? ""}
+              onChange={(url) =>
+                updateDraft({ therapist_portrait_url: url.trim() ? url.trim() : "" })
+              }
+            />
           </AccordionContent>
         </AccordionItem>
 
@@ -552,6 +582,48 @@ export default function LandingPageSettings() {
                 value={draft.footer_cta_body}
                 onChange={(e) => updateDraft({ footer_cta_body: e.target.value })}
               />
+            </div>
+            <div className="rounded-md border border-dashed border-amber-500/30 bg-amber-500/5 p-4 space-y-4">
+              <p className="text-xs font-medium text-foreground">Landing v2 專用：尾段圖片列</p>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                在「頁尾 CTA」標題與按鈕<strong>上方</strong>的橫向環境圖（僅{" "}
+                <code className="rounded bg-muted px-1">/landing-v2</code>）。正式首頁{" "}
+                <code className="rounded bg-muted px-1">/</code> 版面不同，不受此設定影響。
+              </p>
+              <div className="space-y-2">
+                <Label>環境圖區塊</Label>
+                <Select
+                  value={draft.closing_gallery_mode}
+                  onValueChange={(v) =>
+                    updateDraft({ closing_gallery_mode: v as ClosingGalleryMode })
+                  }
+                >
+                  <SelectTrigger className="max-w-md">
+                    <SelectValue placeholder="選擇顯示方式" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="default">使用預設示意圖（兩張）</SelectItem>
+                    <SelectItem value="custom">自訂（下方 1～2 張圖片）</SelectItem>
+                    <SelectItem value="hidden">不顯示（只保留標題與按鈕）</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {draft.closing_gallery_mode === "custom" ? (
+                <div className="space-y-4 pt-2">
+                  <AdminLandingImageField
+                    storeId={typeof storeId === "string" ? storeId : ""}
+                    label="環境圖 1"
+                    value={draft.closing_image_url_1}
+                    onChange={(url) => updateDraft({ closing_image_url_1: url })}
+                  />
+                  <AdminLandingImageField
+                    storeId={typeof storeId === "string" ? storeId : ""}
+                    label="環境圖 2（選填）"
+                    value={draft.closing_image_url_2}
+                    onChange={(url) => updateDraft({ closing_image_url_2: url })}
+                  />
+                </div>
+              ) : null}
             </div>
           </AccordionContent>
         </AccordionItem>

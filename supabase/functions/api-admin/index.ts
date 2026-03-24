@@ -370,6 +370,43 @@ Deno.serve(async (req) => {
         break;
       }
 
+      /** 首頁 / Landing v2 圖片：驗證後台密碼後寫入 storage bucket `landing-images` */
+      case "landing.upload_image": {
+        const fileBase64 = typeof data.file_base64 === "string" ? data.file_base64 : "";
+        const contentType =
+          typeof data.content_type === "string" && data.content_type.startsWith("image/")
+            ? data.content_type
+            : "image/jpeg";
+        if (!storeId || typeof storeId !== "string") throw new Error("缺少 store_id");
+        const sid = storeId.replace(/[^a-f0-9-]/gi, "");
+        if (sid.length < 32) throw new Error("store_id 無效");
+        if (!fileBase64) throw new Error("缺少圖片資料");
+        if (fileBase64.length > 5_500_000) throw new Error("圖片資料過大，請壓縮後再試");
+        let binary: Uint8Array;
+        try {
+          binary = Uint8Array.from(atob(fileBase64), (c) => c.charCodeAt(0));
+        } catch {
+          throw new Error("圖片編碼無效");
+        }
+        if (binary.length > 4_800_000) throw new Error("圖片檔過大（請小於約 4.5MB）");
+        const ext = contentType.includes("png")
+          ? "png"
+          : contentType.includes("webp")
+            ? "webp"
+            : contentType.includes("gif")
+              ? "gif"
+              : "jpg";
+        const path = `${sid}/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("landing-images").upload(path, binary, {
+          contentType,
+          upsert: false,
+        });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from("landing-images").getPublicUrl(path);
+        result = { success: true, public_url: pub.publicUrl };
+        break;
+      }
+
       default:
         return jsonResponse({ error: "Unknown action" }, 400);
     }
