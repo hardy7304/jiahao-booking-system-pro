@@ -472,10 +472,10 @@ function StitchFooter({ brandName }: { brandName: string }) {
         </div>
         <div className="flex flex-wrap justify-center gap-6 font-manrope text-sm text-[#d8c3ad]/50">
           <Link
-            to="/"
+            to="/landing-legacy"
             className="transition-colors hover:text-[#f59e0b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 focus-visible:rounded-sm"
           >
-            回首頁（正式版）
+            舊版首頁（參考）
           </Link>
           <Link
             to="/booking"
@@ -485,7 +485,7 @@ function StitchFooter({ brandName }: { brandName: string }) {
           </Link>
         </div>
         <p className="font-manrope text-xs text-[#d8c3ad]/30">
-          © {y} {brandName}。本頁為 Stitch 版型預覽（/landing-v2）。
+          © {y} {brandName}
         </p>
       </V2Reveal>
     </footer>

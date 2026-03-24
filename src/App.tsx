@@ -24,9 +24,9 @@ const App = () => (
           <SkipLink />
           <div id="main-content" tabIndex={-1} className="outline-none">
             <Routes>
-            <Route path="/" element={<LandingPage />} />
-            {/* Stitch 新版 Landing 預覽（不取代正式首頁） */}
-            <Route path="/landing-v2" element={<LandingPageStitch />} />
+            <Route path="/" element={<LandingPageStitch />} />
+            {/* 舊版首頁保留供參考 */}
+            <Route path="/landing-legacy" element={<LandingPage />} />
             <Route path="/booking" element={<BookingPage />} />
             {/* LINE 圖文選單 / 訊息連結常用短網址（與 /booking 相同） */}
             <Route path="/mylinecalendar" element={<BookingPage />} />

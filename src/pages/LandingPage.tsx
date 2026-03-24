@@ -81,13 +81,21 @@ const LandingPage = () => {
         <div className="mx-auto max-w-6xl px-6">
           <Reveal>
             <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-              <p className="text-xs text-stone-500">© {new Date().getFullYear()} {navLabel}</p>
-              <Link
-                to="/booking"
-                className="text-xs font-medium tracking-wide text-amber-200/80 hover:text-amber-100"
-              >
-                前往預約 →
-              </Link>
+              <p className="text-xs text-stone-500">© {new Date().getFullYear()} {navLabel} · 舊版首頁</p>
+              <div className="flex items-center gap-4">
+                <Link
+                  to="/"
+                  className="text-xs font-medium tracking-wide text-amber-200/80 hover:text-amber-100"
+                >
+                  新版首頁 →
+                </Link>
+                <Link
+                  to="/booking"
+                  className="text-xs font-medium tracking-wide text-amber-200/80 hover:text-amber-100"
+                >
+                  前往預約 →
+                </Link>
+              </div>
             </div>
           </Reveal>
         </div>
