@@ -16,6 +16,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, Legend,
 } from "recharts";
+import { useStoreDashboardPrefs } from "@/hooks/useStoreDashboardPrefs";
+import { DashboardCardPicker } from "@/components/admin/DashboardCardPicker";
 
 interface Booking {
   id: string;
@@ -32,6 +34,9 @@ interface Booking {
   cancelled_at: string | null;
   cancel_reason: string | null;
   status: string | null;
+  // 搭班/次師傅資訊（只在 paired booking 會用到）
+  needs_pair?: boolean;
+  secondary_coach_name?: string | null;
   oil_bonus: number;
 }
 
@@ -70,6 +75,19 @@ export default function StatsDashboard({
   const [toOpen, setToOpen] = useState(false);
   const [showCancelled, setShowCancelled] = useState(false);
   const [syncing, setSyncing] = useState(false);
+
+  const availableCardDefs = useMemo(
+    () => [
+      { id: "secondaryCountTop10", label: "搭班師傅熱門排行（Top 10）", note: "包含取消" },
+      { id: "addonsTop", label: "加購 Top 10", note: "僅 completed" },
+      { id: "avgDurationByService", label: "平均時長（按服務）", note: "僅 completed" },
+      { id: "pairVsSingle", label: "雙人 vs 單人", note: "僅 completed" },
+      { id: "cancelBreakdown", label: "取消分析（取消率/原因Top）", note: "僅 cancelled（含分母 completed）" },
+    ],
+    [],
+  );
+  const defaultVisibleCards = useMemo(() => availableCardDefs.map((c) => c.id), [availableCardDefs]);
+  const { visibleCards, setVisibleCards, loadingPrefs } = useStoreDashboardPrefs(defaultVisibleCards);
 
   const { rangeStart, rangeEnd, rangeLabel } = useMemo(() => {
     switch (preset) {
@@ -174,16 +192,160 @@ export default function StatsDashboard({
   }, [active, commission, rangeEnd, rangeDays]);
 
   // SECTION C: Popular services (within range)
+  const simplifyServiceName = (serviceName: string) =>
+    serviceName.split(" (")[0].split("（")[0].trim();
+
   const serviceStats = useMemo(() => {
     const map: Record<string, { count: number; revenue: number }> = {};
     rangeBookings.forEach((b) => {
-      const name = b.service.split(" (")[0].split("（")[0];
+      const name = simplifyServiceName(b.service);
       if (!map[name]) map[name] = { count: 0, revenue: 0 };
       map[name].count++;
       map[name].revenue += b.total_price;
     });
     return Object.entries(map).sort((a, b) => b[1].count - a[1].count).slice(0, 8).map(([name, stats]) => ({ name, ...stats }));
   }, [rangeBookings]);
+
+  // SECTION C-2: Addons Top (completed only)
+  const addonTopStats = useMemo(() => {
+    const map: Record<string, number> = {};
+    rangeBookings.forEach((b) => {
+      (b.addons ?? []).forEach((a) => {
+        const addon = String(a).trim();
+        if (!addon) return;
+        map[addon] = (map[addon] || 0) + 1;
+      });
+    });
+    return Object.entries(map)
+      .map(([addon, count]) => ({ addon, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }, [rangeBookings]);
+
+  // SECTION C-3: Avg duration by service (completed only)
+  const avgDurationByService = useMemo(() => {
+    const map: Record<string, { count: number; totalDuration: number }> = {};
+    rangeBookings.forEach((b) => {
+      const service = simplifyServiceName(b.service);
+      if (!map[service]) map[service] = { count: 0, totalDuration: 0 };
+
+      // duration 可能出現缺漏/非數字時，避免把 0 當成有效值污染平均
+      const dur = typeof b.duration === "number" ? b.duration : Number((b as any).duration);
+      if (!Number.isFinite(dur)) return;
+
+      map[service].count += 1;
+      map[service].totalDuration += dur;
+    });
+    return Object.entries(map)
+      .map(([service, v]) => ({
+        service,
+        count: v.count,
+        avgDuration: v.count > 0 ? Math.round((v.totalDuration / v.count) * 10) / 10 : 0,
+      }))
+      .sort((a, b) => b.avgDuration - a.avgDuration)
+      .slice(0, 8);
+  }, [rangeBookings]);
+
+  // SECTION C-4: Pair vs single (completed only)
+  const pairVsSingleStats = useMemo(() => {
+    const pairBookings = rangeBookings.filter((b) => b.needs_pair === true);
+    const singleBookings = rangeBookings.filter((b) => b.needs_pair === false);
+    const unknownCount = rangeBookings.length - pairBookings.length - singleBookings.length;
+
+    const pairCount = pairBookings.length;
+    const singleCount = singleBookings.length;
+    const total = pairCount + singleCount; // 只用可分類的兩類做占比分母
+    const pairPct = total > 0 ? Math.round((pairCount / total) * 100) : 0;
+    const singlePct = total > 0 ? Math.round((singleCount / total) * 100) : 0;
+
+    const mapTop = (rows: Booking[]) => {
+      const map: Record<string, number> = {};
+      rows.forEach((b) => {
+        const service = simplifyServiceName(b.service);
+        map[service] = (map[service] || 0) + 1;
+      });
+      return Object.entries(map)
+        .map(([service, count]) => ({ service, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+    };
+
+    return {
+      pairCount,
+      singleCount,
+      unknownCount,
+      pairPct,
+      singlePct,
+      topPairServices: mapTop(pairBookings),
+      topSingleServices: mapTop(singleBookings),
+    };
+  }, [rangeBookings]);
+
+  // SECTION C-1: Secondary coach popularity (include cancelled)
+  const rangePairBookings = useMemo(() => {
+    return bookings.filter((b) => {
+      if (b.needs_pair !== true) return false;
+      const secondaryName = (b.secondary_coach_name ?? "").trim();
+      if (!secondaryName) return false;
+      const d = parseISO(b.date);
+      return isWithinInterval(d, { start: rangeStart, end: rangeEnd });
+    });
+  }, [bookings, rangeStart, rangeEnd]);
+
+  const secondaryCoachStats = useMemo(() => {
+    const map: Record<string, number> = {};
+    rangePairBookings.forEach((b) => {
+      const secondaryName = (b.secondary_coach_name ?? "").trim();
+      if (!secondaryName) return;
+      map[secondaryName] = (map[secondaryName] || 0) + 1; // 次數 = 筆數（含 cancelled）
+    });
+    return Object.entries(map)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+  }, [rangePairBookings]);
+
+  // SECTION C-5: Cancellation analysis (cancelled only)
+  const cancelAnalysis = useMemo(() => {
+    const cancelledCount = cancelledBookingsInRange.length;
+    const completedCount = rangeBookings.length;
+    const denom = completedCount + cancelledCount;
+    const cancellationRate = denom > 0 ? Math.round((cancelledCount / denom) * 100) : 0;
+
+    const reasonMap: Record<string, number> = {};
+    const serviceMap: Record<string, number> = {};
+
+    cancelledBookingsInRange.forEach((b) => {
+      const reasonRaw = (b.cancel_reason ?? "").trim();
+      const reason = reasonRaw ? reasonRaw : "未填";
+      reasonMap[reason] = (reasonMap[reason] || 0) + 1;
+
+      const service = simplifyServiceName(b.service);
+      serviceMap[service] = (serviceMap[service] || 0) + 1;
+    });
+
+    const reasonTop = Object.entries(reasonMap)
+      .map(([reason, count]) => ({
+        reason,
+        count,
+        pct: cancelledCount > 0 ? Math.round((count / cancelledCount) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8);
+
+    const serviceTop = Object.entries(serviceMap)
+      .map(([service, count]) => ({ service, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    return {
+      cancellationRate,
+      cancelledCount,
+      completedCount,
+      reasonTop,
+      serviceTop,
+    };
+  }, [cancelledBookingsInRange, rangeBookings]);
 
   // SECTION D: Heatmap (within range)
   const heatmapData = useMemo(() => {
@@ -258,23 +420,33 @@ export default function StatsDashboard({
     <div className="space-y-4">
       {/* Date range picker */}
       <div className="bg-card rounded-xl shadow p-4 space-y-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          {([
-            ["thisMonth", "本月"],
-            ["lastMonth", "上月"],
-            ["7days", "近7天"],
-            ["30days", "近30天"],
-            ["custom", "自訂"],
-          ] as [Preset, string][]).map(([key, label]) => (
-            <Button
-              key={key}
-              variant={preset === key ? "default" : "outline"}
-              size="sm"
-              onClick={() => setPreset(key)}
-            >
-              {label}
-            </Button>
-          ))}
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            {([
+              ["thisMonth", "本月"],
+              ["lastMonth", "上月"],
+              ["7days", "近7天"],
+              ["30days", "近30天"],
+              ["custom", "自訂"],
+            ] as [Preset, string][]).map(([key, label]) => (
+              <Button
+                key={key}
+                variant={preset === key ? "default" : "outline"}
+                size="sm"
+                onClick={() => setPreset(key)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+          <DashboardCardPicker
+            cards={availableCardDefs}
+            visibleCards={visibleCards}
+            setVisibleCards={setVisibleCards}
+            loadingPrefs={loadingPrefs}
+            defaultVisibleCardIds={defaultVisibleCards}
+            idPrefix="stats_card"
+          />
         </div>
         {preset === "custom" && (
           <div className="flex items-center gap-2 flex-wrap">
@@ -440,6 +612,246 @@ export default function StatsDashboard({
           <p className="text-muted-foreground text-center py-8">尚無資料</p>
         )}
       </div>
+
+      {/* SECTION C-1: Secondary coach popularity */}
+      {visibleCards.includes("secondaryCountTop10") && (
+        <div className="bg-card rounded-xl shadow p-4">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <h2 className="font-semibold text-foreground">🧑‍🔧 搭班師傅熱門排行（Top 10）</h2>
+            <p className="text-xs text-muted-foreground whitespace-nowrap pt-1">包含取消</p>
+          </div>
+          {secondaryCoachStats.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="text-left p-1.5">搭班師傅</th>
+                    <th className="text-center p-1.5 w-32">次數（筆數）</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {secondaryCoachStats.map((row) => (
+                    <tr key={row.name} className="border-b border-border/50">
+                      <td className="p-1.5 font-medium">{row.name}</td>
+                      <td className="p-1.5 text-center">
+                        <Badge variant="secondary" className="text-xs">{row.count}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-8">尚無資料</p>
+          )}
+        </div>
+      )}
+
+      {/* SECTION C-2 ~ C-5: Addons / Avg Duration / Pair vs Single / Cancel Analysis */}
+      {(() => {
+        const hasAny =
+          visibleCards.includes("addonsTop") ||
+          visibleCards.includes("avgDurationByService") ||
+          visibleCards.includes("pairVsSingle") ||
+          visibleCards.includes("cancelBreakdown");
+
+        if (!hasAny) {
+          return (
+            <div className="bg-card rounded-xl shadow p-4">
+              <p className="text-muted-foreground text-center py-8">目前沒有要顯示的統計卡，請到上方勾選。</p>
+            </div>
+          );
+        }
+
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {visibleCards.includes("addonsTop") && (
+              <div className="bg-card rounded-xl shadow p-4">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <h2 className="font-semibold text-foreground">➕ 加購 Top 10</h2>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap pt-1">僅 completed</p>
+                </div>
+                {addonTopStats.length > 0 ? (
+                  (() => {
+                    const maxCount = Math.max(1, ...addonTopStats.map((d) => d.count));
+                    return (
+                      <div className="space-y-2">
+                        {addonTopStats.map((row) => (
+                          <div key={row.addon} className="flex items-center gap-3">
+                            <div className="w-48 truncate text-sm font-medium">{row.addon}</div>
+                            <div className="flex-1 h-2 bg-border rounded overflow-hidden">
+                              <div
+                                className="h-full bg-emerald-600"
+                                style={{ width: `${Math.round((row.count / maxCount) * 100)}%` }}
+                              />
+                            </div>
+                            <Badge variant="secondary" className="text-xs">{row.count}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">尚無資料</p>
+                )}
+              </div>
+            )}
+
+            {visibleCards.includes("avgDurationByService") && (
+              <div className="bg-card rounded-xl shadow p-4">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <h2 className="font-semibold text-foreground">⏱️ 平均時長（按服務）</h2>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap pt-1">僅 completed</p>
+                </div>
+                {avgDurationByService.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-muted-foreground">
+                          <th className="text-left p-1.5">服務</th>
+                          <th className="text-center p-1.5 w-28">平均時長</th>
+                          <th className="text-center p-1.5 w-24">次數</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {avgDurationByService.map((row) => (
+                          <tr key={row.service} className="border-b border-border/50">
+                            <td className="p-1.5 font-medium">{row.service}</td>
+                            <td className="p-1.5 text-center">
+                              <Badge variant="secondary" className="text-xs">{row.avgDuration} 分</Badge>
+                            </td>
+                            <td className="p-1.5 text-center text-muted-foreground">{row.count}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-8">尚無資料</p>
+                )}
+              </div>
+            )}
+
+            {visibleCards.includes("pairVsSingle") && (
+              <div className="bg-card rounded-xl shadow p-4">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <h2 className="font-semibold text-foreground">👥 雙人 vs 單人</h2>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap pt-1">僅 completed</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-muted/40 p-3">
+                    <div className="text-xs text-muted-foreground">雙人（needs_pair=true）</div>
+                    <div className="text-2xl font-bold text-primary">{pairVsSingleStats.pairCount}</div>
+                    <div className="text-xs text-muted-foreground">{pairVsSingleStats.pairPct}%</div>
+                  </div>
+                  <div className="rounded-lg bg-muted/40 p-3">
+                    <div className="text-xs text-muted-foreground">單人（needs_pair=false）</div>
+                    <div className="text-2xl font-bold text-primary">{pairVsSingleStats.singleCount}</div>
+                    <div className="text-xs text-muted-foreground">{pairVsSingleStats.singlePct}%</div>
+                  </div>
+                </div>
+
+                {pairVsSingleStats.unknownCount > 0 && (
+                  <div className="text-xs text-muted-foreground mt-2">已排除未填 `needs_pair`：{pairVsSingleStats.unknownCount} 筆</div>
+                )}
+
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-2">雙人 Top 5 服務</div>
+                    {pairVsSingleStats.topPairServices.length > 0 ? (
+                      <div className="space-y-1">
+                        {pairVsSingleStats.topPairServices.map((row) => (
+                          <div key={row.service} className="flex items-center justify-between gap-2 text-sm">
+                            <span className="truncate">{row.service}</span>
+                            <Badge variant="secondary" className="text-xs">{row.count}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">尚無資料</p>
+                    )}
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-2">單人 Top 5 服務</div>
+                    {pairVsSingleStats.topSingleServices.length > 0 ? (
+                      <div className="space-y-1">
+                        {pairVsSingleStats.topSingleServices.map((row) => (
+                          <div key={row.service} className="flex items-center justify-between gap-2 text-sm">
+                            <span className="truncate">{row.service}</span>
+                            <Badge variant="secondary" className="text-xs">{row.count}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">尚無資料</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {visibleCards.includes("cancelBreakdown") && (
+              <div className="bg-card rounded-xl shadow p-4">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <h2 className="font-semibold text-foreground">❌ 取消分析</h2>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap pt-1">取消率：{cancelAnalysis.cancellationRate}%</p>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  完成 {cancelAnalysis.completedCount} 筆 · 取消 {cancelAnalysis.cancelledCount} 筆
+                </p>
+
+                <div className="space-y-3">
+                  <div>
+                    <div className="text-sm font-medium mb-2">取消原因 Top</div>
+                    {cancelAnalysis.reasonTop.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border text-muted-foreground">
+                              <th className="text-left p-1.5">原因</th>
+                              <th className="text-center p-1.5 w-24">次數</th>
+                              <th className="text-center p-1.5 w-24">占比</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {cancelAnalysis.reasonTop.map((row) => (
+                              <tr key={row.reason} className="border-b border-border/50">
+                                <td className="p-1.5 font-medium">{row.reason}</td>
+                                <td className="p-1.5 text-center text-muted-foreground">{row.count}</td>
+                                <td className="p-1.5 text-center">
+                                  <Badge variant="secondary" className="text-xs">{row.pct}%</Badge>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">尚無資料</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="text-sm font-medium mb-2">取消服務 Top 5</div>
+                    {cancelAnalysis.serviceTop.length > 0 ? (
+                      <div className="space-y-1">
+                        {cancelAnalysis.serviceTop.map((row) => (
+                          <div key={row.service} className="flex items-center justify-between gap-2 text-sm">
+                            <span className="truncate">{row.service}</span>
+                            <Badge variant="secondary" className="text-xs">{row.count}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">尚無資料</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* SECTION D: Heatmap */}
       <div className="bg-card rounded-xl shadow p-4">
