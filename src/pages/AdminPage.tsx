@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings, Pencil, Undo2, ArrowUpDown, ArrowUp, ArrowDown, Filter, ChevronDown, ChevronRight, Ban, Copy } from "lucide-react";
+import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings, Pencil, Undo2, ArrowUpDown, ArrowUp, ArrowDown, Filter, ChevronDown, ChevronRight, Ban, Copy, LayoutDashboard, BarChart3, Users, MessageSquare, FileText, Home } from "lucide-react";
 import ServiceManagement from "@/components/ServiceManagement";
 import TodayDashboard from "@/components/admin/TodayDashboard";
 import BookingCalendarView from "@/components/admin/BookingCalendarView";
@@ -85,7 +85,7 @@ interface Holiday {
 }
 
 export default function AdminPage() {
-  const { storeId, currentStore, isLoading: storeLoading } = useStore();
+  const { storeId, currentStore, stores, setStore, isLoading: storeLoading } = useStore();
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -605,7 +605,28 @@ export default function AdminPage() {
               `${currentStore?.name || shopInfoHook.info.store_name} · 管理後台`
             )}
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* Multi-tenant: 讓後台切換 storeId，Webhook URL 也會跟著變更 */}
+            {!storeLoading && stores.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground hidden sm:inline">店家</span>
+                <Select value={storeId} onValueChange={(v) => setStore(v)}>
+                  <SelectTrigger className="w-[220px] h-9 text-sm">
+                    <SelectValue placeholder="選擇店家" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stores
+                      .slice()
+                      .sort((a, b) => (a.id === storeId ? -1 : 0) - (b.id === storeId ? -1 : 0))
+                      .map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Button variant="outline" size="sm" onClick={async () => {
               setRateInput(Math.round(commission.commissionRate * 100).toString());
               setCalendarNotesInput(calendarNotesHook.notes);
@@ -641,18 +662,49 @@ export default function AdminPage() {
         </div>
 
         <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === "today" || v === "stats") commission.refetch(); }}>
-          {/* 2×4 網格：避免過多 flex-1 導致小螢幕分頁被擠到難以點選；儀表板固定為第二個（今日總覽後） */}
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 gap-1 h-auto p-1">
-            <TabsTrigger value="today" className="w-full">今日總覽</TabsTrigger>
-            <TabsTrigger value="dashboard" className="w-full">儀表板</TabsTrigger>
-            <TabsTrigger value="bookings" className="w-full">預約列表</TabsTrigger>
-            <TabsTrigger value="holidays" className="w-full">公休設定</TabsTrigger>
-            <TabsTrigger value="services" className="w-full">服務管理</TabsTrigger>
-            <TabsTrigger value="landing" className="w-full">首頁 CMS</TabsTrigger>
-            <TabsTrigger value="stats" className="w-full">統計</TabsTrigger>
-            <TabsTrigger value="customers" className="w-full">客戶</TabsTrigger>
-            <TabsTrigger value="line" className="w-full">LINE</TabsTrigger>
-          </TabsList>
+          {/* 一列可滑動導覽；小螢幕讓圖示更明顯（文字在 >=sm 顯示） */}
+          <div className="relative">
+            <TabsList className="flex w-full items-center gap-1 overflow-x-auto whitespace-nowrap h-auto p-1">
+              <TabsTrigger value="today" className="inline-flex items-center gap-2 px-3 py-2">
+                <CalendarDays className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">今日總覽</span>
+              </TabsTrigger>
+              <TabsTrigger value="dashboard" className="inline-flex items-center gap-2 px-3 py-2">
+                <LayoutDashboard className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">儀表板</span>
+              </TabsTrigger>
+              <TabsTrigger value="bookings" className="inline-flex items-center gap-2 px-3 py-2">
+                <List className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">預約列表</span>
+              </TabsTrigger>
+              <TabsTrigger value="holidays" className="inline-flex items-center gap-2 px-3 py-2">
+                <CalendarIcon className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">公休設定</span>
+              </TabsTrigger>
+              <TabsTrigger value="services" className="inline-flex items-center gap-2 px-3 py-2">
+                <Settings className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">服務管理</span>
+              </TabsTrigger>
+              <TabsTrigger value="landing" className="inline-flex items-center gap-2 px-3 py-2">
+                <FileText className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">首頁 CMS</span>
+              </TabsTrigger>
+              <TabsTrigger value="stats" className="inline-flex items-center gap-2 px-3 py-2">
+                <BarChart3 className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">統計</span>
+              </TabsTrigger>
+              <TabsTrigger value="customers" className="inline-flex items-center gap-2 px-3 py-2">
+                <Users className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">客戶</span>
+              </TabsTrigger>
+              <TabsTrigger value="line" className="inline-flex items-center gap-2 px-3 py-2">
+                <MessageSquare className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">LINE</span>
+              </TabsTrigger>
+            </TabsList>
+            {/* 小螢幕右側漸層：提示可滑動 */}
+            <div className="pointer-events-none absolute right-0 top-0 h-10 w-10 bg-gradient-to-l from-background to-transparent" />
+          </div>
 
           {/* TODAY */}
           <TabsContent value="today" className="mt-4">
