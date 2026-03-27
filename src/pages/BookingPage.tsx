@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -104,6 +105,8 @@ export default function BookingPage() {
   const [showUnavailableDetails, setShowUnavailableDetails] = useState(false);
   const [genericPairSlotCount, setGenericPairSlotCount] = useState(0);
   const [predictedPairBackupName, setPredictedPairBackupName] = useState<string | null>(null);
+  const [symptomTags, setSymptomTags] = useState<string[]>([]);
+  const [notes, setNotes] = useState("");
 
   const validatePhone = (value: string): string => {
     const cleaned = value.replace(/[\s\-()]/g, "");
@@ -552,6 +555,8 @@ export default function BookingPage() {
         ? { preferred_backup_coach_id: preferredBackupCoachId }
         : {}),
       ...(email.trim() && { email: email.trim() }),
+      symptom_tags: symptomTags,
+      notes: notes.trim() || "",
     };
 
     try {
@@ -661,6 +666,8 @@ export default function BookingPage() {
               setPhone("");
               setEmail("");
               setPartySize("1");
+              setSymptomTags([]);
+              setNotes("");
             }}>
               再次預約
             </Button>
@@ -836,6 +843,58 @@ export default function BookingPage() {
                   ✨ 含免費 {bookingSettings.free_addon_duration} 分鐘泡腳肩頸（已計入總時長）
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Symptom Tags & Notes — shown after service selected */}
+          {selectedService && (
+            <div className="space-y-4 animate-fade-in">
+              {/* 痛點部位勾選 */}
+              <div className="space-y-3">
+                <Label className="text-sm font-semibold">請問您今天哪裡最不舒服？(可複選)</Label>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {["肩頸僵硬", "下背痠痛", "腿部腫脹", "睡眠品質差", "全身緊繃"].map((tag) => (
+                    <label
+                      key={tag}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg border p-3 cursor-pointer transition-all duration-200 select-none",
+                        "hover:border-amber-400/60 hover:bg-amber-500/5",
+                        symptomTags.includes(tag)
+                          ? "border-amber-500 bg-amber-500/10 shadow-[0_0_12px_rgba(245,158,11,0.15)]"
+                          : "border-border bg-card"
+                      )}
+                    >
+                      <Checkbox
+                        id={`symptom-${tag}`}
+                        checked={symptomTags.includes(tag)}
+                        onCheckedChange={(checked) => {
+                          setSymptomTags((prev) =>
+                            checked ? [...prev, tag] : prev.filter((t) => t !== tag)
+                          );
+                        }}
+                        className="data-[state=checked]:bg-amber-500 data-[state=checked]:border-amber-500"
+                      />
+                      <span className="text-sm">{tag}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* 師傅備註 */}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">給師傅的備註（選填）</Label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="有沒有什麼需要師傅特別注意的？（例如：最近剛落枕、怕痛需要輕柔一點...）"
+                  maxLength={500}
+                  rows={3}
+                  className="resize-none transition-all duration-200 focus:border-amber-500 focus:ring-amber-500/20 focus:shadow-[0_0_12px_rgba(245,158,11,0.1)]"
+                />
+                {notes.length > 0 && (
+                  <p className="text-xs text-muted-foreground text-right">{notes.length}/500</p>
+                )}
+              </div>
             </div>
           )}
 

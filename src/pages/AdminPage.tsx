@@ -68,6 +68,7 @@ interface Booking {
   source: string | null;
   oil_bonus: number;
   symptom_tags?: string[] | null;
+  notes?: string | null;
 }
 
 const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
@@ -146,6 +147,11 @@ export default function AdminPage() {
   const [rateInput, setRateInput] = useState("60");
   const [calendarNotesInput, setCalendarNotesInput] = useState("");
   const [shopInfoInput, setShopInfoInput] = useState(shopInfoHook.info);
+  const [emailTplCustomerGreeting, setEmailTplCustomerGreeting] = useState("");
+  const [emailTplCustomerClosing, setEmailTplCustomerClosing] = useState("");
+  const [emailTplCustomerFooter, setEmailTplCustomerFooter] = useState("");
+  const [emailTplStoreGreeting, setEmailTplStoreGreeting] = useState("");
+  const [emailTplStoreFooter, setEmailTplStoreFooter] = useState("");
   const [bufferInput, setBufferInput] = useState("10");
   const [freeAddonInput, setFreeAddonInput] = useState("10");
   const [preBlockInput, setPreBlockInput] = useState("60");
@@ -522,6 +528,11 @@ export default function AdminPage() {
         { key: "google_calendar_webhook", value: googleCalendarWebhookInput.trim() },
         { key: "line_channel_token", value: lineChannelTokenInput.trim() },
         { key: "line_channel_secret", value: lineChannelSecretInput.trim() },
+        { key: "email_tpl_customer_greeting", value: emailTplCustomerGreeting.trim() },
+        { key: "email_tpl_customer_closing", value: emailTplCustomerClosing.trim() },
+        { key: "email_tpl_customer_footer", value: emailTplCustomerFooter.trim() },
+        { key: "email_tpl_store_greeting", value: emailTplStoreGreeting.trim() },
+        { key: "email_tpl_store_footer", value: emailTplStoreFooter.trim() },
         { key: "frontend_subtitle", value: frontendValues.frontend_subtitle },
         { key: "business_hours", value: frontendValues.business_hours },
         ...Object.entries(shopInfoInput)
@@ -674,6 +685,8 @@ export default function AdminPage() {
               const { data: configRows } = await supabase.from("system_config").select("key, value").eq("store_id", storeId).in("key", [
                 "booking_page_url", "line_admin_user_id", "store_contact_email", "booking_policy",
                 "google_calendar_webhook", "line_channel_token", "line_channel_secret",
+                "email_tpl_customer_greeting", "email_tpl_customer_closing", "email_tpl_customer_footer",
+                "email_tpl_store_greeting", "email_tpl_store_footer"
               ]);
               const configMap: Record<string, string> = {};
               (configRows || []).forEach((r: { key: string; value: string }) => { configMap[r.key] = r.value || ""; });
@@ -684,6 +697,11 @@ export default function AdminPage() {
               setGoogleCalendarWebhookInput(configMap.google_calendar_webhook || "");
               setLineChannelTokenInput(configMap.line_channel_token || "");
               setLineChannelSecretInput(configMap.line_channel_secret || "");
+              setEmailTplCustomerGreeting(configMap.email_tpl_customer_greeting || "");
+              setEmailTplCustomerClosing(configMap.email_tpl_customer_closing || "");
+              setEmailTplCustomerFooter(configMap.email_tpl_customer_footer || "");
+              setEmailTplStoreGreeting(configMap.email_tpl_store_greeting || "");
+              setEmailTplStoreFooter(configMap.email_tpl_store_footer || "");
               setShowSettings(true);
             }}>
               <Settings className="w-4 h-4 mr-1" /> 設定
@@ -1029,6 +1047,21 @@ export default function AdminPage() {
                             </td>
                           </tr>
                         )}
+                        {/* 痠痛部位 & 備註 */}
+                        {((b.symptom_tags && b.symptom_tags.length > 0) || (b.notes && b.notes.trim())) && (
+                          <tr className="border-b border-border bg-amber-50/50">
+                            <td colSpan={showCommissionCols ? 14 : 12} className="px-2 py-1.5">
+                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                                {b.symptom_tags && b.symptom_tags.length > 0 && (
+                                  <span><span className="text-amber-700 font-semibold">⚠️ 不舒服：</span>{b.symptom_tags.join("、")}</span>
+                                )}
+                                {b.notes && b.notes.trim() && (
+                                  <span><span className="text-amber-700 font-semibold">📝 備註：</span>{b.notes}</span>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                         </React.Fragment>
                         );
                       })}
@@ -1335,6 +1368,8 @@ export default function AdminPage() {
               const { data: configRows } = await supabase.from("system_config").select("key, value").eq("store_id", storeId).in("key", [
                 "booking_page_url", "line_admin_user_id", "store_contact_email", "booking_policy",
                 "google_calendar_webhook", "line_channel_token", "line_channel_secret",
+                "email_tpl_customer_greeting", "email_tpl_customer_closing", "email_tpl_customer_footer",
+                "email_tpl_store_greeting", "email_tpl_store_footer"
               ]);
               const configMap: Record<string, string> = {};
               (configRows || []).forEach((r: { key: string; value: string }) => { configMap[r.key] = r.value || ""; });
@@ -1345,6 +1380,11 @@ export default function AdminPage() {
               setGoogleCalendarWebhookInput(configMap.google_calendar_webhook || "");
               setLineChannelTokenInput(configMap.line_channel_token || "");
               setLineChannelSecretInput(configMap.line_channel_secret || "");
+              setEmailTplCustomerGreeting(configMap.email_tpl_customer_greeting || "");
+              setEmailTplCustomerClosing(configMap.email_tpl_customer_closing || "");
+              setEmailTplCustomerFooter(configMap.email_tpl_customer_footer || "");
+              setEmailTplStoreGreeting(configMap.email_tpl_store_greeting || "");
+              setEmailTplStoreFooter(configMap.email_tpl_store_footer || "");
               setShowSettings(true);
             }} />
           </TabsContent>
@@ -1725,6 +1765,48 @@ export default function AdminPage() {
               <AccordionContent className="space-y-2">
                 <Textarea className="min-h-[100px] text-sm" value={calendarNotesInput} onChange={(e) => { setCalendarNotesInput(e.target.value); markSettingsDirty(); }} placeholder="輸入要顯示在 Google 日曆描述中的注意事項..." />
                 <p className="text-xs text-muted-foreground">此內容會顯示在客人加入 Google 日曆時的事件描述底部</p>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="email_templates">
+              <AccordionTrigger className="text-sm font-semibold">📧 Email 通知模板設定</AccordionTrigger>
+              <AccordionContent className="space-y-6">
+                <div className="bg-muted p-3 flex flex-wrap gap-2 rounded-md text-xs mb-4">
+                  <span className="font-semibold w-full text-foreground mb-1">可用變數 (輸入時自動替換)：</span>
+                  {["{{客人姓名}}", "{{電話}}", "{{日期}}", "{{時段}}", "{{服務}}", "{{師傅}}", "{{金額}}", "{{店名}}", "{{不舒服部位}}", "{{備註}}"].map(tag => (
+                    <span key={tag} className="bg-background border px-1.5 py-0.5 rounded cursor-copy" onClick={() => { navigator.clipboard.writeText(tag); toast.success(`已複製 ${tag}`); }}>{tag}</span>
+                  ))}
+                  <p className="w-full text-muted-foreground mt-1">留白即使用系統預設文案。文案區支援多行。</p>
+                </div>
+
+                <div className="space-y-4 border-l-2 border-primary/20 pl-3">
+                  <h4 className="font-semibold text-sm">客人的預約確認信</h4>
+                  <div className="space-y-2">
+                    <Label className="text-xs">開場白</Label>
+                    <Textarea className="min-h-[60px] text-sm" value={emailTplCustomerGreeting} onChange={(e) => { setEmailTplCustomerGreeting(e.target.value); markSettingsDirty(); }} placeholder="預設：&#10;您好 {{客人姓名}}，&#10;感謝您的預約，以下是您的預約資訊：" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">結尾語</Label>
+                    <Textarea className="min-h-[60px] text-sm" value={emailTplCustomerClosing} onChange={(e) => { setEmailTplCustomerClosing(e.target.value); markSettingsDirty(); }} placeholder="預設：如有變更需求，請盡早聯繫店家。" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">信件頁尾小字</Label>
+                    <Input className="text-sm" value={emailTplCustomerFooter} onChange={(e) => { setEmailTplCustomerFooter(e.target.value); markSettingsDirty(); }} placeholder="預設：此信由 {{店名}} 預約系統自動寄出，請勿直接回覆。" />
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4 border-l-2 border-primary/20 pl-3">
+                  <h4 className="font-semibold text-sm">店家的新預約通知信</h4>
+                  <div className="space-y-2">
+                    <Label className="text-xs">開場白</Label>
+                    <Textarea className="min-h-[60px] text-sm" value={emailTplStoreGreeting} onChange={(e) => { setEmailTplStoreGreeting(e.target.value); markSettingsDirty(); }} placeholder="預設：客人 {{客人姓名}} 已完成線上預約，請確認：" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">信件頁尾小字</Label>
+                    <Input className="text-sm" value={emailTplStoreFooter} onChange={(e) => { setEmailTplStoreFooter(e.target.value); markSettingsDirty(); }} placeholder="預設：{{店名}} 預約系統 · 店家通知" />
+                  </div>
+                </div>
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="password">

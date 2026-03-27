@@ -28,6 +28,8 @@ interface Booking {
   cancel_reason: string | null;
   status: string | null;
   oil_bonus: number;
+  symptom_tags?: string[] | null;
+  notes?: string | null;
 }
 
 interface Holiday {
@@ -484,6 +486,17 @@ export default function TodayDashboard({
                   {!isCancelled && commission && base !== null && (
                     <div className="mt-1 ml-[68px] text-xs text-muted-foreground">
                       售價 NT${b.total_price.toLocaleString()} → <span className="text-destructive">差價 -NT${commission.getDeduction(b.service).toLocaleString()}</span> → 基底 NT${base.toLocaleString()} → <span className="text-blue-600 font-medium">師傅 NT${therapist!.toLocaleString()}</span>{(b.oil_bonus || 0) > 0 && <span className="text-emerald-600"> (含精油+{b.oil_bonus})</span>}
+                    </div>
+                  )}
+                  {/* 痠痛部位 & 備註 */}
+                  {!isCancelled && ((b.symptom_tags && b.symptom_tags.length > 0) || (b.notes && b.notes.trim())) && (
+                    <div className="mt-1.5 ml-[68px] text-xs bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5 flex flex-wrap gap-x-4 gap-y-1">
+                      {b.symptom_tags && b.symptom_tags.length > 0 && (
+                        <span><span className="text-amber-700 font-semibold">⚠️ 不舒服：</span>{b.symptom_tags.join("、")}</span>
+                      )}
+                      {b.notes && b.notes.trim() && (
+                        <span><span className="text-amber-700 font-semibold">📝 備註：</span>{b.notes}</span>
+                      )}
                     </div>
                   )}
                 </div>

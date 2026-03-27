@@ -16,6 +16,16 @@ interface Booking {
   needs_pair?: boolean;
   primary_coach_name?: string | null;
   secondary_coach_name?: string | null;
+  symptom_tags?: string[];
+  notes?: string;
+}
+
+interface EmailTemplates {
+  customer_greeting?: string;
+  customer_closing?: string;
+  customer_footer?: string;
+  store_greeting?: string;
+  store_footer?: string;
 }
 
 function formatHourToTime(hour: number): string {
@@ -23,6 +33,26 @@ function formatHourToTime(hour: number): string {
   const h = Math.floor(displayHour);
   const m = (displayHour % 1) * 60;
   return `${h.toString().padStart(2, "0")}:${m === 0 ? "00" : "30"}`;
+}
+
+function replaceTemplateVars(template: string, booking: Booking, storeName: string): string {
+  const startTime = booking.start_time_str ?? (booking.start_hour != null ? formatHourToTime(booking.start_hour) : "");
+  const coachText = booking.needs_pair
+    ? `${booking.primary_coach_name || "主師傅"} + ${booking.secondary_coach_name || "搭班師傅"}`
+    : (booking.primary_coach_name || "主師傅");
+  const symptomStr = (booking.symptom_tags?.length ?? 0) > 0 ? booking.symptom_tags!.join("、") : "";
+  const notesStr = booking.notes?.trim() || "";
+  return template
+    .replace(/\{\{客人姓名\}\}/g, booking.name || "")
+    .replace(/\{\{電話\}\}/g, booking.phone || "")
+    .replace(/\{\{日期\}\}/g, booking.date || "")
+    .replace(/\{\{時段\}\}/g, startTime)
+    .replace(/\{\{服務\}\}/g, booking.service || "")
+    .replace(/\{\{師傅\}\}/g, coachText)
+    .replace(/\{\{金額\}\}/g, `NT$ ${(booking.total_price || 0).toLocaleString()}`)
+    .replace(/\{\{店名\}\}/g, storeName)
+    .replace(/\{\{不舒服部位\}\}/g, symptomStr)
+    .replace(/\{\{備註\}\}/g, notesStr);
 }
 
 const emailStyles = `
@@ -37,20 +67,32 @@ const emailStyles = `
   .badge { background: #166534; color: white; padding: 4px 12px; border-radius: 999px; font-size: 12px; display: inline-block; margin-bottom: 12px; }
 `;
 
-function buildCustomerEmailHtml(booking: Booking, storeName: string): string {
+function buildCustomerEmailHtml(booking: Booking, storeName: string, tpl?: EmailTemplates): string {
   const startTime = booking.start_time_str ?? (booking.start_hour != null ? formatHourToTime(booking.start_hour) : "—");
   const addonsStr = (booking.addons?.length ?? 0) > 0 ? booking.addons!.join("、") : "無";
   const coachText = booking.needs_pair
     ? `${booking.primary_coach_name || "主師傅"} + ${booking.secondary_coach_name || "搭班師傅"}`
     : (booking.primary_coach_name || "主師傅");
+  const symptomStr = (booking.symptom_tags?.length ?? 0) > 0 ? booking.symptom_tags!.join("、") : "";
+  const notesStr = booking.notes?.trim() || "";
+
+  const greeting = tpl?.customer_greeting
+    ? replaceTemplateVars(tpl.customer_greeting, booking, storeName)
+    : `您好 ${booking.name}，<br>感謝您的預約，以下是您的預約資訊：`;
+  const closing = tpl?.customer_closing
+    ? replaceTemplateVars(tpl.customer_closing, booking, storeName)
+    : `如有變更需求，請盡早聯繫店家。`;
+  const footer = tpl?.customer_footer
+    ? replaceTemplateVars(tpl.customer_footer, booking, storeName)
+    : `此信由 ${storeName} 預約系統自動寄出，請勿直接回覆。`;
+
   return `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><style>${emailStyles}</style></head>
 <body>
   <h1>✨ 預約確認</h1>
-  <p>您好 ${booking.name}，</p>
-  <p>感謝您的預約，以下是您的預約資訊：</p>
+  <p>${greeting}</p>
   <div class="card">
     <div class="row"><span class="label">店家</span><span class="value">${storeName}</span></div>
     <div class="row"><span class="label">日期</span><span class="value">${booking.date}</span></div>
@@ -61,9 +103,11 @@ function buildCustomerEmailHtml(booking: Booking, storeName: string): string {
     <div class="row"><span class="label">加購</span><span class="value">${addonsStr}</span></div>
     <div class="row"><span class="label">時長</span><span class="value">${booking.duration} 分鐘</span></div>
     <div class="row"><span class="label">金額</span><span class="value">NT$ ${booking.total_price.toLocaleString()}</span></div>
+    ${symptomStr ? `<div class="row"><span class="label">不舒服部位</span><span class="value">${symptomStr}</span></div>` : ""}
+    ${notesStr ? `<div class="row"><span class="label">給師傅的備註</span><span class="value">${notesStr}</span></div>` : ""}
   </div>
-  <p>如有變更需求，請盡早聯繫店家。</p>
-  <div class="footer">此信由 ${storeName} 預約系統自動寄出，請勿直接回覆。</div>
+  <p>${closing}</p>
+  <div class="footer">${footer}</div>
 </body>
 </html>
 `;
@@ -123,12 +167,22 @@ function buildStoreCancelNotificationHtml(booking: CancelBooking, storeName: str
 `;
 }
 
-function buildStoreNotificationHtml(booking: Booking, storeName: string): string {
+function buildStoreNotificationHtml(booking: Booking, storeName: string, tpl?: EmailTemplates): string {
   const startTime = booking.start_time_str ?? (booking.start_hour != null ? formatHourToTime(booking.start_hour) : "—");
   const addonsStr = (booking.addons?.length ?? 0) > 0 ? booking.addons!.join("、") : "無";
   const coachText = booking.needs_pair
     ? `${booking.primary_coach_name || "主師傅"} + ${booking.secondary_coach_name || "搭班師傅"}`
     : (booking.primary_coach_name || "主師傅");
+  const symptomStr = (booking.symptom_tags?.length ?? 0) > 0 ? booking.symptom_tags!.join("、") : "";
+  const notesStr = booking.notes?.trim() || "";
+
+  const greeting = tpl?.store_greeting
+    ? replaceTemplateVars(tpl.store_greeting, booking, storeName)
+    : `客人 ${booking.name} 已完成線上預約，請確認：`;
+  const footer = tpl?.store_footer
+    ? replaceTemplateVars(tpl.store_footer, booking, storeName)
+    : `${storeName} 預約系統 · 店家通知`;
+
   return `
 <!DOCTYPE html>
 <html>
@@ -136,7 +190,7 @@ function buildStoreNotificationHtml(booking: Booking, storeName: string): string
 <body>
   <span class="badge">新預約通知</span>
   <h1>📋 有新預約</h1>
-  <p>客人 ${booking.name} 已完成線上預約，請確認：</p>
+  <p>${greeting}</p>
   <div class="card">
     <div class="row"><span class="label">預約人</span><span class="value">${booking.name}</span></div>
     <div class="row"><span class="label">電話</span><span class="value">${booking.phone}</span></div>
@@ -148,8 +202,10 @@ function buildStoreNotificationHtml(booking: Booking, storeName: string): string
     <div class="row"><span class="label">加購</span><span class="value">${addonsStr}</span></div>
     <div class="row"><span class="label">時長</span><span class="value">${booking.duration} 分鐘</span></div>
     <div class="row"><span class="label">金額</span><span class="value">NT$ ${booking.total_price.toLocaleString()}</span></div>
+    ${symptomStr ? `<div class="row" style="background:#fef3c7;"><span class="label">⚠️ 不舒服部位</span><span class="value" style="color:#92400e;font-weight:700;">${symptomStr}</span></div>` : ""}
+    ${notesStr ? `<div class="row" style="background:#fef3c7;"><span class="label">📝 客人備註</span><span class="value" style="color:#92400e;font-weight:700;">${notesStr}</span></div>` : ""}
   </div>
-  <div class="footer">${storeName} 預約系統 · 店家通知</div>
+  <div class="footer">${footer}</div>
 </body>
 </html>
 `;
@@ -195,9 +251,11 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { to, booking, storeName = "不老松足湯", type = "confirmed" } = body;
+    const { to, booking, storeName = "不老松足湯", type = "confirmed", storeOnly = false, emailTemplates = {} } = body;
+    const tpl: EmailTemplates = emailTemplates || {};
 
-    if (!to || typeof to !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    const hasCustomerEmail = to && typeof to === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to);
+    if (!storeOnly && !hasCustomerEmail) {
       return new Response(
         JSON.stringify({ error: "Invalid or missing email address" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -227,36 +285,31 @@ Deno.serve(async (req) => {
       : `【${storeName}】預約確認 - ${booking.date} ${startTimeStr}`;
     const customerHtml = isCancelled
       ? buildCancelEmailHtml(booking, storeName)
-      : buildCustomerEmailHtml(booking, storeName);
+      : buildCustomerEmailHtml(booking, storeName, tpl);
 
-    // 1. 寄信給客人（確認信 or 取消信）
-    const customerRes = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: resendHeaders,
-      body: JSON.stringify({
-        from: `${fromName} <${fromEmail}>`,
-        to: [to],
-        subject: customerSubject,
-        html: customerHtml,
-      }),
-    });
+    const ids: string[] = [];
 
-    if (!customerRes.ok) {
-      const errText = await customerRes.text();
-      console.error("Resend API error (customer):", customerRes.status, errText);
-      return new Response(
-        JSON.stringify({
-          error: isCancelled ? "Failed to send cancellation email" : "Failed to send confirmation email",
-          resend_status: customerRes.status,
-          resend_error: errText,
-          from_used: `${fromName} <${fromEmail}>`,
+    // 1. 寄信給客人（確認信 or 取消信）— 只有客人有 email 時才寄
+    if (hasCustomerEmail) {
+      const customerRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: resendHeaders,
+        body: JSON.stringify({
+          from: `${fromName} <${fromEmail}>`,
+          to: [to],
+          subject: customerSubject,
+          html: customerHtml,
         }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+      });
 
-    const customerResult = await customerRes.json();
-    const ids: string[] = [customerResult.id];
+      if (customerRes.ok) {
+        const customerResult = await customerRes.json();
+        ids.push(customerResult.id);
+      } else {
+        const errText = await customerRes.text();
+        console.error("Resend API error (customer):", customerRes.status, errText);
+      }
+    }
 
     // 2. 同時寄一份通知給店家（若有設定 RESEND_STORE_EMAIL）
     if (storeEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(storeEmail)) {
@@ -266,7 +319,7 @@ Deno.serve(async (req) => {
           : `【${storeName}】新預約通知 - ${booking.name} · ${booking.date} ${startTimeStr}`;
         const storeHtml = isCancelled
           ? buildStoreCancelNotificationHtml(booking, storeName)
-          : buildStoreNotificationHtml(booking, storeName);
+          : buildStoreNotificationHtml(booking, storeName, tpl);
 
         const storeRes = await fetch("https://api.resend.com/emails", {
           method: "POST",

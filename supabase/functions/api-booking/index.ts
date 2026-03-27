@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
     // POST: Create a booking
     if (req.method === "POST") {
       const body = await req.json();
-      const { date, start_hour, name, phone, service, addons, duration, total_price, email, store_id, needs_pair, preferred_backup_coach_id } = body;
+      const { date, start_hour, name, phone, service, addons, duration, total_price, email, store_id, needs_pair, preferred_backup_coach_id, symptom_tags, notes } = body;
 
       if (!date || start_hour == null || !name || !phone || !service || !duration || !total_price) {
         return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400, headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" } });
@@ -289,6 +289,8 @@ Deno.serve(async (req) => {
         coach_id: assignedCoachId,
         secondary_coach_id: secondaryCoachId,
         needs_pair: isPairBooking,
+        symptom_tags: Array.isArray(symptom_tags) ? symptom_tags : [],
+        notes: typeof notes === "string" ? notes.trim() : "",
       };
 
       // customers 列由 DB 觸發器 update_customer_on_booking_change 依 booking.store_id 同步；
@@ -319,12 +321,11 @@ Deno.serve(async (req) => {
         console.error("Google Calendar sync error:", syncErr);
       }
 
-      // Send confirmation email if email provided (fire-and-forget)
+      // Resolve customer email (for customer confirmation)
       let sendToEmail = email && typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
         ? email.trim()
         : null;
       if (!sendToEmail) {
-        // TODO: 多租戶下應依 store_id 篩選 customers，避免同電話跨店誤用 email
         const { data: customer } = await supabase
           .from("customers")
           .select("email")
@@ -333,29 +334,53 @@ Deno.serve(async (req) => {
           .maybeSingle();
         if (customer?.email) sendToEmail = customer.email;
       }
-      if (sendToEmail) {
-        try {
-          const { data: storeRow } = await supabase
+
+      // Always send email notification (store notification doesn't need customer email)
+      try {
+        const [{ data: storeRow }, { data: tplRows }] = await Promise.all([
+          supabase
             .from("system_config")
             .select("value")
             .eq("key", "store_name")
             .eq("store_id", resolvedStoreId)
-            .maybeSingle();
-          const storeName = storeRow?.value || "不老松足湯";
-          const emailResp = await fetch(
-            `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-booking-email`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
-              body: JSON.stringify({ to: sendToEmail, booking: bookingForNotifications, storeName }),
-            }
-          );
-          if (!emailResp.ok) {
-            console.error("Booking email failed:", await emailResp.text());
+            .maybeSingle(),
+          supabase
+            .from("system_config")
+            .select("key, value")
+            .eq("store_id", resolvedStoreId)
+            .like("key", "email_tpl_%"),
+        ]);
+        const storeName = storeRow?.value || "不老松足湯";
+        // Build email templates object from DB
+        const emailTemplates: Record<string, string> = {};
+        if (tplRows) {
+          for (const row of tplRows as Array<{ key: string; value: string }>) {
+            const shortKey = row.key.replace(/^email_tpl_/, "");
+            if (row.value?.trim()) emailTemplates[shortKey] = row.value.trim();
           }
-        } catch (emailErr) {
-          console.error("Booking email error:", emailErr);
         }
+        // If customer has email → send both customer + store notification
+        // If no customer email → send-booking-email will still send store notification via RESEND_STORE_EMAIL
+        const emailPayload: Record<string, unknown> = { booking: bookingForNotifications, storeName, emailTemplates };
+        if (sendToEmail) {
+          emailPayload.to = sendToEmail;
+        } else {
+          // Use a placeholder so send-booking-email still triggers store notification
+          emailPayload.storeOnly = true;
+        }
+        const emailResp = await fetch(
+          `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-booking-email`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+            body: JSON.stringify(emailPayload),
+          }
+        );
+        if (!emailResp.ok) {
+          console.error("Booking email failed:", await emailResp.text());
+        }
+      } catch (emailErr) {
+        console.error("Booking email error:", emailErr);
       }
 
       // Send LINE notification (fire-and-forget)

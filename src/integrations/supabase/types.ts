@@ -90,6 +90,7 @@ export type Database = {
           store_id: string
           secondary_coach_id: string | null
           symptom_tags: string[]
+          notes: string | null
           total_price: number
         }
         Insert: {
@@ -117,6 +118,7 @@ export type Database = {
           store_id: string
           secondary_coach_id?: string | null
           symptom_tags?: string[]
+          notes?: string | null
           total_price: number
         }
         Update: {
@@ -144,6 +146,7 @@ export type Database = {
           store_id?: string
           secondary_coach_id?: string | null
           symptom_tags?: string[]
+          notes?: string | null
           total_price?: number
         }
         Relationships: [
