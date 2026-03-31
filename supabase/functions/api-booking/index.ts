@@ -486,18 +486,30 @@ Deno.serve(async (req) => {
         if (bid) delCustQuery = delCustQuery.eq("store_id", bid);
         const { data: customer } = await delCustQuery.maybeSingle();
         if (customer?.email) sendToEmail = customer.email;
-        if (sendToEmail) {
+        if (true) {
           try {
             let delNameQuery = supabase.from("system_config").select("value").eq("key", "store_name");
             if (bid) delNameQuery = delNameQuery.eq("store_id", bid);
             const { data: storeRow } = await delNameQuery.maybeSingle();
             const storeName = storeRow?.value || "不老松足湯";
+            
+            const emailPayload: Record<string, unknown> = {
+              booking: bookingWithReason,
+              storeName,
+              type: "cancelled"
+            };
+            if (sendToEmail) {
+              emailPayload.to = sendToEmail;
+            } else {
+              emailPayload.storeOnly = true;
+            }
+            
             await fetch(
               `${Deno.env.get("SUPABASE_URL")}/functions/v1/send-booking-email`,
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
-                body: JSON.stringify({ to: sendToEmail, booking: bookingWithReason, storeName, type: "cancelled" }),
+                body: JSON.stringify(emailPayload),
               }
             );
           } catch (emailErr) {

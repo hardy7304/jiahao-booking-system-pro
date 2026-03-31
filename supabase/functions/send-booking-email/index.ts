@@ -24,6 +24,7 @@ interface EmailTemplates {
   customer_greeting?: string;
   customer_closing?: string;
   customer_footer?: string;
+  customer_notes?: string;
   store_greeting?: string;
   store_footer?: string;
 }
@@ -85,6 +86,20 @@ function buildCustomerEmailHtml(booking: Booking, storeName: string, tpl?: Email
   const footer = tpl?.customer_footer
     ? replaceTemplateVars(tpl.customer_footer, booking, storeName)
     : `此信由 ${storeName} 預約系統自動寄出，請勿直接回覆。`;
+  
+  let notesSection = "";
+  if (tpl?.customer_notes && tpl.customer_notes.trim()) {
+    const rawNotes = replaceTemplateVars(tpl.customer_notes, booking, storeName);
+    const parsedNotes = rawNotes.split('\n').map(l => `<p style="margin:4px 0;">${l}</p>`).join('');
+    notesSection = `
+      <div style="background: #fffbe6; border-left: 4px solid #f59e0b; padding: 16px; margin: 20px 0; border-radius: 4px;">
+        <h3 style="margin-top:0; margin-bottom: 8px; color:#b45309; font-size:14px;">⚠️ 預約注意事項</h3>
+        <div style="font-size:13px; color:#92400e;">
+          ${parsedNotes}
+        </div>
+      </div>
+    `;
+  }
 
   return `
 <!DOCTYPE html>
@@ -106,6 +121,7 @@ function buildCustomerEmailHtml(booking: Booking, storeName: string, tpl?: Email
     ${symptomStr ? `<div class="row"><span class="label">不舒服部位</span><span class="value">${symptomStr}</span></div>` : ""}
     ${notesStr ? `<div class="row"><span class="label">給師傅的備註</span><span class="value">${notesStr}</span></div>` : ""}
   </div>
+  ${notesSection}
   <p>${closing}</p>
   <div class="footer">${footer}</div>
 </body>

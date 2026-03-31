@@ -150,6 +150,7 @@ export default function AdminPage() {
   const [emailTplCustomerGreeting, setEmailTplCustomerGreeting] = useState("");
   const [emailTplCustomerClosing, setEmailTplCustomerClosing] = useState("");
   const [emailTplCustomerFooter, setEmailTplCustomerFooter] = useState("");
+  const [emailTplCustomerNotes, setEmailTplCustomerNotes] = useState("");
   const [emailTplStoreGreeting, setEmailTplStoreGreeting] = useState("");
   const [emailTplStoreFooter, setEmailTplStoreFooter] = useState("");
   const [bufferInput, setBufferInput] = useState("10");
@@ -531,6 +532,7 @@ export default function AdminPage() {
         { key: "email_tpl_customer_greeting", value: emailTplCustomerGreeting.trim() },
         { key: "email_tpl_customer_closing", value: emailTplCustomerClosing.trim() },
         { key: "email_tpl_customer_footer", value: emailTplCustomerFooter.trim() },
+        { key: "email_tpl_customer_notes", value: emailTplCustomerNotes.trim() },
         { key: "email_tpl_store_greeting", value: emailTplStoreGreeting.trim() },
         { key: "email_tpl_store_footer", value: emailTplStoreFooter.trim() },
         { key: "frontend_subtitle", value: frontendValues.frontend_subtitle },
@@ -686,7 +688,7 @@ export default function AdminPage() {
                 "booking_page_url", "line_admin_user_id", "store_contact_email", "booking_policy",
                 "google_calendar_webhook", "line_channel_token", "line_channel_secret",
                 "email_tpl_customer_greeting", "email_tpl_customer_closing", "email_tpl_customer_footer",
-                "email_tpl_store_greeting", "email_tpl_store_footer"
+                "email_tpl_customer_notes", "email_tpl_store_greeting", "email_tpl_store_footer"
               ]);
               const configMap: Record<string, string> = {};
               (configRows || []).forEach((r: { key: string; value: string }) => { configMap[r.key] = r.value || ""; });
@@ -700,6 +702,7 @@ export default function AdminPage() {
               setEmailTplCustomerGreeting(configMap.email_tpl_customer_greeting || "");
               setEmailTplCustomerClosing(configMap.email_tpl_customer_closing || "");
               setEmailTplCustomerFooter(configMap.email_tpl_customer_footer || "");
+              setEmailTplCustomerNotes(configMap.email_tpl_customer_notes || "");
               setEmailTplStoreGreeting(configMap.email_tpl_store_greeting || "");
               setEmailTplStoreFooter(configMap.email_tpl_store_footer || "");
               setShowSettings(true);
@@ -1369,7 +1372,7 @@ export default function AdminPage() {
                 "booking_page_url", "line_admin_user_id", "store_contact_email", "booking_policy",
                 "google_calendar_webhook", "line_channel_token", "line_channel_secret",
                 "email_tpl_customer_greeting", "email_tpl_customer_closing", "email_tpl_customer_footer",
-                "email_tpl_store_greeting", "email_tpl_store_footer"
+                "email_tpl_customer_notes", "email_tpl_store_greeting", "email_tpl_store_footer"
               ]);
               const configMap: Record<string, string> = {};
               (configRows || []).forEach((r: { key: string; value: string }) => { configMap[r.key] = r.value || ""; });
@@ -1383,6 +1386,7 @@ export default function AdminPage() {
               setEmailTplCustomerGreeting(configMap.email_tpl_customer_greeting || "");
               setEmailTplCustomerClosing(configMap.email_tpl_customer_closing || "");
               setEmailTplCustomerFooter(configMap.email_tpl_customer_footer || "");
+              setEmailTplCustomerNotes(configMap.email_tpl_customer_notes || "");
               setEmailTplStoreGreeting(configMap.email_tpl_store_greeting || "");
               setEmailTplStoreFooter(configMap.email_tpl_store_footer || "");
               setShowSettings(true);
@@ -1441,7 +1445,7 @@ export default function AdminPage() {
 
       {/* Manual booking dialog */}
       <Dialog open={showManualBooking} onOpenChange={setShowManualBooking}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>手動新增預約</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -1626,14 +1630,14 @@ export default function AdminPage() {
                   <p className="text-xs text-muted-foreground">用於客人回覆信件、預約確認通知</p>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">預約注意事項</Label>
+                  <Label className="text-sm font-medium">預約注意事項 (顯示於網站預約頁)</Label>
                   <Textarea
                     className="min-h-[80px] text-sm"
                     value={bookingPolicyInput}
                     onChange={(e) => { setBookingPolicyInput(e.target.value); markSettingsDirty(); }}
                     placeholder="例：退改規則、遲到提醒、攜帶物品等..."
                   />
-                  <p className="text-xs text-muted-foreground">店家自訂退改規則與提醒，可顯示於預約頁</p>
+                  <p className="text-xs text-muted-foreground">店家自訂退改規則與提醒，將顯示在客人準備送出預約的畫面中</p>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -1785,6 +1789,10 @@ export default function AdminPage() {
                     <Textarea className="min-h-[60px] text-sm" value={emailTplCustomerGreeting} onChange={(e) => { setEmailTplCustomerGreeting(e.target.value); markSettingsDirty(); }} placeholder="預設：&#10;您好 {{客人姓名}}，&#10;感謝您的預約，以下是您的預約資訊：" />
                   </div>
                   <div className="space-y-2">
+                    <Label className="text-xs">預約須知 (顯示於 Email 內)</Label>
+                    <Textarea className="min-h-[60px] text-sm" value={emailTplCustomerNotes} onChange={(e) => { setEmailTplCustomerNotes(e.target.value); markSettingsDirty(); }} placeholder="預設：無。&#10;您可以在此輸入專屬 Email 的預約注意事項或退改規則。" />
+                  </div>
+                  <div className="space-y-2">
                     <Label className="text-xs">結尾語</Label>
                     <Textarea className="min-h-[60px] text-sm" value={emailTplCustomerClosing} onChange={(e) => { setEmailTplCustomerClosing(e.target.value); markSettingsDirty(); }} placeholder="預設：如有變更需求，請盡早聯繫店家。" />
                   </div>
@@ -1858,7 +1866,7 @@ export default function AdminPage() {
 
       {/* Edit booking dialog */}
       <Dialog open={!!editingBooking} onOpenChange={(open) => !open && setEditingBooking(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>編輯預約</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">

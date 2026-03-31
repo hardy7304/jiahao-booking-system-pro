@@ -31,6 +31,36 @@ CREATE TABLE IF NOT EXISTS public.store_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- 遠端若已有舊版 store_settings，IF NOT EXISTS 不會補欄位；以下確保與本 migration 一致
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS hero_title TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS hero_subtitle TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS hero_hours_badge_short TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS hero_late_night_note TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS hero_starting_price_label TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS business_hours_display TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS roushou_intro TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS stats JSONB NOT NULL DEFAULT '{"relief_count":1280,"review_percent":99,"techniques_count":72}'::jsonb;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS services JSONB NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS anping_section_title TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS anping_section_body TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS roushou_section_title TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS roushou_section_body TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS therapist_section_title TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS therapist_section_body TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS therapist_tags_line TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS therapist_highlights JSONB NOT NULL DEFAULT '["師傅親自操作","下午兩點至凌晨兩點","線上即時預約","台南安平在地"]'::jsonb;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS boxing_section_title TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS boxing_section_body TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS boxing_cta_label TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS boxing_cta_url TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS footer_cta_title TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS footer_cta_body TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS brand_stats_title TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS brand_stats_subtitle TEXT;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS is_roushou_visible BOOLEAN NOT NULL DEFAULT true;
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE public.store_settings ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+
 CREATE INDEX IF NOT EXISTS idx_store_settings_store_id ON public.store_settings(store_id);
 
 ALTER TABLE public.store_settings ENABLE ROW LEVEL SECURITY;

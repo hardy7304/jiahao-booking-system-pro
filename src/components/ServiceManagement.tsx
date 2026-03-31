@@ -577,7 +577,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
       </div>
 
       <Dialog open={showCoachDialog} onOpenChange={setShowCoachDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>新增搭配師傅</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
@@ -646,7 +646,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
       </Dialog>
 
       <Dialog open={!!editingCoach} onOpenChange={(open) => !open && setEditingCoach(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>編輯搭班師傅</DialogTitle></DialogHeader>
           {editingCoach ? (
             <div className="space-y-3">
@@ -908,7 +908,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
 
       {/* === Edit Service Dialog === */}
       <Dialog open={!!editingService} onOpenChange={(open) => !open && setEditingService(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>編輯服務</DialogTitle></DialogHeader>
           {editingService && (
             <div className="space-y-3">
@@ -975,7 +975,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
 
       {/* === New Service Dialog === */}
       <Dialog open={showServiceDialog} onOpenChange={setShowServiceDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>新增服務</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">
@@ -1040,7 +1040,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
 
       {/* === Edit Addon Dialog === */}
       <Dialog open={!!editingAddon} onOpenChange={(open) => !open && setEditingAddon(null)}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>編輯加購項目</DialogTitle></DialogHeader>
           {editingAddon && (
             <div className="space-y-3">
@@ -1126,7 +1126,7 @@ export default function ServiceManagement({ onOpenSettings }: { onOpenSettings?:
 
       {/* === New Addon Dialog === */}
       <Dialog open={showAddonDialog} onOpenChange={setShowAddonDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>新增加購項目</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="space-y-1">

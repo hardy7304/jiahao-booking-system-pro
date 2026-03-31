@@ -100,8 +100,8 @@ Deno.serve(async (req) => {
 
     const storeId = bodyStoreId ?? (booking?.store_id as string | undefined);
 
-    // 0. 老闆新預約通知（僅 booking_confirmed）
-    if (type === "booking_confirmed" && storeId) {
+    // 0. 老闆預約通知（booking_confirmed 或 booking_cancelled）
+    if ((type === "booking_confirmed" || type === "booking_cancelled") && storeId) {
       const { data: configRows } = await supabase
         .from("system_config")
         .select("key, value")
@@ -115,7 +115,15 @@ Deno.serve(async (req) => {
       if (lineChannelToken && lineAdminUserId) {
         const customer = String(booking?.name || "顧客");
         const time = String(booking?.start_time_str || "");
-        const adminMsg = `🎉 ${storeName} 新預約：${customer} ${time}`;
+        
+        let adminMsg = "";
+        if (type === "booking_cancelled") {
+          const reason = booking?.cancel_reason ? ` (原因：${booking.cancel_reason})` : "";
+          adminMsg = `❌ ${storeName} 取消通知：${customer} ${time}${reason}`;
+        } else {
+          adminMsg = `🎉 ${storeName} 新預約：${customer} ${time}`;
+        }
+        
         try {
           await fetch("https://api.line.me/v2/bot/message/push", {
             method: "POST",
