@@ -5,6 +5,7 @@
 - **`feature/saas-landing-dashboard` 詳細變更紀錄**（可複製到 Notion）：[`docs/RELEASE_NOTES_FEATURE_SAAS_LANDING_DASHBOARD.md`](./docs/RELEASE_NOTES_FEATURE_SAAS_LANDING_DASHBOARD.md)
 - **全站功能總覽（給 LLM／審查用）**：[`docs/WEBSITE_FEATURES_FOR_LLM_REVIEW.md`](./docs/WEBSITE_FEATURES_FOR_LLM_REVIEW.md)（討論稿歷程備份：[`docs/WEBSITE_FEATURES_DISCUSSION_DRAFT.md`](./docs/WEBSITE_FEATURES_DISCUSSION_DRAFT.md)）
 - 多租戶遷移計畫：[`docs/MULTI_TENANT_MIGRATION_PLAN.md`](./docs/MULTI_TENANT_MIGRATION_PLAN.md)
+- **後台設定／LINE 與進階串接**（是否已有舊資料、可否暫時不填）：[`docs/ADMIN_SETTINGS.md`](./docs/ADMIN_SETTINGS.md)
 
 ## Project info
 

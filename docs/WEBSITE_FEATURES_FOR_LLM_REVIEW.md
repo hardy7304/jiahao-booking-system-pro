@@ -142,6 +142,8 @@
 - **Email 模板**（客人／店家多段：開頭、結尾、頁尾等，支援 placeholder 如 `{{客人姓名}}`、`{{店名}}`）。
 - **管理員密碼**修改（可選）。
 
+上述 LINE／Webhook 等之 **`system_config` key**、**是否已有舊資料**、**暫時不填之影響**：見 [`ADMIN_SETTINGS.md`](./ADMIN_SETTINGS.md)。
+
 ### 預約操作
 
 - 篩選：日期區間、狀態、服務、姓名、排序。
