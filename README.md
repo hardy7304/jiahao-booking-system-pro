@@ -1,5 +1,10 @@
 # Welcome to your Lovable project
 
+## 文件與發行說明
+
+- **`feature/saas-landing-dashboard` 詳細變更紀錄**（可複製到 Notion）：[`docs/RELEASE_NOTES_FEATURE_SAAS_LANDING_DASHBOARD.md`](./docs/RELEASE_NOTES_FEATURE_SAAS_LANDING_DASHBOARD.md)
+- 多租戶遷移計畫：[`docs/MULTI_TENANT_MIGRATION_PLAN.md`](./docs/MULTI_TENANT_MIGRATION_PLAN.md)
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
