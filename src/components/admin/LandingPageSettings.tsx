@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useStore } from "@/contexts/StoreContext";
 import { useStoreSettings, type LandingContent, type LandingServiceItem } from "@/hooks/useStoreSettings";
+import { adminApi } from "@/lib/adminApi";
 import type { ClosingGalleryMode } from "@/lib/landingContent";
 import { AdminLandingImageField } from "@/components/admin/AdminLandingImageField";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,14 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 function emptyService(): LandingServiceItem {
   return {
@@ -91,9 +100,10 @@ function StatNumberField({
 
 export default function LandingPageSettings() {
   const { storeId } = useStore();
-  const { content, loading, saveSettings, refetch } = useStoreSettings();
+  const { content, loading, saveSettings, refetch, hasStoreSettingsRow } = useStoreSettings();
   const [draft, setDraft] = useState<LandingContent | null>(null);
   const [saving, setSaving] = useState(false);
+  const [applyingTemplate, setApplyingTemplate] = useState(false);
   /** 服務卡片「價格／時間列」摺疊：預設收合 */
   const [openTiersByService, setOpenTiersByService] = useState<Record<number, boolean>>({});
 
@@ -105,6 +115,30 @@ export default function LandingPageSettings() {
   const updateDraft = useCallback((patch: Partial<LandingContent>) => {
     setDraft((prev) => (prev ? { ...prev, ...patch } : prev));
   }, []);
+
+  const handleApplyDefaultTemplate = async () => {
+    if (!storeId) {
+      toast.error("尚未選擇店家。");
+      return;
+    }
+    setApplyingTemplate(true);
+    try {
+      const res = await adminApi("initialize_store_settings", {}, storeId);
+      const already =
+        typeof res.already_initialized === "boolean" ? res.already_initialized : false;
+      if (already) {
+        toast.info("此店家已有 Landing 設定，未覆寫內容。");
+      } else {
+        toast.success("已套用預設 Landing 模板");
+      }
+      await refetch();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "套用失敗";
+      toast.error(msg);
+    } finally {
+      setApplyingTemplate(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!draft) return;
@@ -227,6 +261,37 @@ export default function LandingPageSettings() {
 
   return (
     <div className="space-y-6">
+      {!loading && !hasStoreSettingsRow && (
+        <Card className="border-amber-500/35 bg-amber-500/[0.06]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base">尚未建立 Landing 內容</CardTitle>
+            <CardDescription>
+              此店家尚未設定 Landing 內容，是否套用預設模板？
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pb-2 text-sm text-muted-foreground">
+            預設模板會依店名填入標題與範例服務／師傅區文案，不會影響其他店家。
+          </CardContent>
+          <CardFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={applyingTemplate || !storeId}
+              onClick={() => void handleApplyDefaultTemplate()}
+            >
+              {applyingTemplate ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  套用中…
+                </>
+              ) : (
+                "套用預設模板"
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold text-foreground">首頁 CMS（Landing）</h2>
@@ -265,6 +330,14 @@ export default function LandingPageSettings() {
                 rows={3}
                 value={draft.hero_subtitle}
                 onChange={(e) => updateDraft({ hero_subtitle: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>主按鈕文案</Label>
+              <Input
+                value={draft.hero_cta_label}
+                onChange={(e) => updateDraft({ hero_cta_label: e.target.value })}
+                placeholder="開啟舒壓儀式"
               />
             </div>
             <div className="grid gap-4 sm:grid-cols-3">

@@ -198,11 +198,15 @@ async function createHolidayEvent(accessToken: string, calendarId: string, holid
       reminders: { useDefault: false },
     };
   }
-  const resp = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify(event),
-  });
+  /** 公休常批次建立：不發 Google 日曆「活動通知」信（與 Resend 客人預約信無關） */
+  const resp = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=none`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(event),
+    },
+  );
   if (!resp.ok) {
     const text = await resp.text();
     throw new Error(`Google Calendar create holiday event error: ${resp.status} ${text}`);

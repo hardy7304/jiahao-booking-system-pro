@@ -97,6 +97,8 @@ export interface LandingContent extends LandingStatTargets {
   store_id: string;
   hero_title: string;
   hero_subtitle: string;
+  /** 主視覺主按鈕文案（Landing v2） */
+  hero_cta_label: string;
   hero_hours_badge_short: string;
   hero_late_night_note: string;
   hero_starting_price_label: string;
@@ -133,6 +135,7 @@ export const LANDING_DEFAULTS: Omit<LandingContent, "store_id"> = {
   hero_title: "放鬆由此開始",
   hero_subtitle:
     "專業調理身心的場所。腳底按摩、全身指壓、筋膜刀療程，從下午兩點一路到凌晨兩點，隨時等你來放鬆。",
+  hero_cta_label: "開啟舒壓儀式",
   hero_hours_badge_short: "14–02",
   hero_late_night_note: "深夜也能到館",
   hero_starting_price_label: "NT$800 起",
@@ -349,6 +352,13 @@ export function mergeLandingContent(
     store_id: storeId,
     hero_title: (row.hero_title as string) || d.hero_title,
     hero_subtitle: (row.hero_subtitle as string) || d.hero_subtitle,
+    hero_cta_label: pickEmbeddedString(
+      row,
+      statsRecord,
+      "hero_cta_label",
+      "hero_cta_label",
+      d.hero_cta_label,
+    ),
     hero_hours_badge_short: pickEmbeddedString(
       row,
       statsRecord,

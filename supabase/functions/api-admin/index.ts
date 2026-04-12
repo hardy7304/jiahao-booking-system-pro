@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildDefaultStoreSettingsInsertRow } from "../_shared/defaultStoreLandingTemplate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -371,6 +372,39 @@ Deno.serve(async (req) => {
       }
 
       /** 首頁 / Landing v2 圖片：驗證後台密碼後寫入 storage bucket `landing-images` */
+      /** 新店家：尚無 store_settings 列時寫入預設 Landing 文案（不覆寫既有列） */
+      case "initialize_store_settings": {
+        if (!storeId || typeof storeId !== "string") throw new Error("缺少 store_id");
+        const { data: storeRow, error: storeErr } = await supabase
+          .from("stores")
+          .select("id, name")
+          .eq("id", storeId)
+          .maybeSingle();
+        if (storeErr) throw storeErr;
+        const storeName =
+          typeof storeRow?.name === "string" && storeRow.name.trim() !== ""
+            ? storeRow.name.trim()
+            : "";
+        if (!storeName) throw new Error("找不到店家或店名為空");
+
+        const { data: existing, error: existErr } = await supabase
+          .from("store_settings")
+          .select("store_id")
+          .eq("store_id", storeId)
+          .maybeSingle();
+        if (existErr) throw existErr;
+        if (existing) {
+          result = { success: true, already_initialized: true };
+          break;
+        }
+
+        const row = buildDefaultStoreSettingsInsertRow(storeId, storeName);
+        const { error: insErr } = await supabase.from("store_settings").insert(row);
+        if (insErr) throw insErr;
+        result = { success: true, initialized: true };
+        break;
+      }
+
       case "landing.upload_image": {
         const fileBase64 = typeof data.file_base64 === "string" ? data.file_base64 : "";
         const contentType =

@@ -50,6 +50,8 @@ interface CoachOption {
   name: string;
   is_active: boolean;
   available_today: boolean;
+  /** 與首頁 Landing 團隊區是否展示該搭班師傅一致 */
+  landing_visible?: boolean;
   shift_start_hour?: number;
   shift_end_hour?: number;
   display_order: number;
@@ -140,7 +142,9 @@ export default function BookingPage() {
         supabase.from("addons").select("*").eq("is_active", true).eq("store_id", storeId).order("sort_order"),
         supabase
           .from("coaches")
-          .select("id,name,is_active,available_today,shift_start_hour,shift_end_hour,display_order")
+          .select(
+            "id,name,is_active,available_today,landing_visible,shift_start_hour,shift_end_hour,display_order",
+          )
           .eq("store_id", storeId)
           .eq("is_active", true)
           .order("display_order", { ascending: true })
@@ -151,7 +155,7 @@ export default function BookingPage() {
       if (coachResp.error?.message?.includes("shift_start_hour")) {
         const fallback = await supabase
           .from("coaches")
-          .select("id,name,is_active,available_today,display_order")
+          .select("id,name,is_active,available_today,landing_visible,display_order")
           .eq("store_id", storeId)
           .eq("is_active", true)
           .order("display_order", { ascending: true })
@@ -192,6 +196,35 @@ export default function BookingPage() {
     return coaches.filter((coach) => coach.id !== resolvedMainCoach.id && coach.is_active);
   }, [coaches, resolvedMainCoach]);
 
+  /** 今日是否有「非主師傅」且可接班的搭班（用於雙人是否開放） */
+  const anyBackupAvailableToday = useMemo(() => {
+    if (!resolvedMainCoach) return false;
+    return coaches.some(
+      (c) => c.id !== resolvedMainCoach.id && c.is_active && c.available_today,
+    );
+  }, [coaches, resolvedMainCoach]);
+
+  /** 首頁 Landing 有勾選顯示的搭配師傅（不含主師傅） */
+  const landingBackupCoaches = useMemo(() => {
+    if (!resolvedMainCoach) return [];
+    return coaches.filter(
+      (c) => c.id !== resolvedMainCoach.id && c.landing_visible === true,
+    );
+  }, [coaches, resolvedMainCoach]);
+
+  /**
+   * 是否顯示「2 位（雙人）」：
+   * - 若首頁有展示至少一位搭配師傅：僅當其中至少一人今日可接時才開放雙人（避免首頁顯示休假／未值班仍出現雙人預約）。
+   * - 若首頁未展示任何搭配師傅：改以是否有任一搭班今日可接為準。
+   */
+  const showDualPartyOption = useMemo(() => {
+    if (!resolvedMainCoach) return false;
+    if (landingBackupCoaches.length > 0) {
+      return landingBackupCoaches.some((c) => c.is_active && c.available_today);
+    }
+    return anyBackupAvailableToday;
+  }, [resolvedMainCoach, landingBackupCoaches, anyBackupAvailableToday]);
+
   /** 不指定時，今日可能進入自動分配池的搭班師傅（僅說明用） */
   const autoAssignBackupPoolLabel = useMemo(() => {
     if (!resolvedMainCoach) return "";
@@ -207,6 +240,14 @@ export default function BookingPage() {
       setPreferredBackupCoachId("none");
     }
   }, [partySize]);
+
+  useEffect(() => {
+    if (showDualPartyOption) return;
+    if (partySize !== "2") return;
+    setPartySize("1");
+    setPreferredBackupCoachId("none");
+    setPreferredBackupCoachName("");
+  }, [showDualPartyOption, partySize]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -717,17 +758,39 @@ export default function BookingPage() {
           {/* Party size - show immediately after selecting service */}
           <div className="space-y-2 animate-fade-in">
             <Label className="text-sm font-semibold">預約人數 *</Label>
-            <RadioGroup value={partySize} onValueChange={(v) => setPartySize(v as "1" | "2")} className="grid grid-cols-2 gap-2">
-              <div className="flex items-center space-x-2 rounded-md border p-2">
-                <RadioGroupItem value="1" id="party-one" />
-                <label htmlFor="party-one" className="text-sm cursor-pointer">1 位（主師傅）</label>
+            {showDualPartyOption ? (
+              <RadioGroup
+                value={partySize}
+                onValueChange={(v) => setPartySize(v as "1" | "2")}
+                className="grid grid-cols-2 gap-2"
+              >
+                <div className="flex items-center space-x-2 rounded-md border p-2">
+                  <RadioGroupItem value="1" id="party-one" />
+                  <label htmlFor="party-one" className="text-sm cursor-pointer">
+                    1 位（主師傅）
+                  </label>
+                </div>
+                <div className="flex items-center space-x-2 rounded-md border p-2">
+                  <RadioGroupItem value="2" id="party-two" />
+                  <label htmlFor="party-two" className="text-sm cursor-pointer">
+                    2 位（雙人）
+                  </label>
+                </div>
+              </RadioGroup>
+            ) : (
+              <div className="rounded-md border p-3 text-sm text-muted-foreground">
+                目前僅開放 <span className="font-medium text-foreground">1 位（主師傅）</span>
+                預約。
               </div>
-              <div className="flex items-center space-x-2 rounded-md border p-2">
-                <RadioGroupItem value="2" id="party-two" />
-                <label htmlFor="party-two" className="text-sm cursor-pointer">2 位（雙人）</label>
-              </div>
-            </RadioGroup>
-            {partySize === "2" ? (
+            )}
+            {!showDualPartyOption ? (
+              <p className="text-xs text-muted-foreground">
+                {landingBackupCoaches.length > 0
+                  ? "首頁可見的搭配師傅今日皆未開班或未值班，故不開放雙人預約。"
+                  : "今日暫無其他可接之搭班師傅，故不開放雙人預約。"}
+              </p>
+            ) : null}
+            {partySize === "2" && showDualPartyOption ? (
               <p className="text-xs text-amber-600">雙人預約需主師傅與搭班師傅同時可接，時段會較少。</p>
             ) : null}
             {partySize === "2" ? (

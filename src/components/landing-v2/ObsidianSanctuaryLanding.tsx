@@ -702,7 +702,9 @@ export function ObsidianSanctuaryLanding({ brandName, content }: ObsidianSanctua
             eyebrow={heroEyebrow}
             title={content.hero_title}
             subtitle={content.hero_subtitle}
-            ctaText="開啟舒壓儀式"
+            ctaText={
+              content.hero_cta_label.trim() !== "" ? content.hero_cta_label : "開啟舒壓儀式"
+            }
           />
 
           <section className="mx-auto max-w-7xl px-6 py-24" aria-labelledby="stitch-services-heading">

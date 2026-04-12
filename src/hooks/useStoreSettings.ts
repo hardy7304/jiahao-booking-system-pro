@@ -22,6 +22,7 @@ function buildStoreSettingsUpsertPayload(
     review_percent: next.review_percent,
     techniques_count: next.techniques_count,
     techniques_display: next.techniques_display,
+    hero_cta_label: next.hero_cta_label,
     hero_hours_badge_short: next.hero_hours_badge_short,
     hero_late_night_note: next.hero_late_night_note,
     hero_starting_price_label: next.hero_starting_price_label,
@@ -56,6 +57,8 @@ export function useStoreSettings() {
     mergeLandingContent(storeId, null),
   );
   const [loading, setLoading] = useState(true);
+  /** 資料庫是否已有該店 store_settings 列（無列時後台可提示套用預設模板） */
+  const [hasStoreSettingsRow, setHasStoreSettingsRow] = useState(false);
 
   const fetchSettings = useCallback(async () => {
     setLoading(true);
@@ -68,7 +71,9 @@ export function useStoreSettings() {
     if (error) {
       console.error("[useStoreSettings]", error);
       setContent(mergeLandingContent(storeId, null));
+      setHasStoreSettingsRow(false);
     } else {
+      setHasStoreSettingsRow(data !== null);
       setContent(mergeLandingContent(storeId, data as Record<string, unknown> | null));
     }
     setLoading(false);
@@ -111,6 +116,7 @@ export function useStoreSettings() {
   return {
     content,
     loading,
+    hasStoreSettingsRow,
     refetch: fetchSettings,
     saveSettings,
     setContentLocal: (updater: (prev: LandingContent) => LandingContent) => {
