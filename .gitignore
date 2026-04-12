@@ -23,6 +23,9 @@ dist-ssr
 # Google OAuth credentials (for Calendar MCP)
 gcp-oauth.keys.json
 
+# Supabase / service account keys
+tmp-sa-key.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

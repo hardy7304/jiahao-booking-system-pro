@@ -121,6 +121,9 @@ interface BookingData {
   addons?: string[];
   total_price: number;
   google_calendar_event_id?: string;
+  needs_pair?: boolean;
+  primary_coach_name?: string | null;
+  secondary_coach_name?: string | null;
 }
 
 interface HolidayData {
@@ -139,15 +142,18 @@ async function createCalendarEvent(accessToken: string, calendarId: string, book
   const endTime = formatHourToTimeISO(booking.date, endHour);
   const addonsText = booking.addons && booking.addons.length > 0 ? `\n加購項目：${booking.addons.join("、")}` : "";
   const event = {
-    summary: `安平不老松72號張嘉豪師傅行程表 - ${booking.name}`,
+    summary: `${booking.needs_pair ? "[雙人] " : ""}安平不老松72號張嘉豪師傅行程表 - ${booking.name}`,
     description: [
       `👤 客戶：${booking.name}`,
       `📞 電話：${booking.phone}`,
       `💆 服務：${booking.service}${addonsText}`,
       `⏱ 時長：${booking.duration} 分鐘`,
       `💰 金額：$${booking.total_price}`,
+      booking.needs_pair ? `👥 型態：雙人預約` : `👤 型態：單人預約`,
+      booking.primary_coach_name ? `👨‍🔧 主師傅：${booking.primary_coach_name}` : null,
+      booking.secondary_coach_name ? `🧑‍🔧 搭班師傅：${booking.secondary_coach_name}` : null,
       `📋 預約編號：${booking.id}`,
-    ].join("\n"),
+    ].filter(Boolean).join("\n"),
     start: { dateTime: startTime, timeZone: "Asia/Taipei" },
     end: { dateTime: endTime, timeZone: "Asia/Taipei" },
     reminders: { useDefault: false, overrides: [{ method: "popup", minutes: 30 }] },
@@ -192,11 +198,15 @@ async function createHolidayEvent(accessToken: string, calendarId: string, holid
       reminders: { useDefault: false },
     };
   }
-  const resp = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-    body: JSON.stringify(event),
-  });
+  /** 公休常批次建立：不發 Google 日曆「活動通知」信（與 Resend 客人預約信無關） */
+  const resp = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?sendUpdates=none`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+      body: JSON.stringify(event),
+    },
+  );
   if (!resp.ok) {
     const text = await resp.text();
     throw new Error(`Google Calendar create holiday event error: ${resp.status} ${text}`);

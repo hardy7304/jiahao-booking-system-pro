@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildDefaultStoreSettingsInsertRow } from "../_shared/defaultStoreLandingTemplate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -367,6 +368,76 @@ Deno.serve(async (req) => {
       case "config.get_calendar_id": {
         const calId = Deno.env.get("GOOGLE_CALENDAR_ID") || "";
         result = { success: true, calendar_id: calId };
+        break;
+      }
+
+      /** 首頁 / Landing v2 圖片：驗證後台密碼後寫入 storage bucket `landing-images` */
+      /** 新店家：尚無 store_settings 列時寫入預設 Landing 文案（不覆寫既有列） */
+      case "initialize_store_settings": {
+        if (!storeId || typeof storeId !== "string") throw new Error("缺少 store_id");
+        const { data: storeRow, error: storeErr } = await supabase
+          .from("stores")
+          .select("id, name")
+          .eq("id", storeId)
+          .maybeSingle();
+        if (storeErr) throw storeErr;
+        const storeName =
+          typeof storeRow?.name === "string" && storeRow.name.trim() !== ""
+            ? storeRow.name.trim()
+            : "";
+        if (!storeName) throw new Error("找不到店家或店名為空");
+
+        const { data: existing, error: existErr } = await supabase
+          .from("store_settings")
+          .select("store_id")
+          .eq("store_id", storeId)
+          .maybeSingle();
+        if (existErr) throw existErr;
+        if (existing) {
+          result = { success: true, already_initialized: true };
+          break;
+        }
+
+        const row = buildDefaultStoreSettingsInsertRow(storeId, storeName);
+        const { error: insErr } = await supabase.from("store_settings").insert(row);
+        if (insErr) throw insErr;
+        result = { success: true, initialized: true };
+        break;
+      }
+
+      case "landing.upload_image": {
+        const fileBase64 = typeof data.file_base64 === "string" ? data.file_base64 : "";
+        const contentType =
+          typeof data.content_type === "string" && data.content_type.startsWith("image/")
+            ? data.content_type
+            : "image/jpeg";
+        if (!storeId || typeof storeId !== "string") throw new Error("缺少 store_id");
+        const sid = storeId.replace(/[^a-f0-9-]/gi, "");
+        if (sid.length < 32) throw new Error("store_id 無效");
+        if (!fileBase64) throw new Error("缺少圖片資料");
+        if (fileBase64.length > 5_500_000) throw new Error("圖片資料過大，請壓縮後再試");
+        let binary: Uint8Array;
+        try {
+          binary = Uint8Array.from(atob(fileBase64), (c) => c.charCodeAt(0));
+        } catch {
+          throw new Error("圖片編碼無效");
+        }
+        if (binary.length > 4_800_000) throw new Error("圖片檔過大（請小於約 4.5MB）");
+        const ext = contentType.includes("png")
+          ? "png"
+          : contentType.includes("webp")
+            ? "webp"
+            : contentType.includes("gif")
+              ? "gif"
+              : "jpg";
+        const path = `${sid}/${crypto.randomUUID()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("landing-images").upload(path, binary, {
+          contentType,
+          upsert: false,
+        });
+        if (upErr) throw upErr;
+        const { data: pub } = supabase.storage.from("landing-images").getPublicUrl(path);
+        result = { success: true, public_url: pub.publicUrl };
         break;
       }
 

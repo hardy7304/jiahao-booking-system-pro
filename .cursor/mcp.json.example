@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "stitch": {
+      "command": "cmd.exe",
+      "args": ["/c", "npx", "-y", "stitch-mcp"],
+      "env": {
+        "GOOGLE_CLOUD_PROJECT": "gen-lang-client-0596789924"
+      }
+    },
+    "google-calendar": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-google-calendar"],
+      "env": {
+        "GOOGLE_OAUTH_CREDENTIALS": "請改成 gcp-oauth.keys.json 的完整路徑"
+      }
+    }
+  }
+}

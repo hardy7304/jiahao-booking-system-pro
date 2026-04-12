@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -70,6 +70,7 @@ export type Database = {
           admin_note: string | null
           cancel_reason: string | null
           cancelled_at: string | null
+          coach_id: string | null
           completed_at: string | null
           created_at: string
           date: string
@@ -77,6 +78,7 @@ export type Database = {
           google_calendar_event_id: string | null
           id: string
           name: string
+          needs_pair: boolean
           oil_bonus: number
           order_time: string
           phone: string
@@ -86,6 +88,9 @@ export type Database = {
           start_time_str: string
           status: string | null
           store_id: string
+          secondary_coach_id: string | null
+          symptom_tags: string[]
+          notes: string | null
           total_price: number
         }
         Insert: {
@@ -93,6 +98,7 @@ export type Database = {
           admin_note?: string | null
           cancel_reason?: string | null
           cancelled_at?: string | null
+          coach_id?: string | null
           completed_at?: string | null
           created_at?: string
           date: string
@@ -100,6 +106,7 @@ export type Database = {
           google_calendar_event_id?: string | null
           id?: string
           name: string
+          needs_pair?: boolean
           oil_bonus?: number
           order_time?: string
           phone: string
@@ -109,6 +116,9 @@ export type Database = {
           start_time_str: string
           status?: string | null
           store_id: string
+          secondary_coach_id?: string | null
+          symptom_tags?: string[]
+          notes?: string | null
           total_price: number
         }
         Update: {
@@ -116,6 +126,7 @@ export type Database = {
           admin_note?: string | null
           cancel_reason?: string | null
           cancelled_at?: string | null
+          coach_id?: string | null
           completed_at?: string | null
           created_at?: string
           date?: string
@@ -123,6 +134,7 @@ export type Database = {
           google_calendar_event_id?: string | null
           id?: string
           name?: string
+          needs_pair?: boolean
           oil_bonus?: number
           order_time?: string
           phone?: string
@@ -132,11 +144,90 @@ export type Database = {
           start_time_str?: string
           status?: string | null
           store_id?: string
+          secondary_coach_id?: string | null
+          symptom_tags?: string[]
+          notes?: string | null
           total_price?: number
         }
         Relationships: [
           {
+            foreignKeyName: "bookings_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_secondary_coach_id_fkey"
+            columns: ["secondary_coach_id"]
+            isOneToOne: false
+            referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coaches: {
+        Row: {
+          available_today: boolean
+          available_tonight: boolean
+          created_at: string | null
+          display_order: number
+          id: string
+          is_active: boolean | null
+          landing_visible: boolean
+          name: string
+          password_hash: string | null
+          phone: string | null
+          portrait_url: string | null
+          shift_end_hour: number
+          shift_start_hour: number
+          specialty: string | null
+          store_id: string | null
+        }
+        Insert: {
+          available_today?: boolean
+          available_tonight?: boolean
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean | null
+          landing_visible?: boolean
+          name: string
+          password_hash?: string | null
+          phone?: string | null
+          portrait_url?: string | null
+          shift_end_hour?: number
+          shift_start_hour?: number
+          specialty?: string | null
+          store_id?: string | null
+        }
+        Update: {
+          available_today?: boolean
+          available_tonight?: boolean
+          created_at?: string | null
+          display_order?: number
+          id?: string
+          is_active?: boolean | null
+          landing_visible?: boolean
+          name?: string
+          password_hash?: string | null
+          phone?: string | null
+          portrait_url?: string | null
+          shift_end_hour?: number
+          shift_start_hour?: number
+          specialty?: string | null
+          store_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coaches_store_id_fkey"
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
@@ -572,6 +663,113 @@ export type Database = {
           slug?: string
         }
         Relationships: []
+      }
+      store_settings: {
+        Row: {
+          anping_section_body: string | null
+          anping_section_title: string | null
+          boxing_cta_label: string | null
+          boxing_cta_url: string | null
+          boxing_section_body: string | null
+          boxing_section_title: string | null
+          brand_stats_subtitle: string | null
+          brand_stats_title: string | null
+          business_hours_display: string | null
+          created_at: string
+          footer_cta_body: string | null
+          footer_cta_title: string | null
+          hero_hours_badge_short: string | null
+          hero_late_night_note: string | null
+          hero_starting_price_label: string | null
+          hero_subtitle: string | null
+          hero_title: string | null
+          is_roushou_visible: boolean
+          roushou_intro: string | null
+          roushou_section_body: string | null
+          roushou_section_title: string | null
+          services: Json
+          stats: Json
+          store_id: string
+          studios_shell: Json
+          therapist_highlights: Json
+          therapist_section_body: string | null
+          therapist_section_title: string | null
+          therapist_tags_line: string | null
+          updated_at: string
+        }
+        Insert: {
+          anping_section_body?: string | null
+          anping_section_title?: string | null
+          boxing_cta_label?: string | null
+          boxing_cta_url?: string | null
+          boxing_section_body?: string | null
+          boxing_section_title?: string | null
+          brand_stats_subtitle?: string | null
+          brand_stats_title?: string | null
+          business_hours_display?: string | null
+          created_at?: string
+          footer_cta_body?: string | null
+          footer_cta_title?: string | null
+          hero_hours_badge_short?: string | null
+          hero_late_night_note?: string | null
+          hero_starting_price_label?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          is_roushou_visible?: boolean
+          roushou_intro?: string | null
+          roushou_section_body?: string | null
+          roushou_section_title?: string | null
+          services?: Json
+          stats?: Json
+          store_id: string
+          studios_shell?: Json
+          therapist_highlights?: Json
+          therapist_section_body?: string | null
+          therapist_section_title?: string | null
+          therapist_tags_line?: string | null
+          updated_at?: string
+        }
+        Update: {
+          anping_section_body?: string | null
+          anping_section_title?: string | null
+          boxing_cta_label?: string | null
+          boxing_cta_url?: string | null
+          boxing_section_body?: string | null
+          boxing_section_title?: string | null
+          brand_stats_subtitle?: string | null
+          brand_stats_title?: string | null
+          business_hours_display?: string | null
+          created_at?: string
+          footer_cta_body?: string | null
+          footer_cta_title?: string | null
+          hero_hours_badge_short?: string | null
+          hero_late_night_note?: string | null
+          hero_starting_price_label?: string | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          is_roushou_visible?: boolean
+          roushou_intro?: string | null
+          roushou_section_body?: string | null
+          roushou_section_title?: string | null
+          services?: Json
+          stats?: Json
+          store_id?: string
+          studios_shell?: Json
+          therapist_highlights?: Json
+          therapist_section_body?: string | null
+          therapist_section_title?: string | null
+          therapist_tags_line?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_settings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       system_config: {
         Row: {

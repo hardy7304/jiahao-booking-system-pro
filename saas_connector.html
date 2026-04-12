@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🔌 SaaS 連結器整理（匯出）</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans TC", sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      padding: 32px 20px;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #f8fafc;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: #94a3b8;
+      margin-bottom: 28px;
+      padding: 10px 14px;
+      background: #1e293b;
+      border-left: 3px solid #6366f1;
+      border-radius: 4px;
+    }
+
+    /* Filter bar */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+      align-items: center;
+    }
+
+    .filter-bar input {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #e2e8f0;
+      font-size: 0.9rem;
+      width: 240px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .filter-bar input:focus { border-color: #6366f1; }
+
+    .filter-btn {
+      padding: 7px 16px;
+      border-radius: 20px;
+      border: 1px solid #334155;
+      background: #1e293b;
+      color: #94a3b8;
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: #6366f1;
+      border-color: #6366f1;
+      color: #fff;
+    }
+
+    .count-label {
+      margin-left: auto;
+      font-size: 0.82rem;
+      color: #64748b;
+    }
+
+    /* Table */
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 12px;
+      border: 1px solid #1e293b;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.855rem;
+    }
+
+    thead tr {
+      background: #1e293b;
+    }
+
+    th {
+      padding: 12px 14px;
+      text-align: left;
+      font-weight: 600;
+      color: #94a3b8;
+      white-space: nowrap;
+      border-bottom: 1px solid #334155;
+      position: sticky;
+      top: 0;
+      background: #1e293b;
+      z-index: 2;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid #1e293b;
+      transition: background 0.15s;
+    }
+    tbody tr:hover { background: #1a2332; }
+    tbody tr.hidden { display: none; }
+
+    td {
+      padding: 11px 14px;
+      vertical-align: top;
+      color: #cbd5e1;
+      line-height: 1.55;
+    }
+
+    td:first-child { font-weight: 600; color: #f1f5f9; white-space: nowrap; }
+
+    /* Category badges */
+    .cat-badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .cat-other    { background: #374151; color: #9ca3af; }
+    .cat-comm     { background: #1e3a5f; color: #60a5fa; }
+    .cat-sched    { background: #1c3d2e; color: #34d399; }
+    .cat-db       { background: #3b2a5e; color: #a78bfa; }
+    .cat-ai       { background: #3d2020; color: #f87171; }
+
+    /* Stars */
+    .stars { color: #fbbf24; letter-spacing: 1px; font-size: 0.85rem; white-space: nowrap; }
+    .stars-none { color: #4b5563; font-size: 0.8rem; }
+
+    /* Detail cell */
+    .detail { max-width: 300px; color: #94a3b8; font-size: 0.82rem; }
+    .reason { max-width: 260px; color: #64748b; font-size: 0.80rem; font-style: italic; }
+
+    /* Ignore section styling */
+    tr.ignore-row td { opacity: 0.55; }
+    tr.ignore-row td:first-child { opacity: 0.7; }
+
+    /* Stats cards */
+    .stats {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+    }
+    .stat-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 10px;
+      padding: 12px 18px;
+      min-width: 130px;
+    }
+    .stat-card .val { font-size: 1.6rem; font-weight: 700; color: #f8fafc; }
+    .stat-card .lbl { font-size: 0.78rem; color: #64748b; margin-top: 2px; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <h1>🔌 SaaS 連結器整理（匯出）</h1>
+  <div class="subtitle">
+    來源：Notion Database「SaaS 連結器整理」 &nbsp;｜&nbsp; 匯出格式：HTML Table
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat-card"><div class="val" id="total-count">—</div><div class="lbl">總計工具數</div></div>
+    <div class="stat-card"><div class="val" style="color:#fbbf24">★★★★★</div><div class="lbl" id="five-star-count">最高推薦</div></div>
+    <div class="stat-card"><div class="val" style="color:#94a3b8">🚫</div><div class="lbl" id="ignore-count">忽略區</div></div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar">
+    <input type="text" id="search-input" placeholder="🔍 搜尋工具名稱或說明…" oninput="applyFilters()" />
+    <button class="filter-btn active" onclick="setFilter('all', this)">全部</button>
+    <button class="filter-btn" onclick="setFilter('🏢 其他 (忽略區)', this)">🏢 忽略區</button>
+    <button class="filter-btn" onclick="setFilter('💬 通訊與客服', this)">💬 通訊</button>
+    <button class="filter-btn" onclick="setFilter('📅 預約與排程', this)">📅 預約</button>
+    <button class="filter-btn" onclick="setFilter('🗄️ 資料庫與儲存', this)">🗄️ 資料庫</button>
+    <button class="filter-btn" onclick="setFilter('🤖 AI 與爬蟲', this)">🤖 AI</button>
+    <span class="count-label" id="showing-count"></span>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table id="main-table">
+      <thead>
+        <tr>
+          <th>SaaS 名稱</th>
+          <th>主分類</th>
+          <th>核心功能簡述</th>
+          <th>專屬應用場景</th>
+          <th>推薦度</th>
+          <th>詳細運用說明</th>
+          <th>備註／隱藏潛力</th>
+        </tr>
+      </thead>
+      <tbody id="table-body">
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+const data = [
+  {name:"Badger Maps",cat:"🏢 其他 (忽略區)",func:"規劃外勤 Sales 拜訪客戶的最佳路線",scene:"",stars:"",detail:"",reason:"客人通常是直接到安平的店裡找你按摩，不需要你在外面掃街拜訪。"},
+  {name:"ChartMogul / Gong",cat:"🏢 其他 (忽略區)",func:"訂閱收入分析與 B2B 業務通話監聽",scene:"",stars:"",detail:"",reason:"給賣軟體的公司監控銷售團隊用的。"},
+  {name:"Egnyte",cat:"🏢 其他 (忽略區)",func:"符合嚴格金融／醫療法規的雲端檔案管理",scene:"",stars:"",detail:"",reason:"你的 QNAP TS-464 搭配良好的權限設定，就能完美取代它，不需付昂貴月費。"},
+  {name:"Enedis Data-Connect",cat:"🏢 其他 (忽略區)",func:"法國國家電網的智慧電表數據 API",scene:"",stars:"",detail:"",reason:"特定國家的基礎設施 API，除非你要去法國做能源量化交易，否則用不到。"},
+  {name:"iAuditor (SafetyCulture)",cat:"🏢 其他 (忽略區)",func:"工廠管線查核、工地安全電子表單",scene:"",stars:"",detail:"",reason:"專注於工業安全與合規檢查。"},
+  {name:"Microsoft Dynamics 365 / ServiceNow",cat:"🏢 其他 (忽略區)",func:"跨國企業的資源規劃與 IT 報修系統",scene:"",stars:"",detail:"",reason:"屬於巨型系統，導入成本極高，通常需要專業顧問團隊協助設定。"},
+  {name:"Microsoft Entra ID / Snipe-IT",cat:"🏢 其他 (忽略區)",func:"公司設備盤點與員工帳號身分管理",scene:"",stars:"",detail:"",reason:"針對有龐大設備需要盤點的 IT 部門。"},
+  {name:"NationBuilder",cat:"🏢 其他 (忽略區)",func:"選舉打選戰、志工動員與募款系統",scene:"",stars:"",detail:"",reason:"專為候選人或 NGO 設計的行銷工具。"},
+  {name:"Procore / Procore Sandbox",cat:"🏢 其他 (忽略區)",func:"建築工地藍圖、工程進度與物料管理",scene:"",stars:"",detail:"",reason:"完全針對建築營造業，與健康調理、Web 開發或量化交易無關。"},
+  {name:"Strava",cat:"🏢 其他 (忽略區)",func:"追蹤跑步、騎單車的 GPS 與心跳數據",scene:"",stars:"",detail:"",reason:"（潛在用途）除非未來你想做企劃：把客人的運動數據跟按摩頻率做交叉分析，否則暫時用不到。"},
+  {name:"Visma E-conomic / QuickBooks",cat:"🏢 其他 (忽略區)",func:"複雜稅法與跨國發票的會計管理",scene:"",stars:"",detail:"",reason:"處理日常帳務與報稅，用 Excel 或 Notion 紀錄，必要時交給專業記帳士會更有效率。"},
+  {name:"Workday / BambooHR / Personio / Rippling",cat:"🏢 其他 (忽略區)",func:"千人級企業的人資、薪資與休假管理",scene:"",stars:"",detail:"",reason:"專為有完整 HR 部門的公司設計。個人接案或單一門店排班，用 Google Calendar 配合 n8n 就綽綽有餘了。"},
+  {name:"Discord / Telegram / Slack",cat:"💬 通訊與客服",func:"社群與機器人通知",scene:"接收量化交易的買賣訊號，或 n8n 系統錯誤警報",stars:"⭐⭐⭐⭐⭐",detail:"用 webhook 把系統事件推到指定頻道：預約失敗、付款失敗、Edge Function error、策略訊號觸發等。建議把通知分層：嚴重錯誤要 @你，資訊型就只記錄，避免訊息疲勞。",reason:""},
+  {name:"Dixa / Gorgias / Freshchat",cat:"💬 通訊與客服",func:"電商與多渠道客服",scene:"偏向電商售後服務，對個人接案較為龐大",stars:"⭐⭐",detail:"多為電商場景（訂單、物流、退貨）整合。除非你有大量商品與客服工單，否則先略過。",reason:""},
+  {name:"Help Scout / Intercom / Freshdesk",cat:"💬 通訊與客服",func:"線上客服與工單系統",scene:"整合多管道訊息，適合客服量大時使用",stars:"⭐⭐⭐",detail:"把 FB/IG/Email 等集中管理，做標籤與 SLA。若你是個人或小團隊，先用簡單收件匣＋範本回覆就好，等客服量明顯上來再導入。",reason:""},
+  {name:"Sendblue / SMSAPI / SMSTools",cat:"💬 通訊與客服",func:"iMessage 與簡訊發送",scene:"用於發送重要通知或手機簡訊驗證碼",stars:"⭐⭐⭐⭐",detail:"適合用在「關鍵訊息」：一次性驗證碼、臨時更動、最後提醒。簡訊成本較高，建議只對未讀或高重要度事件發送，並在後台記錄發送狀態與重送策略。",reason:""},
+  {name:"Twilio / Plivo / Telnyx",cat:"💬 通訊與客服",func:"企業級簡訊與語音通訊",scene:"若需要程式自動打電話提醒客人可串接",stars:"⭐⭐⭐⭐",detail:"可做語音來電提醒、語音留言、或雙向簡訊。建議先用簡訊 MVP 驗證需求，再做語音，因為語音流程要處理更多例外（未接、轉語音信箱、重撥規則）。",reason:""},
+  {name:"UltraMsg / Z-API",cat:"💬 通訊與客服",func:"WhatsApp API 串接",scene:"核心推薦：全自動發送客製化預約確認訊息",stars:"⭐⭐⭐⭐⭐",detail:"用 API 串接你的預約系統或 n8n，在「預約成功／前一天提醒／當天提醒／取消」自動發送訊息。建議先做訊息模板與變數（姓名、時間、地點、注意事項），並加上人工接手通道，避免客人回覆時無人處理。",reason:""},
+  {name:"WATI / Waboxapp / 2Chat",cat:"💬 通訊與客服",func:"WhatsApp 自動化",scene:"適合用來做客人按摩後的保養叮嚀推播",stars:"⭐⭐⭐⭐⭐",detail:"把「術後保養」做成多段訊息流程，例如 D+1 叮嚀、D+7 回訪、D+30 回購提醒。可依服務類型分眾。務必設定退訂或降低頻率選項，避免變成打擾。",reason:""},
+  {name:"Acuity Scheduling",cat:"📅 預約與排程",func:"專業線上預約系統",scene:"解決不老松預約衝突，可做複雜排班",stars:"⭐⭐⭐⭐⭐",detail:"適合多服務、多時段、多治療師排班。可設定服務時長、緩衝時間、收款或訂金，並把「熟客專屬連結」做成獨立服務或私密頁面。建議先把現有服務項目與可預約時段規格化，再上線，避免規則越疊越亂。",reason:""},
+  {name:"Booking Experts / Mews",cat:"📅 預約與排程",func:"旅宿與休閒業預約",scene:"偏向飯店業，按摩店初期不需用到這麼重",stars:"⭐⭐",detail:"功能很完整但導入成本高。除非你要做「房型／套票／住宿＋療程」那種度假型產品，不然先略過，避免被系統綁住流程。",reason:""},
+  {name:"Calendly / TidyCal",cat:"📅 預約與排程",func:"會議與時間排程",scene:"輕量化預約，適合發送專屬預約連結給熟客",stars:"⭐⭐⭐⭐⭐",detail:"用「活動類型」區分 30/60/90 分鐘或不同服務。可針對熟客建立專屬活動連結，並設定每日上限與緩衝。若要做多門市或多員工複雜排班，通常會比 Acuity 吃力。",reason:""},
+  {name:"Eventbrite / Add to Calendar",cat:"📅 預約與排程",func:"活動報名與日曆寫入",scene:"若未來舉辦按摩教學或講座可用的報名系統",stars:"⭐⭐⭐",detail:"把講座或課程做成活動頁，收集報名資訊、付款與名單管理。結束後可匯出名單做後續 EDM 或 LINE 推播。若只是單純把預約寫進日曆，Add to Calendar 類工具可做最小方案。",reason:""},
+  {name:"Launch27",cat:"📅 預約與排程",func:"在地服務預約",scene:"針對實體服務業優化的派單與預約引擎",stars:"⭐⭐⭐⭐",detail:"適合「到府」或需要派單的服務型態。可以把區域、師傅可服務範圍、時段派單規則先定義好。若主要是單店現場預約，功能可能偏重。",reason:""},
+  {name:"MS Bookings",cat:"📅 預約與排程",func:"微軟生態預約",scene:"若使用 Office 365 可無縫整合的排班工具",stars:"⭐⭐⭐",detail:"若你已經用 Microsoft 365（Outlook 行事曆、Teams），可用 Bookings 做基本預約頁與員工排班。適合內部流程簡單的情況。若要高度客製化流程或整合多通路通知，彈性較有限。",reason:""},
+  {name:"Azure Storage / DigitalOcean Spaces",cat:"🗄️ 資料庫與儲存",func:"雲端物件存儲（S3 兼容）",scene:"NAS 空間滿了之後的異地備援方案",stars:"⭐⭐⭐",detail:"把大檔案（圖片、影片、備份）放物件儲存，搭配 CDN。若做預約系統，常見用途是上傳檔案（收據、附件）。記得設定 public/private 與簽名網址策略。",reason:""},
+  {name:"Dropbox / OneDrive / Box",cat:"🗄️ 資料庫與儲存",func:"雲端硬碟",scene:"備份系統檔案或存放 VTuber 影片素材",stars:"⭐⭐⭐",detail:"適合做跨裝置同步與備份。若你有 NAS，自動同步到雲端可做異地備援。建議設版本控管與備份規則，避免誤刪同步。",reason:""},
+  {name:"MongoDB / Neon Postgres",cat:"🗄️ 資料庫與儲存",func:"NoSQL 與 Serverless DB",scene:"開發進階 Web 應用的彈性資料庫選擇",stars:"⭐⭐⭐⭐",detail:"MongoDB 適合非結構化資料與快速迭代；Neon 適合要保留 SQL 能力但想要 serverless 彈性。建議依你的資料一致性需求選擇，不要為了新潮而增加維運複雜度。",reason:""},
+  {name:"MotherDuck / Snowflake",cat:"🗄️ 資料庫與儲存",func:"雲端數據倉儲",scene:"處理十幾年台股歷史數據的超高速分析運算",stars:"⭐⭐⭐⭐",detail:"適合大量歷史資料做分析、聚合與報表。先把資料匯入與清洗流程自動化，再做查詢與儀表板。若資料量不大，用 Postgres 也可先撐住。",reason:""},
+  {name:"Nocodb / Baserow",cat:"🗄️ 資料庫與儲存",func:"無代碼資料庫（Airtable 替代）",scene:"極度推薦：部署在 QNAP TS-464 作為客訴與病歷庫",stars:"⭐⭐⭐⭐⭐",detail:"用來做「結構化」資料：客人基本資料、症狀、禁忌、回訪紀錄。建議先設計欄位與權限策略（誰能看病歷）。若自架在 NAS，務必做好備份、權限與外網存取（VPN/ZeroTier）。",reason:""},
+  {name:"Notion / Google Drive",cat:"🗄️ 資料庫與儲存",func:"文件與知識庫儲存",scene:"存放開發筆記、API 文件與按摩手法紀錄",stars:"⭐⭐⭐⭐⭐",detail:"Notion 適合 SOP、知識庫與資料庫；Drive 適合檔案與多人協作。建議把「SOP 與規格」放 Notion，把「原始檔與大型素材」放 Drive，並用連結互相串起來。",reason:""},
+  {name:"Pinecone / Qdrant",cat:"🗄️ 資料庫與儲存",func:"向量資料庫",scene:"讓 AI 記住客人過往所有症狀的記憶庫",stars:"⭐⭐⭐⭐",detail:"把客人回饋、症狀描述、聊天紀錄做向量化，支援相似檢索。務必設計隱私與刪除機制，並把可被 AI 使用的資料範圍定義清楚（例如不含敏感個資）。",reason:""},
+  {name:"Supabase / Firebase",cat:"🗄️ 資料庫與儲存",func:"雲端後端即服務（BaaS）",scene:"使用 Cursor 開發預約系統網站時的最強後端",stars:"⭐⭐⭐⭐⭐",detail:"適合快速做出預約系統：Auth、DB、Storage、Functions。建議先把資料模型定好（門市、服務、預約、客戶、付款），並做好 RLS/權限。上線前要跑 migration 流程與測試環境。",reason:""},
+  {name:"Turso / PostgreSQL / MySQL",cat:"🗄️ 資料庫與儲存",func:"關聯式資料庫",scene:"存放量化交易框架的高頻回測數據",stars:"⭐⭐⭐⭐",detail:"若你需要完全掌控 schema、效能與成本，RDB 是主力。量化回測可做分表、索引、分區。對預約系統則重點在交易一致性與查詢效率。",reason:""},
+  {name:"Amara / Deepgram",cat:"🤖 AI 與爬蟲",func:"多國語言字幕翻譯協作、極速語音轉文字",scene:"",stars:"",detail:"",reason:"（潛在用途）若你未來的 VTuber 專案需要產出大量多國語言精華影片（剪輯精華），這兩個會是極佳的自動化生產力工具。"},
+  {name:"Apify / FireCrawl",cat:"🤖 AI 與爬蟲",func:"網頁爬蟲與數據抓取",scene:"抓取競業定價、Costco 優惠或量化股市新聞",stars:"⭐⭐⭐⭐",detail:"用於資料收集與監控。建議先定義抓取頻率、來源合法性與儲存結構。若要進一步做 AI 解析，先把原始 HTML/JSON 存檔，避免解析失敗時無法追溯。",reason:""},
+  {name:"BioRender",cat:"🤖 AI 與爬蟲",func:"繪製專業的細胞、DNA 或解剖圖表",scene:"",stars:"",detail:"",reason:"（潛在用途）如果你想在官網放上很硬核、專業的肌肉筋膜解剖圖給客人看，這款工具的圖庫比 Canva 專業很多。"},
+  {name:"Fireflies / Circleback",cat:"🤖 AI 與爬蟲",func:"AI 會議摘要",scene:"開發討論或線上課程重點",stars:"⭐⭐⭐",detail:"適合把會議錄音變成摘要與 action items。建議固定會議命名與資料夾結構，並把摘要同步到 Notion 專案頁，方便追蹤決策。",reason:""},
+  {name:"HARPA AI / Brainbase Labs",cat:"🤖 AI 與爬蟲",func:"瀏覽器與企業級 Agent",scene:"自動化監控特定網頁更新（如特定股票公告）",stars:"⭐⭐⭐",detail:"適合做「定期監控」：價格、公告、庫存。建議把監控條件寫成明確規則，並設定異常時的通知與去重，避免一天刷爆訊息。",reason:""},
+  {name:"JigsawStack / WebScraping.ai",cat:"🤖 AI 與爬蟲",func:"結合 AI 的網頁抓取",scene:"用 AI 自動解析抓下來的非結構化網頁數據",stars:"⭐⭐⭐⭐",detail:"適合把頁面內容直接轉成結構化欄位（例如價目、活動日期）。建議同時保存原文與解析結果，並加上信心分數或人工審核流程。",reason:""},
+  {name:"Leonardo AI / Runware",cat:"🤖 AI 與爬蟲",func:"圖像與影音生成",scene:"快速產出高質感的店面行銷圖或 VTuber 素材",stars:"⭐⭐⭐⭐",detail:"做素材生成時建議先建立品牌風格包：色系、字體、口吻與常用 prompt。行銷圖要保留可編輯版（PSD/Canva/原 prompt），方便後續統一更新。",reason:""},
+  {name:"Ollama / Hugging Face",cat:"🤖 AI 與爬蟲",func:"本地與開源 AI 模型",scene:"在 RTX 5060 Ti 跑本地模型，保護客人病歷隱私",stars:"⭐⭐⭐⭐⭐",detail:"適合把敏感資料留在本機：病歷摘要、回訪建議、SOP 問答。建議先選一個主力模型與 embedding 模型，固定 prompt 與輸出格式，再逐步加上工具（檢索、表單填寫）。",reason:""}
+];
+
+const catClass = {
+  "🏢 其他 (忽略區)": "cat-other",
+  "💬 通訊與客服": "cat-comm",
+  "📅 預約與排程": "cat-sched",
+  "🗄️ 資料庫與儲存": "cat-db",
+  "🤖 AI 與爬蟲": "cat-ai"
+};
+
+let currentFilter = 'all';
+
+function renderTable(rows) {
+  const tbody = document.getElementById('table-body');
+  tbody.innerHTML = '';
+  rows.forEach(d => {
+    const isIgnore = d.cat === '🏢 其他 (忽略區)';
+    const noteCell = isIgnore ? d.reason : (d.reason || '');
+    const tr = document.createElement('tr');
+    if (isIgnore) tr.classList.add('ignore-row');
+    tr.dataset.cat = d.cat;
+    tr.innerHTML = `
+      <td>${d.name}</td>
+      <td><span class="cat-badge ${catClass[d.cat] || ''}">${d.cat}</span></td>
+      <td>${d.func}</td>
+      <td>${d.scene || '<span style="color:#4b5563">—</span>'}</td>
+      <td>${d.stars ? `<span class="stars">${d.stars}</span>` : '<span class="stars-none">忽略</span>'}</td>
+      <td class="detail">${d.detail || '<span style="color:#4b5563">—</span>'}</td>
+      <td class="reason">${noteCell || '<span style="color:#4b5563">—</span>'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('showing-count').textContent = `顯示 ${rows.length} / ${data.length} 筆`;
+}
+
+function applyFilters() {
+  const q = document.getElementById('search-input').value.toLowerCase();
+  let filtered = data.filter(d => {
+    const matchCat = currentFilter === 'all' || d.cat === currentFilter;
+    const matchQ = !q || [d.name, d.func, d.scene, d.detail, d.reason].some(s => s && s.toLowerCase().includes(q));
+    return matchCat && matchQ;
+  });
+  renderTable(filtered);
+}
+
+function setFilter(cat, btn) {
+  currentFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+// Init
+renderTable(data);
+document.getElementById('total-count').textContent = data.length;
+document.getElementById('five-star-count').textContent = data.filter(d => d.stars === '⭐⭐⭐⭐⭐').length + ' 個工具';
+document.getElementById('ignore-count').textContent = data.filter(d => d.cat === '🏢 其他 (忽略區)').length + ' 個工具';
+</script>
+</body>
+</html>

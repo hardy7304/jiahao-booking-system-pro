@@ -12,13 +12,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings, Pencil, Undo2, ArrowUpDown, ArrowUp, ArrowDown, Filter, ChevronDown, ChevronRight, Ban, Copy } from "lucide-react";
+import { CalendarIcon, Trash2, LogOut, RotateCcw, List, CalendarDays, Phone, Check, X, StickyNote, Plus, Settings, Pencil, Undo2, ArrowUpDown, ArrowUp, ArrowDown, Filter, ChevronDown, ChevronRight, Ban, Copy, LayoutDashboard, BarChart3, Users, MessageSquare, FileText, Home, Loader2 } from "lucide-react";
 import ServiceManagement from "@/components/ServiceManagement";
 import TodayDashboard from "@/components/admin/TodayDashboard";
 import BookingCalendarView from "@/components/admin/BookingCalendarView";
 import StatsDashboard from "@/components/admin/StatsDashboard";
 import CustomerTracking from "@/components/admin/CustomerTracking";
 import LineMessageStats from "@/components/admin/LineMessageStats";
+import LandingPageSettings from "@/components/admin/LandingPageSettings";
+import AdminChartsDashboard from "@/components/admin/AdminChartsDashboard";
 import BookingFiltersBar, { type BookingFilters, type SortField } from "@/components/admin/BookingFilters";
 import { useCommission } from "@/hooks/useCommission";
 import { useCalendarNotes } from "@/hooks/useCalendarNotes";
@@ -52,6 +54,7 @@ interface Booking {
   start_hour: number;
   start_time_str: string;
   name: string;
+  needs_pair: boolean;
   phone: string;
   service: string;
   addons: string[];
@@ -64,6 +67,8 @@ interface Booking {
   completed_at: string | null;
   source: string | null;
   oil_bonus: number;
+  symptom_tags?: string[] | null;
+  notes?: string | null;
 }
 
 const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
@@ -82,7 +87,7 @@ interface Holiday {
 }
 
 export default function AdminPage() {
-  const { storeId, currentStore, isLoading: storeLoading } = useStore();
+  const { storeId, currentStore, stores, setStore, isLoading: storeLoading } = useStore();
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -114,13 +119,13 @@ export default function AdminPage() {
   // Edit booking dialog
   const [editingBooking, setEditingBooking] = useState<Booking | null>(null);
   const [editForm, setEditForm] = useState({
-    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "customer", oil_bonus: 0,
+    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "customer", oil_bonus: 0, needs_pair: false,
   });
 
   // Manual booking dialog
   const [showManualBooking, setShowManualBooking] = useState(false);
   const [manualForm, setManualForm] = useState({
-    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "admin",
+    name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [] as string[], source: "admin", needs_pair: false,
   });
 
   // Holiday form
@@ -142,15 +147,33 @@ export default function AdminPage() {
   const [rateInput, setRateInput] = useState("60");
   const [calendarNotesInput, setCalendarNotesInput] = useState("");
   const [shopInfoInput, setShopInfoInput] = useState(shopInfoHook.info);
+  const [emailTplCustomerGreeting, setEmailTplCustomerGreeting] = useState("");
+  const [emailTplCustomerClosing, setEmailTplCustomerClosing] = useState("");
+  const [emailTplCustomerFooter, setEmailTplCustomerFooter] = useState("");
+  const [emailTplCustomerNotes, setEmailTplCustomerNotes] = useState("");
+  const [emailTplStoreGreeting, setEmailTplStoreGreeting] = useState("");
+  const [emailTplStoreFooter, setEmailTplStoreFooter] = useState("");
   const [bufferInput, setBufferInput] = useState("10");
   const [freeAddonInput, setFreeAddonInput] = useState("10");
   const [preBlockInput, setPreBlockInput] = useState("60");
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
   const [adminPasswordFromDb, setAdminPasswordFromDb] = useState(DEFAULT_ADMIN_PASSWORD);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [settingsDirty, setSettingsDirty] = useState(false);
+  const [confirmCloseSettingsOpen, setConfirmCloseSettingsOpen] = useState(false);
 
   const frontendForm = useForm<{ frontend_subtitle: string; business_hours: string }>({
     defaultValues: { frontend_subtitle: "", business_hours: "" },
   });
+
+  // When opening settings, reset dirty state.
+  useEffect(() => {
+    if (showSettings) {
+      setSettingsDirty(false);
+      setIsSavingSettings(false);
+      setConfirmCloseSettingsOpen(false);
+    }
+  }, [showSettings]);
 
   // Holiday calendar navigation
   const [holidayCalendarMonth, setHolidayCalendarMonth] = useState<Date>(new Date());
@@ -324,7 +347,7 @@ export default function AdminPage() {
     setEditForm({
       name: b.name, phone: b.phone, service: b.service, date: b.date,
       start_hour: b.start_hour, duration: b.duration, total_price: b.total_price,
-      addons: b.addons || [], source: b.source || "customer", oil_bonus: b.oil_bonus || 0,
+      addons: b.addons || [], source: b.source || "customer", oil_bonus: b.oil_bonus || 0, needs_pair: !!b.needs_pair,
     });
   };
 
@@ -338,7 +361,7 @@ export default function AdminPage() {
           date: editForm.date, start_hour: editForm.start_hour,
           start_time_str: formatHourToTime(editForm.start_hour),
           duration: editForm.duration, total_price: editForm.total_price,
-          addons: editForm.addons, source: editForm.source, oil_bonus: editForm.oil_bonus,
+          addons: editForm.addons, source: editForm.source, oil_bonus: editForm.oil_bonus, needs_pair: editForm.needs_pair,
         },
       }, storeId);
       setEditingBooking(null);
@@ -461,20 +484,36 @@ export default function AdminPage() {
           date: manualForm.date, start_hour: manualForm.start_hour,
           start_time_str: formatHourToTime(manualForm.start_hour),
           duration: manualForm.duration, total_price: manualForm.total_price,
-          addons: manualForm.addons, status: "confirmed", source: manualForm.source,
+          addons: manualForm.addons, status: "confirmed", source: manualForm.source, needs_pair: manualForm.needs_pair,
           store_id: storeId,
         },
       }, storeId);
       setShowManualBooking(false);
-      setManualForm({ name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [], source: "admin" });
+      setManualForm({ name: "", phone: "", service: "", date: "", start_hour: 14, duration: 60, total_price: 0, addons: [], source: "admin", needs_pair: false });
       fetchBookings();
       toast.success("已新增預約");
     } catch (e: any) { toast.error(e.message); }
   };
 
+  const markSettingsDirty = () => {
+    if (isSavingSettings) return;
+    setSettingsDirty(true);
+  };
+
+  const requestCloseSettings = () => {
+    if (isSavingSettings) return;
+    if (settingsDirty) {
+      setConfirmCloseSettingsOpen(true);
+      return;
+    }
+    setShowSettings(false);
+  };
+
   const saveSettings = async () => {
+    if (isSavingSettings) return;
     const rate = parseInt(rateInput) / 100;
     if (rate <= 0 || rate >= 1) { toast.error("請輸入 1~99 的數值"); return; }
+    setIsSavingSettings(true);
     try {
       const frontendValues = frontendForm.getValues();
       const configs: { key: string; value: string }[] = [
@@ -490,6 +529,12 @@ export default function AdminPage() {
         { key: "google_calendar_webhook", value: googleCalendarWebhookInput.trim() },
         { key: "line_channel_token", value: lineChannelTokenInput.trim() },
         { key: "line_channel_secret", value: lineChannelSecretInput.trim() },
+        { key: "email_tpl_customer_greeting", value: emailTplCustomerGreeting.trim() },
+        { key: "email_tpl_customer_closing", value: emailTplCustomerClosing.trim() },
+        { key: "email_tpl_customer_footer", value: emailTplCustomerFooter.trim() },
+        { key: "email_tpl_customer_notes", value: emailTplCustomerNotes.trim() },
+        { key: "email_tpl_store_greeting", value: emailTplStoreGreeting.trim() },
+        { key: "email_tpl_store_footer", value: emailTplStoreFooter.trim() },
         { key: "frontend_subtitle", value: frontendValues.frontend_subtitle },
         { key: "business_hours", value: frontendValues.business_hours },
         ...Object.entries(shopInfoInput)
@@ -510,9 +555,13 @@ export default function AdminPage() {
         sessionStorage.setItem("admin_password", adminPasswordInput.trim());
         setAdminPasswordInput("");
       }
+      setSettingsDirty(false);
       setShowSettings(false);
       toast.success("已儲存設定");
     } catch (e: any) { toast.error(e.message); }
+    finally {
+      setIsSavingSettings(false);
+    }
   };
 
   // Filtered & sorted bookings
@@ -602,7 +651,28 @@ export default function AdminPage() {
               `${currentStore?.name || shopInfoHook.info.store_name} · 管理後台`
             )}
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* Multi-tenant: 讓後台切換 storeId，Webhook URL 也會跟著變更 */}
+            {!storeLoading && stores.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground hidden sm:inline">店家</span>
+                <Select value={storeId} onValueChange={(v) => setStore(v)}>
+                  <SelectTrigger className="w-[220px] h-9 text-sm">
+                    <SelectValue placeholder="選擇店家" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stores
+                      .slice()
+                      .sort((a, b) => (a.id === storeId ? -1 : 0) - (b.id === storeId ? -1 : 0))
+                      .map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <Button variant="outline" size="sm" onClick={async () => {
               setRateInput(Math.round(commission.commissionRate * 100).toString());
               setCalendarNotesInput(calendarNotesHook.notes);
@@ -617,6 +687,8 @@ export default function AdminPage() {
               const { data: configRows } = await supabase.from("system_config").select("key, value").eq("store_id", storeId).in("key", [
                 "booking_page_url", "line_admin_user_id", "store_contact_email", "booking_policy",
                 "google_calendar_webhook", "line_channel_token", "line_channel_secret",
+                "email_tpl_customer_greeting", "email_tpl_customer_closing", "email_tpl_customer_footer",
+                "email_tpl_customer_notes", "email_tpl_store_greeting", "email_tpl_store_footer"
               ]);
               const configMap: Record<string, string> = {};
               (configRows || []).forEach((r: { key: string; value: string }) => { configMap[r.key] = r.value || ""; });
@@ -627,6 +699,12 @@ export default function AdminPage() {
               setGoogleCalendarWebhookInput(configMap.google_calendar_webhook || "");
               setLineChannelTokenInput(configMap.line_channel_token || "");
               setLineChannelSecretInput(configMap.line_channel_secret || "");
+              setEmailTplCustomerGreeting(configMap.email_tpl_customer_greeting || "");
+              setEmailTplCustomerClosing(configMap.email_tpl_customer_closing || "");
+              setEmailTplCustomerFooter(configMap.email_tpl_customer_footer || "");
+              setEmailTplCustomerNotes(configMap.email_tpl_customer_notes || "");
+              setEmailTplStoreGreeting(configMap.email_tpl_store_greeting || "");
+              setEmailTplStoreFooter(configMap.email_tpl_store_footer || "");
               setShowSettings(true);
             }}>
               <Settings className="w-4 h-4 mr-1" /> 設定
@@ -638,15 +716,49 @@ export default function AdminPage() {
         </div>
 
         <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === "today" || v === "stats") commission.refetch(); }}>
-          <TabsList className="w-full flex-wrap h-auto">
-            <TabsTrigger value="today" className="flex-1">今日總覽</TabsTrigger>
-            <TabsTrigger value="bookings" className="flex-1">預約列表</TabsTrigger>
-            <TabsTrigger value="holidays" className="flex-1">公休設定</TabsTrigger>
-            <TabsTrigger value="services" className="flex-1">服務管理</TabsTrigger>
-            <TabsTrigger value="stats" className="flex-1">統計</TabsTrigger>
-            <TabsTrigger value="customers" className="flex-1">客戶</TabsTrigger>
-            <TabsTrigger value="line" className="flex-1">LINE</TabsTrigger>
-          </TabsList>
+          {/* 一列可滑動導覽；小螢幕讓圖示更明顯（文字在 >=sm 顯示） */}
+          <div className="relative">
+            <TabsList className="flex w-full items-center gap-1 overflow-x-auto whitespace-nowrap h-auto p-1">
+              <TabsTrigger value="today" className="inline-flex items-center gap-2 px-3 py-2">
+                <CalendarDays className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">今日總覽</span>
+              </TabsTrigger>
+              <TabsTrigger value="dashboard" className="inline-flex items-center gap-2 px-3 py-2">
+                <LayoutDashboard className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">儀表板</span>
+              </TabsTrigger>
+              <TabsTrigger value="bookings" className="inline-flex items-center gap-2 px-3 py-2">
+                <List className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">預約列表</span>
+              </TabsTrigger>
+              <TabsTrigger value="holidays" className="inline-flex items-center gap-2 px-3 py-2">
+                <CalendarIcon className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">公休設定</span>
+              </TabsTrigger>
+              <TabsTrigger value="services" className="inline-flex items-center gap-2 px-3 py-2">
+                <Settings className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">服務管理</span>
+              </TabsTrigger>
+              <TabsTrigger value="landing" className="inline-flex items-center gap-2 px-3 py-2">
+                <FileText className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">首頁 CMS</span>
+              </TabsTrigger>
+              <TabsTrigger value="stats" className="inline-flex items-center gap-2 px-3 py-2">
+                <BarChart3 className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">統計</span>
+              </TabsTrigger>
+              <TabsTrigger value="customers" className="inline-flex items-center gap-2 px-3 py-2">
+                <Users className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">客戶</span>
+              </TabsTrigger>
+              <TabsTrigger value="line" className="inline-flex items-center gap-2 px-3 py-2">
+                <MessageSquare className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">LINE</span>
+              </TabsTrigger>
+            </TabsList>
+            {/* 小螢幕右側漸層：提示可滑動 */}
+            <div className="pointer-events-none absolute right-0 top-0 h-10 w-10 bg-gradient-to-l from-background to-transparent" />
+          </div>
 
           {/* TODAY */}
           <TabsContent value="today" className="mt-4">
@@ -660,6 +772,19 @@ export default function AdminPage() {
               onUncomplete={uncompleteBooking}
               onCancel={(id, reason) => softDeleteBooking(id, reason)}
               onEdit={(b) => { openEditBooking(b as Booking); }}
+            />
+          </TabsContent>
+
+          {/* 儀表板：本月四指標快速總覽（資料與統計分頁同源） */}
+          <TabsContent value="dashboard" className="mt-4 focus-visible:outline-none">
+            <AdminChartsDashboard
+              bookings={bookings}
+              loading={loading}
+              onGoToStats={() => {
+                setTab("stats");
+                commission.refetch();
+              }}
+              onRefresh={fetchBookings}
             />
           </TabsContent>
 
@@ -840,7 +965,14 @@ export default function AdminPage() {
                             </span>
                           </td>
                           <td className="p-2">{b.phone}</td>
-                          <td className="p-2 max-w-[140px] truncate">{b.service}</td>
+                          <td className="p-2 max-w-[180px]">
+                            <div className="truncate">{b.service}</div>
+                            {b.needs_pair ? (
+                              <Badge variant="outline" className="mt-1 text-[10px] border-amber-300 text-amber-700 bg-amber-50">
+                                雙人單
+                              </Badge>
+                            ) : null}
+                          </td>
                           <td className="p-2 max-w-[100px] truncate">{b.addons?.join(", ") || "-"}</td>
                           <td className="p-2">{b.duration}分</td>
                           <td className="p-2 font-medium text-primary">NT${b.total_price.toLocaleString()}</td>
@@ -915,6 +1047,21 @@ export default function AdminPage() {
                           <tr className="border-b border-border opacity-50">
                             <td colSpan={showCommissionCols ? 14 : 12} className="px-2 py-1">
                               <span className="text-xs text-destructive">⚠️ 取消原因：{b.cancel_reason}</span>
+                            </td>
+                          </tr>
+                        )}
+                        {/* 痠痛部位 & 備註 */}
+                        {((b.symptom_tags && b.symptom_tags.length > 0) || (b.notes && b.notes.trim())) && (
+                          <tr className="border-b border-border bg-amber-50/50">
+                            <td colSpan={showCommissionCols ? 14 : 12} className="px-2 py-1.5">
+                              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                                {b.symptom_tags && b.symptom_tags.length > 0 && (
+                                  <span><span className="text-amber-700 font-semibold">⚠️ 不舒服：</span>{b.symptom_tags.join("、")}</span>
+                                )}
+                                {b.notes && b.notes.trim() && (
+                                  <span><span className="text-amber-700 font-semibold">📝 備註：</span>{b.notes}</span>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         )}
@@ -1212,6 +1359,10 @@ export default function AdminPage() {
           </TabsContent>
 
           {/* SERVICES */}
+          <TabsContent value="landing" className="mt-4 focus-visible:outline-none">
+            <LandingPageSettings />
+          </TabsContent>
+
           <TabsContent value="services" className="mt-4">
             <ServiceManagement onOpenSettings={async () => {
               setRateInput(Math.round(commission.commissionRate * 100).toString());
@@ -1220,6 +1371,8 @@ export default function AdminPage() {
               const { data: configRows } = await supabase.from("system_config").select("key, value").eq("store_id", storeId).in("key", [
                 "booking_page_url", "line_admin_user_id", "store_contact_email", "booking_policy",
                 "google_calendar_webhook", "line_channel_token", "line_channel_secret",
+                "email_tpl_customer_greeting", "email_tpl_customer_closing", "email_tpl_customer_footer",
+                "email_tpl_customer_notes", "email_tpl_store_greeting", "email_tpl_store_footer"
               ]);
               const configMap: Record<string, string> = {};
               (configRows || []).forEach((r: { key: string; value: string }) => { configMap[r.key] = r.value || ""; });
@@ -1230,6 +1383,12 @@ export default function AdminPage() {
               setGoogleCalendarWebhookInput(configMap.google_calendar_webhook || "");
               setLineChannelTokenInput(configMap.line_channel_token || "");
               setLineChannelSecretInput(configMap.line_channel_secret || "");
+              setEmailTplCustomerGreeting(configMap.email_tpl_customer_greeting || "");
+              setEmailTplCustomerClosing(configMap.email_tpl_customer_closing || "");
+              setEmailTplCustomerFooter(configMap.email_tpl_customer_footer || "");
+              setEmailTplCustomerNotes(configMap.email_tpl_customer_notes || "");
+              setEmailTplStoreGreeting(configMap.email_tpl_store_greeting || "");
+              setEmailTplStoreFooter(configMap.email_tpl_store_footer || "");
               setShowSettings(true);
             }} />
           </TabsContent>
@@ -1286,7 +1445,7 @@ export default function AdminPage() {
 
       {/* Manual booking dialog */}
       <Dialog open={showManualBooking} onOpenChange={setShowManualBooking}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>手動新增預約</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -1402,6 +1561,10 @@ export default function AdminPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={manualForm.needs_pair} onCheckedChange={(v) => setManualForm({ ...manualForm, needs_pair: v })} />
+              <Label className="text-sm">雙人單（才啟用搭配師傅）</Label>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowManualBooking(false)}>取消</Button>
@@ -1411,7 +1574,13 @@ export default function AdminPage() {
       </Dialog>
 
       {/* Settings dialog */}
-      <Dialog open={showSettings} onOpenChange={setShowSettings}>
+      <Dialog
+        open={showSettings}
+        onOpenChange={(open) => {
+          if (open) setShowSettings(true);
+          else requestCloseSettings();
+        }}
+      >
         <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
           <DialogHeader><DialogTitle>⚙️ 系統設定</DialogTitle></DialogHeader>
           <Accordion type="multiple" defaultValue={["basic", "line"]} className="flex-1 overflow-y-auto pr-1">
@@ -1420,29 +1589,55 @@ export default function AdminPage() {
               <AccordionContent className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">店名</Label>
-                  <Input value={shopInfoInput.store_name} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_name: e.target.value }))} placeholder="例：不老松足湯安平店" />
+                  <Input
+                    value={shopInfoInput.store_name}
+                    onChange={(e) => { setShopInfoInput(prev => ({ ...prev, store_name: e.target.value })); markSettingsDirty(); }}
+                    placeholder="例：不老松足湯安平店"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">師傅名稱</Label>
-                  <Input value={shopInfoInput.therapist_name} onChange={(e) => setShopInfoInput(prev => ({ ...prev, therapist_name: e.target.value }))} placeholder="例：嘉豪師傅" />
+                  <Input
+                    value={shopInfoInput.therapist_name}
+                    onChange={(e) => { setShopInfoInput(prev => ({ ...prev, therapist_name: e.target.value })); markSettingsDirty(); }}
+                    placeholder="例：嘉豪師傅"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">地點（日曆顯示）</Label>
-                  <Input value={shopInfoInput.store_location} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_location: e.target.value }))} placeholder="例：不老松足湯安平店" />
+                  <Input
+                    value={shopInfoInput.store_location}
+                    onChange={(e) => { setShopInfoInput(prev => ({ ...prev, store_location: e.target.value })); markSettingsDirty(); }}
+                    placeholder="例：不老松足湯安平店"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">地址（預約頁底部）</Label>
-                  <Input value={shopInfoInput.store_address} onChange={(e) => setShopInfoInput(prev => ({ ...prev, store_address: e.target.value }))} placeholder="例：台南市安平區 · 不老松足湯安平店" />
+                  <Input
+                    value={shopInfoInput.store_address}
+                    onChange={(e) => { setShopInfoInput(prev => ({ ...prev, store_address: e.target.value })); markSettingsDirty(); }}
+                    placeholder="例：台南市安平區 · 不老松足湯安平店"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">店家聯絡信箱 (Email)</Label>
-                  <Input type="email" value={storeContactEmailInput} onChange={(e) => setStoreContactEmailInput(e.target.value)} placeholder="例：contact@example.com" />
+                  <Input
+                    type="email"
+                    value={storeContactEmailInput}
+                    onChange={(e) => { setStoreContactEmailInput(e.target.value); markSettingsDirty(); }}
+                    placeholder="例：contact@example.com"
+                  />
                   <p className="text-xs text-muted-foreground">用於客人回覆信件、預約確認通知</p>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-sm font-medium">預約注意事項</Label>
-                  <Textarea className="min-h-[80px] text-sm" value={bookingPolicyInput} onChange={(e) => setBookingPolicyInput(e.target.value)} placeholder="例：退改規則、遲到提醒、攜帶物品等..." />
-                  <p className="text-xs text-muted-foreground">店家自訂退改規則與提醒，可顯示於預約頁</p>
+                  <Label className="text-sm font-medium">預約注意事項 (顯示於網站預約頁)</Label>
+                  <Textarea
+                    className="min-h-[80px] text-sm"
+                    value={bookingPolicyInput}
+                    onChange={(e) => { setBookingPolicyInput(e.target.value); markSettingsDirty(); }}
+                    placeholder="例：退改規則、遲到提醒、攜帶物品等..."
+                  />
+                  <p className="text-xs text-muted-foreground">店家自訂退改規則與提醒，將顯示在客人準備送出預約的畫面中</p>
                 </div>
               </AccordionContent>
             </AccordionItem>
@@ -1454,13 +1649,25 @@ export default function AdminPage() {
                     <FormField control={frontendForm.control} name="frontend_subtitle" render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm font-medium">前台小標題</FormLabel>
-                        <FormControl><Input {...field} placeholder="例：線上預約系統" /></FormControl>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="例：線上預約系統"
+                            onChange={(e) => { field.onChange(e); markSettingsDirty(); }}
+                          />
+                        </FormControl>
                       </FormItem>
                     )} />
                     <FormField control={frontendForm.control} name="business_hours" render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-sm font-medium">營業時間</FormLabel>
-                        <FormControl><Input {...field} placeholder="例：週一至週日 10:00-22:00" /></FormControl>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder="例：週一至週日 10:00-22:00"
+                            onChange={(e) => { field.onChange(e); markSettingsDirty(); }}
+                          />
+                        </FormControl>
                       </FormItem>
                     )} />
                   </div>
@@ -1485,12 +1692,12 @@ export default function AdminPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">預約頁網址（LINE 用）</Label>
-                  <Input value={bookingPageUrlInput} onChange={(e) => setBookingPageUrlInput(e.target.value)} placeholder="例：https://你的網站.vercel.app/booking" />
+                  <Input value={bookingPageUrlInput} onChange={(e) => { setBookingPageUrlInput(e.target.value); markSettingsDirty(); }} placeholder="例：https://你的網站.vercel.app/booking" />
                   <p className="text-xs text-muted-foreground">填寫後，LINE 歡迎訊息、查詢結果會顯示「立即預約」連結</p>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">老闆 LINE User ID</Label>
-                  <Input value={lineAdminUserIdInput} onChange={(e) => setLineAdminUserIdInput(e.target.value)} placeholder="例：U1234567890abcdef" />
+                  <Input value={lineAdminUserIdInput} onChange={(e) => { setLineAdminUserIdInput(e.target.value); markSettingsDirty(); }} placeholder="例：U1234567890abcdef" />
                   <p className="text-xs text-muted-foreground">新預約成立時會推播通知到老闆的 LINE</p>
                 </div>
               </AccordionContent>
@@ -1500,15 +1707,15 @@ export default function AdminPage() {
               <AccordionContent className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Google Calendar Webhook URL</Label>
-                  <Input value={googleCalendarWebhookInput} onChange={(e) => setGoogleCalendarWebhookInput(e.target.value)} placeholder="例：https://..." />
+                  <Input value={googleCalendarWebhookInput} onChange={(e) => { setGoogleCalendarWebhookInput(e.target.value); markSettingsDirty(); }} placeholder="例：https://..." />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">LINE Channel Access Token</Label>
-                  <Input type="password" value={lineChannelTokenInput} onChange={(e) => setLineChannelTokenInput(e.target.value)} placeholder="多店專屬憑證" autoComplete="off" />
+                  <Input type="password" value={lineChannelTokenInput} onChange={(e) => { setLineChannelTokenInput(e.target.value); markSettingsDirty(); }} placeholder="多店專屬憑證" autoComplete="off" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">LINE Channel Secret</Label>
-                  <Input type="password" value={lineChannelSecretInput} onChange={(e) => setLineChannelSecretInput(e.target.value)} placeholder="多店專屬憑證" autoComplete="off" />
+                  <Input type="password" value={lineChannelSecretInput} onChange={(e) => { setLineChannelSecretInput(e.target.value); markSettingsDirty(); }} placeholder="多店專屬憑證" autoComplete="off" />
                 </div>
                 <p className="text-xs text-muted-foreground">多租戶時在此設定各店專屬 LINE 憑證（Webhook 必填）</p>
               </AccordionContent>
@@ -1517,7 +1724,14 @@ export default function AdminPage() {
               <AccordionTrigger className="text-sm font-semibold">💰 師傅抽成比例</AccordionTrigger>
               <AccordionContent className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <Input type="number" className="w-24" value={rateInput} onChange={(e) => setRateInput(e.target.value)} min={1} max={99} />
+                  <Input
+                    type="number"
+                    className="w-24"
+                    value={rateInput}
+                    onChange={(e) => { setRateInput(e.target.value); markSettingsDirty(); }}
+                    min={1}
+                    max={99}
+                  />
                   <span className="text-sm text-muted-foreground">%</span>
                 </div>
                 <p className="text-xs text-muted-foreground">師傅 {rateInput}% / 店家 {100 - (parseInt(rateInput) || 0)}%</p>
@@ -1529,7 +1743,7 @@ export default function AdminPage() {
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">預約間隔緩衝時間</Label>
                   <div className="flex items-center gap-2">
-                    <Input type="number" className="w-24" value={bufferInput} onChange={(e) => setBufferInput(e.target.value)} min={0} max={60} />
+                    <Input type="number" className="w-24" value={bufferInput} onChange={(e) => { setBufferInput(e.target.value); markSettingsDirty(); }} min={0} max={60} />
                     <span className="text-sm text-muted-foreground">分鐘</span>
                   </div>
                   <p className="text-xs text-muted-foreground">每筆預約結束後保留的緩衝時間</p>
@@ -1537,14 +1751,14 @@ export default function AdminPage() {
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">免費泡腳肩頸時長</Label>
                   <div className="flex items-center gap-2">
-                    <Input type="number" className="w-24" value={freeAddonInput} onChange={(e) => setFreeAddonInput(e.target.value)} min={0} max={30} />
+                    <Input type="number" className="w-24" value={freeAddonInput} onChange={(e) => { setFreeAddonInput(e.target.value); markSettingsDirty(); }} min={0} max={30} />
                     <span className="text-sm text-muted-foreground">分鐘</span>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">前方預約保護時間</Label>
                   <div className="flex items-center gap-2">
-                    <Input type="number" className="w-24" value={preBlockInput} onChange={(e) => setPreBlockInput(e.target.value)} min={0} max={120} />
+                    <Input type="number" className="w-24" value={preBlockInput} onChange={(e) => { setPreBlockInput(e.target.value); markSettingsDirty(); }} min={0} max={120} />
                     <span className="text-sm text-muted-foreground">分鐘</span>
                   </div>
                 </div>
@@ -1553,28 +1767,106 @@ export default function AdminPage() {
             <AccordionItem value="calendar">
               <AccordionTrigger className="text-sm font-semibold">📅 Google 日曆注意事項</AccordionTrigger>
               <AccordionContent className="space-y-2">
-                <Textarea className="min-h-[100px] text-sm" value={calendarNotesInput} onChange={(e) => setCalendarNotesInput(e.target.value)} placeholder="輸入要顯示在 Google 日曆描述中的注意事項..." />
+                <Textarea className="min-h-[100px] text-sm" value={calendarNotesInput} onChange={(e) => { setCalendarNotesInput(e.target.value); markSettingsDirty(); }} placeholder="輸入要顯示在 Google 日曆描述中的注意事項..." />
                 <p className="text-xs text-muted-foreground">此內容會顯示在客人加入 Google 日曆時的事件描述底部</p>
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="email_templates">
+              <AccordionTrigger className="text-sm font-semibold">📧 Email 通知模板設定</AccordionTrigger>
+              <AccordionContent className="space-y-6">
+                <div className="bg-muted p-3 flex flex-wrap gap-2 rounded-md text-xs mb-4">
+                  <span className="font-semibold w-full text-foreground mb-1">可用變數 (輸入時自動替換)：</span>
+                  {["{{客人姓名}}", "{{電話}}", "{{日期}}", "{{時段}}", "{{服務}}", "{{師傅}}", "{{金額}}", "{{店名}}", "{{不舒服部位}}", "{{備註}}"].map(tag => (
+                    <span key={tag} className="bg-background border px-1.5 py-0.5 rounded cursor-copy" onClick={() => { navigator.clipboard.writeText(tag); toast.success(`已複製 ${tag}`); }}>{tag}</span>
+                  ))}
+                  <p className="w-full text-muted-foreground mt-1">留白即使用系統預設文案。文案區支援多行。</p>
+                </div>
+
+                <div className="space-y-4 border-l-2 border-primary/20 pl-3">
+                  <h4 className="font-semibold text-sm">客人的預約確認信</h4>
+                  <div className="space-y-2">
+                    <Label className="text-xs">開場白</Label>
+                    <Textarea className="min-h-[60px] text-sm" value={emailTplCustomerGreeting} onChange={(e) => { setEmailTplCustomerGreeting(e.target.value); markSettingsDirty(); }} placeholder="預設：&#10;您好 {{客人姓名}}，&#10;感謝您的預約，以下是您的預約資訊：" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">預約須知 (顯示於 Email 內)</Label>
+                    <Textarea className="min-h-[60px] text-sm" value={emailTplCustomerNotes} onChange={(e) => { setEmailTplCustomerNotes(e.target.value); markSettingsDirty(); }} placeholder="預設：無。&#10;您可以在此輸入專屬 Email 的預約注意事項或退改規則。" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">結尾語</Label>
+                    <Textarea className="min-h-[60px] text-sm" value={emailTplCustomerClosing} onChange={(e) => { setEmailTplCustomerClosing(e.target.value); markSettingsDirty(); }} placeholder="預設：如有變更需求，請盡早聯繫店家。" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">信件頁尾小字</Label>
+                    <Input className="text-sm" value={emailTplCustomerFooter} onChange={(e) => { setEmailTplCustomerFooter(e.target.value); markSettingsDirty(); }} placeholder="預設：此信由 {{店名}} 預約系統自動寄出，請勿直接回覆。" />
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div className="space-y-4 border-l-2 border-primary/20 pl-3">
+                  <h4 className="font-semibold text-sm">店家的新預約通知信</h4>
+                  <div className="space-y-2">
+                    <Label className="text-xs">開場白</Label>
+                    <Textarea className="min-h-[60px] text-sm" value={emailTplStoreGreeting} onChange={(e) => { setEmailTplStoreGreeting(e.target.value); markSettingsDirty(); }} placeholder="預設：客人 {{客人姓名}} 已完成線上預約，請確認：" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">信件頁尾小字</Label>
+                    <Input className="text-sm" value={emailTplStoreFooter} onChange={(e) => { setEmailTplStoreFooter(e.target.value); markSettingsDirty(); }} placeholder="預設：{{店名}} 預約系統 · 店家通知" />
+                  </div>
+                </div>
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="password">
               <AccordionTrigger className="text-sm font-semibold">🔐 修改管理員密碼</AccordionTrigger>
               <AccordionContent className="space-y-2">
-                <Input type="password" value={adminPasswordInput} onChange={(e) => setAdminPasswordInput(e.target.value)} placeholder="留空則不修改" />
+                <Input type="password" value={adminPasswordInput} onChange={(e) => { setAdminPasswordInput(e.target.value); markSettingsDirty(); }} placeholder="留空則不修改" />
                 <p className="text-xs text-muted-foreground">輸入新密碼後儲存即可變更</p>
               </AccordionContent>
             </AccordionItem>
           </Accordion>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSettings(false)}>取消</Button>
-            <Button onClick={saveSettings}>儲存</Button>
+            <Button variant="outline" onClick={requestCloseSettings} disabled={isSavingSettings}>取消</Button>
+            <Button onClick={saveSettings} disabled={isSavingSettings}>
+              {isSavingSettings ? (
+                <span className="inline-flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  儲存中...
+                </span>
+              ) : (
+                "儲存"
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
+      {/* Confirm leave settings without saving */}
+      <AlertDialog open={confirmCloseSettingsOpen} onOpenChange={setConfirmCloseSettingsOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>尚未儲存設定</AlertDialogTitle>
+            <AlertDialogDescription>你已修改設定但尚未按「儲存」。確定要離開並放棄變更嗎？</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmCloseSettingsOpen(false)}>繼續編輯</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                setConfirmCloseSettingsOpen(false);
+                setSettingsDirty(false);
+                setShowSettings(false);
+              }}
+            >
+              放棄並離開
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Edit booking dialog */}
       <Dialog open={!!editingBooking} onOpenChange={(open) => !open && setEditingBooking(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>編輯預約</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
@@ -1638,6 +1930,10 @@ export default function AdminPage() {
                   <SelectItem value="front_desk">櫃檯代訂</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch checked={editForm.needs_pair} onCheckedChange={(v) => setEditForm({ ...editForm, needs_pair: v })} />
+              <Label className="text-sm">雙人單（才啟用搭配師傅）</Label>
             </div>
             <div className="space-y-1">
               <Label className="text-sm">精油推薦獎金</Label>

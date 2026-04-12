@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antigravity Workflow 指令總覽</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0f0f13; color: #e0e0e0; padding: 32px 20px; min-height: 100vh; }
+    h1 { text-align: center; font-size: 1.9rem; color: #a78bfa; margin-bottom: 6px; }
+    .subtitle { text-align: center; color: #555; font-size: 0.88rem; margin-bottom: 24px; }
+    .stats { display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+    .stat { background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 10px; padding: 10px 20px; text-align: center; }
+    .stat-num { font-size: 1.4rem; font-weight: 700; color: #a78bfa; }
+    .stat-label { font-size: 0.72rem; color: #555; margin-top: 2px; }
+    .search-bar { display: flex; justify-content: center; margin-bottom: 14px; }
+    input[type="text"] { width: 100%; max-width: 520px; padding: 11px 18px; border-radius: 10px; border: 1px solid #2a2a3a; background: #1a1a24; color: #e0e0e0; font-size: 0.95rem; outline: none; transition: border 0.2s; }
+    input[type="text"]:focus { border-color: #a78bfa; }
+    .tags { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    .tag { padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; cursor: pointer; border: 1px solid #2a2a3a; background: #1a1a24; color: #888; transition: all 0.2s; user-select: none; }
+    .tag.active, .tag:hover { background: #a78bfa; color: #fff; border-color: #a78bfa; }
+    .count { text-align: center; color: #444; font-size: 0.8rem; margin-bottom: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; max-width: 1200px; margin: 0 auto; }
+    .card { background: #1a1a24; border: 1px solid #2a2a3a; border-radius: 14px; padding: 20px; transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s; }
+    .card:hover { border-color: #a78bfa; transform: translateY(-3px); box-shadow: 0 8px 24px rgba(167,139,250,0.08); }
+    .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .cmd { font-family: monospace; font-size: 0.95rem; color: #a78bfa; font-weight: bold; background: #2a1f3d; padding: 4px 11px; border-radius: 7px; }
+    .badge { font-size: 0.7rem; padding: 3px 10px; border-radius: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    .badge-plan    { background: #1e3a5f; color: #60a5fa; }
+    .badge-db      { background: #1a3a2a; color: #4ade80; }
+    .badge-auto    { background: #2d1f0e; color: #fb923c; }
+    .badge-test    { background: #2a1a1a; color: #f87171; }
+    .badge-ui      { background: #1f1a3a; color: #c084fc; }
+    .badge-deploy  { background: #1a2a3a; color: #38bdf8; }
+    .badge-store   { background: #1a2a1a; color: #86efac; }
+    .badge-payment { background: #2a2a0e; color: #fde047; }
+    .badge-customer{ background: #1a1f2a; color: #93c5fd; }
+    .badge-marketing{ background: #2a1a2a; color: #f0abfc; }
+    .badge-ai      { background: #0e1f1f; color: #2dd4bf; }
+    .card-title { font-size: 1rem; font-weight: 600; color: #fff; margin-bottom: 7px; }
+    .card-desc { font-size: 0.83rem; color: #777; line-height: 1.65; margin-bottom: 13px; }
+    .example-label { font-size: 0.7rem; color: #444; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.07em; }
+    .card-example { font-family: monospace; font-size: 0.77rem; color: #6ee7b7; background: #0a1510; padding: 8px 11px; border-radius: 7px; border-left: 3px solid #4ade80; word-break: break-all; line-height: 1.5; margin-bottom: 12px; }
+    .card-actions { display: flex; gap: 8px; }
+    .btn { font-size: 0.72rem; padding: 5px 12px; border-radius: 7px; cursor: pointer; border: 1px solid #2a2a3a; transition: all 0.2s; background: none; }
+    .btn-copy { color: #888; }
+    .btn-copy:hover { color: #a78bfa; border-color: #a78bfa; }
+    .btn-view { color: #4ade80; border-color: #1a3a2a; }
+    .btn-view:hover { background: #1a3a2a; }
+    .empty-msg { text-align: center; color: #333; margin-top: 60px; font-size: 0.95rem; display: none; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 100; display: none; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: #1a1a24; border: 1px solid #3a2a5a; border-radius: 16px; width: 100%; max-width: 720px; max-height: 85vh; overflow: hidden; display: flex; flex-direction: column; }
+    .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid #2a2a3a; }
+    .modal-title { display: flex; align-items: center; gap: 10px; }
+    .modal-cmd { font-family: monospace; font-size: 1rem; color: #a78bfa; font-weight: bold; }
+    .modal-name { color: #ccc; font-size: 0.9rem; }
+    .modal-close { background: none; border: none; color: #555; font-size: 1.4rem; cursor: pointer; transition: color 0.2s; line-height: 1; }
+    .modal-close:hover { color: #fff; }
+    .modal-body { overflow-y: auto; padding: 22px; flex: 1; }
+    .modal-body pre { font-family: monospace; font-size: 0.82rem; color: #c0cce0; background: #0f0f18; padding: 16px; border-radius: 10px; border: 1px solid #2a2a3a; white-space: pre-wrap; word-break: break-word; line-height: 1.7; }
+    .modal-footer { padding: 14px 22px; border-top: 1px solid #2a2a3a; display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-primary { background: #a78bfa; color: #fff; border: none; padding: 8px 18px; border-radius: 8px; font-size: 0.82rem; cursor: pointer; transition: background 0.2s; }
+    .btn-primary:hover { background: #9061f9; }
+    .btn-secondary { background: none; color: #888; border: 1px solid #2a2a3a; padding: 8px 18px; border-radius: 8px; font-size: 0.82rem; cursor: pointer; transition: all 0.2s; }
+    .btn-secondary:hover { color: #fff; border-color: #555; }
+  </style>
+</head>
+<body>
+
+<h1>⚡ Antigravity Workflow 指令總覽</h1>
+<p class="subtitle">jiahao-booking-system-pro · 17 個 Slash Commands</p>
+
+<div class="stats">
+  <div class="stat"><div class="stat-num">17</div><div class="stat-label">總指令</div></div>
+  <div class="stat"><div class="stat-num" id="stat-showing">17</div><div class="stat-label">目前顯示</div></div>
+  <div class="stat"><div class="stat-num">11</div><div class="stat-label">類別</div></div>
+</div>
+
+<div class="search-bar">
+  <input type="text" id="search" placeholder="🔍 搜尋指令、名稱、用途或範例..." oninput="filterCards()" />
+</div>
+
+<div class="tags">
+  <span class="tag active" onclick="filterTag('all',this)">全部</span>
+  <span class="tag" onclick="filterTag('plan',this)">規劃</span>
+  <span class="tag" onclick="filterTag('ui',this)">UI</span>
+  <span class="tag" onclick="filterTag('db',this)">資料庫</span>
+  <span class="tag" onclick="filterTag('auto',this)">自動化</span>
+  <span class="tag" onclick="filterTag('test',this)">測試</span>
+  <span class="tag" onclick="filterTag('deploy',this)">部署</span>
+  <span class="tag" onclick="filterTag('store',this)">多店</span>
+  <span class="tag" onclick="filterTag('payment',this)">金流</span>
+  <span class="tag" onclick="filterTag('customer',this)">客戶</span>
+  <span class="tag" onclick="filterTag('marketing',this)">行銷</span>
+  <span class="tag" onclick="filterTag('ai',this)">AI</span>
+</div>
+
+<div class="grid" id="grid"></div>
+<p class="empty-msg" id="empty">找不到符合的指令 🙁</p>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <span class="modal-cmd" id="modal-cmd"></span>
+        <span class="modal-name" id="modal-name"></span>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <pre id="modal-content"></pre>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="copyContent()">複製 .md 內容</button>
+      <button class="btn-primary" onclick="closeModal()">關閉</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const workflows = [
+  {
+    cmd:"/project-plan", name:"專案規劃專家", badge:"plan", badgeLabel:"規劃", tag:"plan",
+    desc:"拆解功能需求、列出待辦事項、標示P1/P2/P3優先順序與相依風險。適合每次開始新功能前使用。",
+    example:"/project-plan 做候補名單通知功能",
+    content:`---
+name: project-plan
+description: 拆解功能需求並產出專案待辦、優先順序與實作路線
+---
+
+# /project-plan
+
+當使用者輸入 /project-plan 時，請依序執行：
+
+1. 先確認需求目標、使用者角色、輸入、輸出、限制條件。
+2. 將需求拆成前端、後端、資料庫、自動化、測試五個面向。
+3. 為每個面向列出具體待辦事項。
+4. 幫每個待辦標示優先順序：P1、P2、P3。
+5. 指出相依關係與風險。
+6. 最後輸出：
+   - 功能摘要
+   - 任務清單
+   - 建議實作順序
+   - 驗收標準`
+  },
+  {
+    cmd:"/feature-prd", name:"需求規格撰寫", badge:"plan", badgeLabel:"規劃", tag:"plan",
+    desc:"把功能想法整理成完整PRD，包含in/out scope、使用者角色、流程、技術考量與驗收條件。",
+    example:"/feature-prd 做金流串接功能",
+    content:`---
+name: feature-prd
+description: 將功能想法整理成可開發的 PRD、範圍、需求與驗收條件
+---
+
+# /feature-prd
+
+當使用者輸入 /feature-prd 時，請依序執行：
+
+1. 先確認功能背景：
+   - 為什麼要做這個功能
+   - 目前痛點是什麼
+   - 成功指標是什麼
+
+2. 定義需求範圍：
+   - In scope / Out of scope
+   - 使用者角色
+   - 主要使用情境
+
+3. 拆解功能需求：
+   - 核心流程
+   - 欄位需求
+   - 權限需求
+   - 通知需求
+   - 例外情境
+
+4. 列出技術考量：
+   - 前端頁面
+   - API / function
+   - Database schema
+   - n8n / automation
+   - 第三方整合
+
+5. 補上驗收條件：
+   - 功能完成條件
+   - 錯誤處理條件
+   - 測試條件
+   - 上線條件
+
+6. 最後輸出：
+   - 功能摘要
+   - PRD 結構稿
+   - 任務拆解
+   - 風險與依賴項
+   - 建議開發順序`
+  },
+  {
+    cmd:"/ui-spec", name:"畫面規格拆解", badge:"ui", badgeLabel:"UI", tag:"ui",
+    desc:"將需求拆成頁面、區塊、Shadcn元件、狀態流程與前後端配合說明。",
+    example:"/ui-spec 預約管理後台頁面",
+    content:`---
+name: ui-spec
+description: 將功能需求拆成畫面規格、互動流程、元件與驗收標準
+---
+
+# /ui-spec
+
+當使用者輸入 /ui-spec 時，請依序執行：
+
+1. 先確認功能目標與使用者角色。
+2. 拆解頁面與區塊：欄位、按鈕、狀態顯示、提示訊息。
+3. 規劃互動流程：初始、輸入、成功、失敗、loading/empty state。
+4. 補充元件需求：table、modal、form、date picker、tabs、toast、badge。
+5. 說明前後端配合：API 來源、寫回資料庫的操作、權限控管。
+6. 最後輸出：
+   - 頁面規格
+   - 元件清單
+   - 狀態流程
+   - 驗收標準`
+  },
+  {
+    cmd:"/schema-review", name:"資料表審查", badge:"db", badgeLabel:"資料庫", tag:"db",
+    desc:"審查Supabase schema、欄位命名、RLS規則、多租戶隔離與migration建議。",
+    example:"/schema-review @file schema.sql 審查多租戶欄位",
+    content:`---
+name: schema-review
+description: 審查資料表設計、欄位命名、關聯、RLS 與多租戶風險
+---
+
+# /schema-review
+
+當使用者輸入 /schema-review 時，請依序執行：
+
+1. 確認資料模型目標與使用者角色。
+2. 檢查 schema 結構：表名、欄位命名、型別、nullable、default。
+3. 檢查關聯與約束：foreign key、unique、index、cascade。
+4. 檢查安全性與多租戶風險：
+   - store_id 隔離
+   - RLS 是否足夠
+   - service role 使用是否過度
+5. 檢查可維護性：audit fields、soft delete、status enum、migration。
+6. 最後輸出：
+   - schema 審查摘要
+   - 問題清單
+   - 建議修改
+   - migration 建議
+   - 風險等級`
+  },
+  {
+    cmd:"/supabase-deploy", name:"Supabase部署", badge:"db", badgeLabel:"資料庫", tag:"db",
+    desc:"規劃migration、Edge Function、env的部署步驟、部署前後檢查清單與回滾方案。",
+    example:"/supabase-deploy 部署 send-booking-reminder",
+    content:`---
+name: supabase-deploy
+description: 檢查並規劃 Supabase migration、Edge Functions 與部署流程
+---
+
+# /supabase-deploy
+
+當使用者輸入 /supabase-deploy 時，請依序執行：
+
+1. 確認部署內容：schema、RLS、Edge Function、env。
+2. 檢查是否有 migration、table、policy、secret 變更。
+3. 列出部署前檢查項目。
+4. 產出部署步驟，必要時附 CLI 指令。
+5. 列出部署後驗證方式。
+6. 最後輸出：
+   - 部署清單
+   - 指令順序
+   - 風險與回滾建議`
+  },
+  {
+    cmd:"/n8n-plan", name:"n8n自動化規劃", badge:"auto", badgeLabel:"自動化", tag:"auto",
+    desc:"拆解n8n workflow節點、觸發器、資料流、Webhook/HTTP/Supabase節點與錯誤處理機制。",
+    example:"/n8n-plan @workspace LINE預約提醒workflow",
+    content:`---
+name: n8n-plan
+description: 規劃 n8n workflow 並輸出節點清單與資料流
+---
+
+# /n8n-plan
+
+當使用者輸入 /n8n-plan 時，請依序執行：
+
+1. 先詢問工作流目的、觸發來源、輸入資料、輸出結果。
+2. 將需求拆成節點列表。
+3. 說明每個節點的用途。
+4. 標出可能用到的 webhook、HTTP request、IF、Code、Set、Supabase 節點。
+5. 最後輸出：
+   - workflow 摘要
+   - 節點順序
+   - JSON 結構建議
+   - 風險與注意事項`
+  },
+  {
+    cmd:"/line-flow", name:"LINE流程設計", badge:"auto", badgeLabel:"自動化", tag:"auto",
+    desc:"規劃LINE webhook、訊息模板、主पना動推播、回覆邏輯、n8n整合與通知測試清單。",
+    example:"/line-flow 候補名單通知流程",
+    content:`---
+name: line-flow
+description: 規劃 LINE webhook、通知訊息、事件流與錯誤處理
+---
+
+# /line-flow
+
+當使用者輸入 /line-flow 時，請依序執行：
+
+1. 確認目標：LINE 流程目的、使用者、觸發來源。
+2. 蒐集必要資訊：輸入來源、訊息類型、是否回覆或推播、是否寫回 Supabase。
+3. 將需求拆成流程節點：
+   - Trigger → Validation → Business logic
+   - Message generation → Delivery → Logging
+4. 指出需要的服務：LINE webhook、n8n、Edge Function、DB、Scheduler、Retry。
+5. 列出可能風險：重複通知、webhook 驗證失敗、token 過期、訊息格式錯誤。
+6. 最後輸出：
+   - 流程摘要
+   - 事件流程圖文字版
+   - 需要建立的 API / function / table
+   - 測試清單
+   - 建議實作順序`
+  },
+  {
+    cmd:"/test-booking", name:"預約測試清單", badge:"test", badgeLabel:"測試", tag:"test",
+    desc:"產出預約系統從正常流程到邊界條件、後台操作、通知發送的完整測試案例與驗收標準。",
+    example:"/test-booking 驗收公休日設定功能",
+    content:`---
+name: test-booking
+description: 為預約系統產出完整測試案例與驗收清單
+---
+
+# /test-booking
+
+當使用者輸入 /test-booking 時，請依序執行：
+
+1. 確認功能範圍：預約建立、取消、改期、公休日、通知。
+2. 產出正常流程測試案例。
+3. 產出錯誤流程與邊界條件案例。
+4. 產出管理後台驗證清單。
+5. 產出通知與 webhook 驗證清單。
+6. 最後輸出：
+   - 測試案例表
+   - 驗收標準
+   - 缺陷追蹤建議`
+  },
+  {
+    cmd:"/deploy-check", name:"上線前總檢查", badge:"test", badgeLabel:"測試", tag:"test",
+    desc:"巡檢Vercel、Supabase、env、Webhook URL、權限，輸出部署前後的完整checklist與回滾清單。",
+    example:"/deploy-check 本次feature全部上線",
+    content:`---
+name: deploy-check
+description: 上線前檢查前端、後端、環境變數、Webhook 與整體可用性
+---
+
+# /deploy-check
+
+當使用者輸入 /deploy-check 時，請依序執行：
+
+1. 確認本次上線範圍：前端、Supabase、Edge Function、n8n、LINE、第三方 API。
+2. 列出部署前檢查項目：Git 狀態、env、migration、webhook URL、權限 dev/prod 分離。
+3. 列出部署步驟與手動確認項目。
+4. 列出部署後驗證：首頁、表單、預約、通知、後台、錯誤監控。
+5. 若發現風險，補上回滾方案與臨時替代方案。
+6. 最後以 checklist 格式輸出：
+   - 上線前檢查表
+   - 上線步驟
+   - 驗收清單
+   - 回滾清單`
+  },
+  {
+    cmd:"/debug-fix", name:"錯誤排查修復", badge:"test", badgeLabel:"測試", tag:"test",
+    desc:"分析錯誤根因、提出最小修復方案、規劃驗證步驟與回歸測試清單，支援@terminal/@file上下文。",
+    example:"/debug-fix @terminal Supabase function error",
+    content:`---
+name: debug-fix
+description: 分析錯誤、縮小問題範圍、提出修復步驟與驗證方式
+---
+
+# /debug-fix
+
+當使用者輸入 /debug-fix 時，請依序執行：
+
+1. 要求使用者提供：錯誤訊息、發生位置、重現步驟、預期與實際結果。
+2. 將問題分類：前端、API、Database、Auth、n8n、Webhook、Deployment、Env。
+3. 先做根因分析，不要急著直接改：可能原因列表、最有可能原因、驗證方式。
+4. 提出修復方案：最小修復、穩定版修復、影響範圍評估。
+5. 規劃驗證方法：如何重測、回歸測試案例、log/monitoring 建議。
+6. 最後輸出：
+   - 問題摘要
+   - 可能根因
+   - 建議修復方案
+   - 驗證步驟
+   - 後續預防建議
+
+若使用者有提供 @terminal、@file、@problems，優先根據這些內容分析。`
+  },
+  {
+    cmd:"/github-push", name:"Git推送與PR", badge:"deploy", badgeLabel:"部署", tag:"deploy",
+    desc:"產出符合規範的commit message、branch命名建議、推送指令與PR描述草稿。",
+    example:"/github-push feat 新增候補名單功能",
+    content:`---
+name: github-push
+description: 規劃 Git commit、branch、PR 與合併流程
+---
+
+# /github-push
+
+當使用者輸入 /github-push 時，請依序執行：
+
+1. 確認狀態：目前 branch、哪些檔案有變更、這次 commit 目的。
+2. 產出 commit message：
+   - 格式：type(scope): 中文說明
+   - type：feat / fix / chore / refactor / docs / style / test
+3. 確認是否需要開新 branch：feat/xxx、fix/xxx、hotfix/xxx。
+4. 說明推送步驟：git add、git commit、git push origin branch-name。
+5. 確認是否需要開 PR：標題、描述摘要、review 重點、merge 前確認。
+6. 最後輸出：
+   - commit message 建議
+   - branch 名稱建議
+   - 推送指令
+   - PR 描述草稿`
+  },
+  {
+    cmd:"/vercel-deploy", name:"Vercel部署驗證", badge:"deploy", badgeLabel:"部署", tag:"deploy",
+    desc:"確認env、build指令、上線步驟、部署後驗收清單與失敗時的排查方向。",
+    example:"/vercel-deploy production main branch",
+    content:`---
+name: vercel-deploy
+description: 確認 Vercel 部署狀態、環境變數與上線驗證流程
+---
+
+# /vercel-deploy
+
+當使用者輸入 /vercel-deploy 時，請依序執行：
+
+1. 確認部署範圍：preview 還是 production、哪個 branch、有無新 env。
+2. 部署前檢查：.env.example 更新、Vercel env 同步、build 無錯誤、Supabase URL 正確。
+3. 部署步驟：git push origin main 或手動 vercel --prod。
+4. 部署後驗證：首頁、預約、Supabase 連線、LINE webhook、env 未洩漏。
+5. 若部署失敗：看 build log、確認 Node 版本、npm build 指令、回滾到上一個部署。
+6. 最後輸出：
+   - 部署前 checklist
+   - 部署指令
+   - 驗收清單
+   - 失敗排查方向`
+  },
+  {
+    cmd:"/store-setup", name:"門市設定配置", badge:"store", badgeLabel:"多店", tag:"store",
+    desc:"規劃新門市建立、多租戶RLS設定、公休規則、服務項目、staff關聯與通知獨立設定。",
+    example:"/store-setup 新增台南安平門市",
+    content:`---
+name: store-setup
+description: 規劃新門市建立、多租戶設定、公休、服務項目與權限配置
+---
+
+# /store-setup
+
+當使用者輸入 /store-setup 時，請依序執行：
+
+1. 確認目標：新增或修改門市、名稱、地址、時區、營業時間、公休規則、服務項目。
+2. 規劃資料庫操作：stores、store_hours、holidays、services 與 staff 關聯。
+3. 確認多租戶隔離：store_id 正確、RLS 涵蓋新門市、admin 權限正確綁定。
+4. 規劃前端操作：後台新增門市頁面、切換 store context、服務項目管理。
+5. 確認通知設定：LINE 官方帳號對應、通知 template 各門市獨立、提醒時間設定。
+6. 最後輸出：
+   - 門市設定清單
+   - SQL / migration 建議
+   - RLS 規則確認
+   - 前端操作步驟
+   - 測試驗收清單`
+  },
+  {
+    cmd:"/payment-setup", name:"金流串接規劃", badge:"payment", badgeLabel:"金流", tag:"payment",
+    desc:"規劃藍新/綠界串接流程、callback處理、訂單狀態、安全性驗證與測試環境切換。",
+    example:"/payment-setup 藍新信用卡串接",
+    content:`---
+name: payment-setup
+description: 規劃藍新或綠界金流串接、callback、訂單狀態與測試流程
+---
+
+# /payment-setup
+
+當使用者輸入 /payment-setup 時，請依序執行：
+
+1. 確認金流目標：藍新或綠界、付款方式、是否定期定額、測試或正式環境。
+2. 規劃串接流程：前端觸發、Edge Function 建立訂單、金流 API 呼叫、callback/notify URL、成功/失敗處理。
+3. 規劃資料庫：orders table、payment_status enum、transaction_id、退款紀錄。
+4. 規劃 n8n 整合：付款成功觸發通知、LINE 確認訊息、Supabase 更新預約狀態。
+5. 安全性確認：callback 來源驗證、金額防竄改、敏感資訊不進前端、env 存放正確。
+6. 最後輸出：
+   - 串接流程圖文字版
+   - Edge Function 架構建議
+   - 資料表設計
+   - 測試案例清單
+   - 上線前安全檢查`
+  },
+  {
+    cmd:"/customer-query", name:"客戶資料查詢", badge:"customer", badgeLabel:"客戶", tag:"customer",
+    desc:"查詢客戶資料、預約紀錄、統計報表，規劃後台查詢功能與個資安全SOP。",
+    example:"/customer-query 本月預約統計報表",
+    content:`---
+name: customer-query
+description: 查詢客戶資料、預約紀錄、統計報表與後台操作 SOP
+---
+
+# /customer-query
+
+當使用者輸入 /customer-query 時，請依序執行：
+
+1. 確認查詢目標：單一客戶、預約紀錄（時間/狀態/門市）、統計數據、服務項目使用情況。
+2. 規劃 SQL 查詢：確認 table、欄位、store_id 隔離、日期範圍、分頁排序。
+3. 說明後台操作步驟：頁面、篩選條件、匯出方式。
+4. 若需新增報表功能：規劃頁面、API 設計、Supabase query 建議。
+5. 補上資料安全提醒：個資欄位不暴露、查詢限當前 store、全查詢限 admin。
+6. 最後輸出：
+   - 查詢 SQL 建議
+   - 後台操作說明
+   - 報表欄位建議
+   - 安全注意事項`
+  },
+  {
+    cmd:"/marketing-flow", name:"行銷活動規劃", badge:"marketing", badgeLabel:"行銷", tag:"marketing",
+    desc:"規劃LINE推播、lead magnet流程、n8n自動化受眾篩選與活動成效追蹤方式。",
+    example:"/marketing-flow 母親節限時優惠推播",
+    content:`---
+name: marketing-flow
+description: 規劃行銷活動、LINE 推播、lead magnet 與自動化貼文流程
+---
+
+# /marketing-flow
+
+當使用者輸入 /marketing-flow 時，請依序執行：
+
+1. 確認行銷目標：拉新或留舊、推播對象、行銷管道、是否搭配優惠碼。
+2. 規劃內容：標題、主文、圖片/Flex Message、CTA 按鈕、活動時間。
+3. 規劃 n8n 自動化：觸發條件、受眾篩選、推播節點、追蹤點擊/轉換。
+4. 規劃 lead magnet 流程：表單 URL、填完自動回 LINE、記錄到 Supabase/Notion、後續跟進。
+5. 規劃成效追蹤：推播人數、點擊率、預約轉換數、LINE 加好友數。
+6. 最後輸出：
+   - 活動企劃摘要
+   - n8n workflow 節點建議
+   - 訊息文案草稿
+   - 追蹤方式
+   - 上線前確認清單`
+  },
+  {
+    cmd:"/ai-agent-plan", name:"AI Agent規劃", badge:"ai", badgeLabel:"AI", tag:"ai",
+    desc:"規劃AI agent任務架構、MCP工具串接、system prompt設計、n8n整合與測試案例。",
+    example:"/ai-agent-plan 預約客服AI agent設計",
+    content:`---
+name: ai-agent-plan
+description: 規劃 AI agent 任務、MCP 工具串接、prompt 設計與 n8n 整合
+---
+
+# /ai-agent-plan
+
+當使用者輸入 /ai-agent-plan 時，請依序執行：
+
+1. 確認 AI 任務目標：做什麼、輸入來源、輸出給誰、單次或持續運行。
+2. 決定架構：n8n AI Agent 節點、Supabase Edge Function 呼叫 Claude/Gemini、Antigravity MCP 工具串接、是否需要 subagent 或 multi-step chain。
+3. 設計 prompt：system prompt 角色定義、user prompt 格式、輸出格式（JSON/Markdown）、few-shot 範例。
+4. 規劃 MCP 工具：需要哪些工具（Supabase、Notion、Google Calendar、n8n）、呼叫條件、錯誤處理。
+5. 規劃 n8n 整合：觸發來源、AI 節點設定、輸出後處理、結果回傳（LINE/Supabase/Notion）。
+6. 最後輸出：
+   - agent 架構圖文字版
+   - prompt 草稿
+   - MCP tool 清單
+   - n8n workflow 節點建議
+   - 測試案例與風險評估`
+  }
+];
+
+const badgeClass = {
+  plan:"badge-plan", db:"badge-db", auto:"badge-auto", test:"badge-test",
+  ui:"badge-ui", deploy:"badge-deploy", store:"badge-store", payment:"badge-payment",
+  customer:"badge-customer", marketing:"badge-marketing", ai:"badge-ai"
+};
+
+let activeTag = "all";
+let currentContent = "";
+
+function openModal(w) {
+  document.getElementById("modal-cmd").textContent = w.cmd;
+  document.getElementById("modal-name").textContent = "— " + w.name;
+  document.getElementById("modal-content").textContent = w.content;
+  currentContent = w.content;
+  document.getElementById("modal-overlay").classList.add("open");
+  document.body.style.overflow = "hidden";
+}
+
+function closeModal() {
+  document.getElementById("modal-overlay").classList.remove("open");
+  document.body.style.overflow = "";
+}
+
+function closeModalOutside(e) {
+  if (e.target === document.getElementById("modal-overlay")) closeModal();
+}
+
+function copyContent() {
+  navigator.clipboard.writeText(currentContent).then(() => {
+    const btn = document.querySelector(".btn-secondary");
+    btn.textContent = "✓ 已複製！";
+    setTimeout(() => btn.textContent = "複製 .md 內容", 1500);
+  });
+}
+
+function copyExample(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = "✓ 已複製";
+    setTimeout(() => btn.textContent = "複製指令", 1500);
+  });
+}
+
+function renderCards(data) {
+  const grid = document.getElementById("grid");
+  const empty = document.getElementById("empty");
+  document.getElementById("stat-showing").textContent = data.length;
+  grid.innerHTML = "";
+  if (data.length === 0) { empty.style.display = "block"; return; }
+  empty.style.display = "none";
+  data.forEach(w => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <div class="card-header">
+        <span class="cmd">${w.cmd}</span>
+        <span class="badge ${badgeClass[w.badge]}">${w.badgeLabel}</span>
+      </div>
+      <div class="card-title">${w.name}</div>
+      <div class="card-desc">${w.desc}</div>
+      <div class="example-label">觸發範例</div>
+      <div class="card-example">${w.example}</div>
+      <div class="card-actions">
+        <button class="btn btn-copy" onclick="copyExample('${w.example}', this)">複製指令</button>
+        <button class="btn btn-view" onclick="openModal(workflows.find(x=>x.cmd==='${w.cmd}'))">查看 .md 內容</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function filterCards() {
+  const q = document.getElementById("search").value.toLowerCase();
+  const filtered = workflows.filter(w =>
+    (activeTag === "all" || w.tag === activeTag) &&
+    (w.cmd.includes(q) || w.name.includes(q) || w.desc.includes(q) || w.example.includes(q) || w.content.toLowerCase().includes(q))
+  );
+  renderCards(filtered);
+}
+
+function filterTag(tag, el) {
+  activeTag = tag;
+  document.querySelectorAll(".tag").forEach(t => t.classList.remove("active"));
+  el.classList.add("active");
+  filterCards();
+}
+
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+renderCards(workflows);
+</script>
+</body>
+</html>
