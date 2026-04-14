@@ -13,6 +13,8 @@ export interface StoreContextValue {
   currentStore: StoreInfo | null;
   stores: StoreInfo[];
   setStore: (id: string) => void;
+  /** 重新載入 stores（例如新增店家後） */
+  refetchStores: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -67,21 +69,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [storeId, setStoreIdState] = useState<string>(envDefault);
   const [isLoading, setIsLoading] = useState(true);
 
+  const loadStores = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("stores")
+      .select("id, name, slug, is_active")
+      .order("name");
+    if (error) throw error;
+    const list = (data ?? []).map(mapRowToStoreInfo);
+    setStores(list);
+    setStoreIdState((prev) =>
+      list.some((s) => s.id === prev) ? prev : resolveStoreIdFromList(list, envDefault),
+    );
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const { data, error } = await supabase
-          .from("stores")
-          .select("id, name, slug, is_active")
-          .order("name");
-        if (cancelled) return;
-        if (error) throw error;
-        const list = (data ?? []).map(mapRowToStoreInfo);
-        setStores(list);
-        setStoreIdState((prev) =>
-          list.some((s) => s.id === prev) ? prev : resolveStoreIdFromList(list, envDefault),
-        );
+        await loadStores();
       } catch {
         if (!cancelled) setStores([]);
       } finally {
@@ -91,7 +96,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadStores]);
+
+  const refetchStores = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await loadStores();
+    } catch {
+      setStores([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loadStores]);
 
   const setStore = useCallback((id: string) => {
     if (stores.length > 0 && !stores.some((s) => s.id === id)) {
@@ -117,9 +133,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       currentStore,
       stores,
       setStore,
+      refetchStores,
       isLoading,
     }),
-    [storeId, currentStore, stores, setStore, isLoading],
+    [storeId, currentStore, stores, setStore, refetchStores, isLoading],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

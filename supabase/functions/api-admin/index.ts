@@ -20,6 +20,27 @@ function formatHourToTime(hour: number): string {
   return `${h.toString().padStart(2, "0")}:${m === 0 ? "00" : "30"}`;
 }
 
+/** 若尚無 store_settings 列則 INSERT 預設 Landing（與 initialize_store_settings 共用） */
+async function insertDefaultStoreSettingsIfMissing(
+  supabase: ReturnType<typeof createClient>,
+  storeId: string,
+  storeName: string,
+): Promise<{ created: boolean; error?: string }> {
+  const trimmed = storeName.trim();
+  if (!trimmed) return { created: false, error: "店名為空" };
+  const { data: existing, error: existErr } = await supabase
+    .from("store_settings")
+    .select("store_id")
+    .eq("store_id", storeId)
+    .maybeSingle();
+  if (existErr) return { created: false, error: existErr.message };
+  if (existing) return { created: false };
+  const row = buildDefaultStoreSettingsInsertRow(storeId, trimmed);
+  const { error: insErr } = await supabase.from("store_settings").insert(row);
+  if (insErr) return { created: false, error: insErr.message };
+  return { created: true };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -34,11 +55,18 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action, password, store_id: storeId, ...data } = body;
 
-    // Verify admin password
+    // Verify admin password（不得使用任何硬編碼 fallback）
     let configQuery = supabase.from("system_config").select("value").eq("key", "admin_password");
     if (storeId) configQuery = configQuery.eq("store_id", storeId);
-    const { data: configRow } = await configQuery.single();
-    const adminPassword = configRow?.value || "bulaosong2024";
+    const { data: configRow, error: configErr } = await configQuery.maybeSingle();
+    if (configErr) {
+      return jsonResponse({ error: configErr.message }, 500);
+    }
+    const raw = configRow?.value;
+    const adminPassword = typeof raw === "string" ? raw.trim() : "";
+    if (!adminPassword) {
+      return jsonResponse({ error: "此店家尚未設定後台密碼" }, 401);
+    }
     if (password !== adminPassword) {
       return jsonResponse({ error: "密碼錯誤" }, 401);
     }
@@ -372,6 +400,33 @@ Deno.serve(async (req) => {
       }
 
       /** 首頁 / Landing v2 圖片：驗證後台密碼後寫入 storage bucket `landing-images` */
+      /** 建立新店家並自動寫入預設 Landing（store_id 用 body，密碼驗證仍用請求內既有 store_id） */
+      case "store.create": {
+        const name = typeof data.name === "string" ? data.name.trim() : "";
+        const slug = typeof data.slug === "string" ? data.slug.trim().toLowerCase() : "";
+        if (!name) throw new Error("請輸入店名");
+        if (!slug) throw new Error("請輸入網址代碼（slug）");
+        const { data: inserted, error: insStoreErr } = await supabase
+          .from("stores")
+          .insert({
+            name,
+            slug,
+            is_active: data.is_active !== false,
+          })
+          .select()
+          .single();
+        if (insStoreErr) throw insStoreErr;
+        const newId = inserted.id as string;
+        const init = await insertDefaultStoreSettingsIfMissing(supabase, newId, name);
+        result = {
+          success: true,
+          store: inserted,
+          landing_initialized: init.created,
+          ...(init.error ? { landing_warning: init.error } : {}),
+        };
+        break;
+      }
+
       /** 新店家：尚無 store_settings 列時寫入預設 Landing 文案（不覆寫既有列） */
       case "initialize_store_settings": {
         if (!storeId || typeof storeId !== "string") throw new Error("缺少 store_id");
@@ -387,20 +442,12 @@ Deno.serve(async (req) => {
             : "";
         if (!storeName) throw new Error("找不到店家或店名為空");
 
-        const { data: existing, error: existErr } = await supabase
-          .from("store_settings")
-          .select("store_id")
-          .eq("store_id", storeId)
-          .maybeSingle();
-        if (existErr) throw existErr;
-        if (existing) {
+        const init = await insertDefaultStoreSettingsIfMissing(supabase, storeId, storeName);
+        if (init.error) throw new Error(init.error);
+        if (!init.created) {
           result = { success: true, already_initialized: true };
           break;
         }
-
-        const row = buildDefaultStoreSettingsInsertRow(storeId, storeName);
-        const { error: insErr } = await supabase.from("store_settings").insert(row);
-        if (insErr) throw insErr;
         result = { success: true, initialized: true };
         break;
       }

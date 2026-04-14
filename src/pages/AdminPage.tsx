@@ -45,8 +45,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { useForm } from "react-hook-form";
 import { Form, FormField, FormItem, FormLabel, FormControl } from "@/components/ui/form";
 
-const DEFAULT_ADMIN_PASSWORD = "bulaosong2024";
-
 interface Booking {
   id: string;
   order_time: string;
@@ -87,7 +85,11 @@ interface Holiday {
 }
 
 export default function AdminPage() {
-  const { storeId, currentStore, stores, setStore, isLoading: storeLoading } = useStore();
+  const { storeId, currentStore, stores, setStore, refetchStores, isLoading: storeLoading } = useStore();
+  const [newStoreOpen, setNewStoreOpen] = useState(false);
+  const [newStoreName, setNewStoreName] = useState("");
+  const [newStoreSlug, setNewStoreSlug] = useState("");
+  const [creatingStore, setCreatingStore] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -157,7 +159,9 @@ export default function AdminPage() {
   const [freeAddonInput, setFreeAddonInput] = useState("10");
   const [preBlockInput, setPreBlockInput] = useState("60");
   const [adminPasswordInput, setAdminPasswordInput] = useState("");
-  const [adminPasswordFromDb, setAdminPasswordFromDb] = useState(DEFAULT_ADMIN_PASSWORD);
+  /** null：尚未從 DB 載入，或該店無 admin_password／空值（不再使用程式內預設密碼） */
+  const [adminPasswordFromDb, setAdminPasswordFromDb] = useState<string | null>(null);
+  const [isAdminPasswordReady, setIsAdminPasswordReady] = useState(false);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [settingsDirty, setSettingsDirty] = useState(false);
   const [confirmCloseSettingsOpen, setConfirmCloseSettingsOpen] = useState(false);
@@ -206,11 +210,28 @@ export default function AdminPage() {
 
   // Load admin password from DB & Google Calendar ID
   useEffect(() => {
+    let cancelled = false;
+    setIsAdminPasswordReady(false);
+    setAdminPasswordFromDb(null);
     const loadConfig = async () => {
-      const { data } = await supabase.from("system_config").select("value").eq("key", "admin_password").eq("store_id", storeId).single();
-      if (data?.value) setAdminPasswordFromDb(data.value);
+      const { data } = await supabase
+        .from("system_config")
+        .select("value")
+        .eq("key", "admin_password")
+        .eq("store_id", storeId)
+        .maybeSingle();
+      if (cancelled) return;
+      if (data?.value && typeof data.value === "string" && data.value.trim() !== "") {
+        setAdminPasswordFromDb(data.value.trim());
+      } else {
+        setAdminPasswordFromDb(null);
+      }
+      setIsAdminPasswordReady(true);
     };
-    loadConfig();
+    void loadConfig();
+    return () => {
+      cancelled = true;
+    };
   }, [storeId]);
 
   useEffect(() => {
@@ -255,6 +276,14 @@ export default function AdminPage() {
   }, []);
 
   const handleLogin = () => {
+    if (!isAdminPasswordReady) {
+      toast.error("系統載入中，請稍候再試");
+      return;
+    }
+    if (adminPasswordFromDb === null) {
+      toast.error("此店家尚未設定後台密碼，請至資料庫或設定頁設定 admin_password");
+      return;
+    }
     if (password === adminPasswordFromDb) {
       setAuthenticated(true);
       sessionStorage.setItem("admin_auth", "true");
@@ -653,24 +682,44 @@ export default function AdminPage() {
           </h1>
           <div className="flex items-center gap-2 flex-wrap justify-end">
             {/* Multi-tenant: 讓後台切換 storeId，Webhook URL 也會跟著變更 */}
-            {!storeLoading && stores.length > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground hidden sm:inline">店家</span>
-                <Select value={storeId} onValueChange={(v) => setStore(v)}>
-                  <SelectTrigger className="w-[220px] h-9 text-sm">
-                    <SelectValue placeholder="選擇店家" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {stores
-                      .slice()
-                      .sort((a, b) => (a.id === storeId ? -1 : 0) - (b.id === storeId ? -1 : 0))
-                      .map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
+            {!storeLoading && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {stores.length > 0 ? (
+                  <>
+                    <span className="text-xs text-muted-foreground hidden sm:inline">店家</span>
+                    <Select value={storeId} onValueChange={(v) => setStore(v)}>
+                      <SelectTrigger className="w-[220px] h-9 text-sm">
+                        <SelectValue placeholder="選擇店家" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stores
+                          .slice()
+                          .sort((a, b) => (a.id === storeId ? -1 : 0) - (b.id === storeId ? -1 : 0))
+                          .map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </>
+                ) : (
+                  <span className="text-xs text-amber-600">尚無店家，請先新增</span>
+                )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="h-9 shrink-0"
+                  onClick={() => {
+                    setNewStoreName("");
+                    setNewStoreSlug("");
+                    setNewStoreOpen(true);
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  新增店家
+                </Button>
               </div>
             )}
             <Button variant="outline" size="sm" onClick={async () => {
@@ -714,6 +763,81 @@ export default function AdminPage() {
             </Button>
           </div>
         </div>
+
+        <Dialog open={newStoreOpen} onOpenChange={setNewStoreOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>新增店家</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-1">
+              <div className="space-y-2">
+                <Label htmlFor="new-store-name">店名</Label>
+                <Input
+                  id="new-store-name"
+                  value={newStoreName}
+                  onChange={(e) => setNewStoreName(e.target.value)}
+                  placeholder="例：安平不老松 haoboxing"
+                  autoComplete="off"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-store-slug">網址代碼（slug）</Label>
+                <Input
+                  id="new-store-slug"
+                  value={newStoreSlug}
+                  onChange={(e) => setNewStoreSlug(e.target.value.trim().toLowerCase().replace(/\s+/g, "-"))}
+                  placeholder="例：haoboxing-anping"
+                  autoComplete="off"
+                />
+                <p className="text-xs text-muted-foreground">英數與連字號；須全站唯一。</p>
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="outline" onClick={() => setNewStoreOpen(false)} disabled={creatingStore}>
+                取消
+              </Button>
+              <Button
+                type="button"
+                disabled={creatingStore || !newStoreName.trim() || !newStoreSlug.trim()}
+                onClick={async () => {
+                  const name = newStoreName.trim();
+                  const slug = newStoreSlug.trim();
+                  if (!name || !slug) return;
+                  setCreatingStore(true);
+                  try {
+                    const res = await adminApi(
+                      "store.create",
+                      { name, slug, is_active: true },
+                      storeId,
+                    );
+                    if (typeof res.landing_warning === "string") {
+                      toast.warning(`店家已建立，但 Landing 預設稿未寫入：${res.landing_warning}`);
+                    } else {
+                      toast.success("店家已建立，並已套用預設 Landing 內容");
+                    }
+                    setNewStoreOpen(false);
+                    await refetchStores();
+                    const created = res.store as { id?: string } | undefined;
+                    if (created?.id) setStore(created.id);
+                  } catch (e: unknown) {
+                    toast.error(e instanceof Error ? e.message : "建立失敗");
+                  } finally {
+                    setCreatingStore(false);
+                  }
+                }}
+              >
+                {creatingStore ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    建立中…
+                  </>
+                ) : (
+                  "建立"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Tabs value={tab} onValueChange={(v) => { setTab(v); if (v === "today" || v === "stats") commission.refetch(); }}>
           {/* 一列可滑動導覽；小螢幕讓圖示更明顯（文字在 >=sm 顯示） */}
