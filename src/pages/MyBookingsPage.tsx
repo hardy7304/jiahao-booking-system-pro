@@ -31,7 +31,7 @@ interface Booking {
 
 export default function MyBookingsPage() {
   const navigate = useNavigate();
-  const { storeId } = useStore();
+  const { storeId, buildStorePath } = useStore();
   const [phone, setPhone] = useState("");
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [searched, setSearched] = useState(false);
@@ -149,7 +149,7 @@ export default function MyBookingsPage() {
       <div className="max-w-lg mx-auto px-4 py-6">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/booking")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate(buildStorePath("booking"))}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-xl font-bold text-foreground">我的預約</h1>

@@ -1,4 +1,4 @@
-export type Json =
+﻿export type Json =
   | string
   | number
   | boolean
@@ -79,18 +79,18 @@ export type Database = {
           id: string
           name: string
           needs_pair: boolean
+          notes: string | null
           oil_bonus: number
           order_time: string
           phone: string
+          secondary_coach_id: string | null
           service: string
           source: string | null
           start_hour: number
           start_time_str: string
           status: string | null
           store_id: string
-          secondary_coach_id: string | null
-          symptom_tags: string[]
-          notes: string | null
+          symptom_tags: string[] | null
           total_price: number
         }
         Insert: {
@@ -107,18 +107,18 @@ export type Database = {
           id?: string
           name: string
           needs_pair?: boolean
+          notes?: string | null
           oil_bonus?: number
           order_time?: string
           phone: string
+          secondary_coach_id?: string | null
           service: string
           source?: string | null
           start_hour: number
           start_time_str: string
           status?: string | null
           store_id: string
-          secondary_coach_id?: string | null
-          symptom_tags?: string[]
-          notes?: string | null
+          symptom_tags?: string[] | null
           total_price: number
         }
         Update: {
@@ -135,18 +135,18 @@ export type Database = {
           id?: string
           name?: string
           needs_pair?: boolean
+          notes?: string | null
           oil_bonus?: number
           order_time?: string
           phone?: string
+          secondary_coach_id?: string | null
           service?: string
           source?: string | null
           start_hour?: number
           start_time_str?: string
           status?: string | null
           store_id?: string
-          secondary_coach_id?: string | null
-          symptom_tags?: string[]
-          notes?: string | null
+          symptom_tags?: string[] | null
           total_price?: number
         }
         Relationships: [
@@ -158,17 +158,17 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "bookings_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: false
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "bookings_secondary_coach_id_fkey"
             columns: ["secondary_coach_id"]
             isOneToOne: false
             referencedRelation: "coaches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bookings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
@@ -625,44 +625,31 @@ export type Database = {
           },
         ]
       }
-      stores: {
+      store_dashboard_prefs: {
         Row: {
-          address: string | null
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          name: string
-          owner_email: string | null
-          phone: string | null
-          plan: string | null
-          settings: Json | null
-          slug: string
+          store_id: string
+          updated_at: string
+          visible_cards: Json
         }
         Insert: {
-          address?: string | null
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name: string
-          owner_email?: string | null
-          phone?: string | null
-          plan?: string | null
-          settings?: Json | null
-          slug: string
+          store_id: string
+          updated_at?: string
+          visible_cards?: Json
         }
         Update: {
-          address?: string | null
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          name?: string
-          owner_email?: string | null
-          phone?: string | null
-          plan?: string | null
-          settings?: Json | null
-          slug?: string
+          store_id?: string
+          updated_at?: string
+          visible_cards?: Json
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "store_dashboard_prefs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: true
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       store_settings: {
         Row: {
@@ -675,23 +662,25 @@ export type Database = {
           brand_stats_subtitle: string | null
           brand_stats_title: string | null
           business_hours_display: string | null
-          created_at: string
+          created_at: string | null
           footer_cta_body: string | null
+          footer_cta_button_text: string | null
           footer_cta_title: string | null
           hero_hours_badge_short: string | null
           hero_late_night_note: string | null
           hero_starting_price_label: string | null
           hero_subtitle: string | null
           hero_title: string | null
-          is_roushou_visible: boolean
+          id: string
+          is_roushou_visible: boolean | null
           roushou_intro: string | null
           roushou_section_body: string | null
           roushou_section_title: string | null
-          services: Json
-          stats: Json
-          store_id: string
-          studios_shell: Json
-          therapist_highlights: Json
+          services: Json | null
+          stats: Json | null
+          store_id: string | null
+          studios_shell: Json | null
+          therapist_highlights: Json | null
           therapist_section_body: string | null
           therapist_section_title: string | null
           therapist_tags_line: string | null
@@ -707,23 +696,25 @@ export type Database = {
           brand_stats_subtitle?: string | null
           brand_stats_title?: string | null
           business_hours_display?: string | null
-          created_at?: string
+          created_at?: string | null
           footer_cta_body?: string | null
+          footer_cta_button_text?: string | null
           footer_cta_title?: string | null
           hero_hours_badge_short?: string | null
           hero_late_night_note?: string | null
           hero_starting_price_label?: string | null
           hero_subtitle?: string | null
           hero_title?: string | null
-          is_roushou_visible?: boolean
+          id?: string
+          is_roushou_visible?: boolean | null
           roushou_intro?: string | null
           roushou_section_body?: string | null
           roushou_section_title?: string | null
-          services?: Json
-          stats?: Json
-          store_id: string
-          studios_shell?: Json
-          therapist_highlights?: Json
+          services?: Json | null
+          stats?: Json | null
+          store_id?: string | null
+          studios_shell?: Json | null
+          therapist_highlights?: Json | null
           therapist_section_body?: string | null
           therapist_section_title?: string | null
           therapist_tags_line?: string | null
@@ -739,37 +730,85 @@ export type Database = {
           brand_stats_subtitle?: string | null
           brand_stats_title?: string | null
           business_hours_display?: string | null
-          created_at?: string
+          created_at?: string | null
           footer_cta_body?: string | null
+          footer_cta_button_text?: string | null
           footer_cta_title?: string | null
           hero_hours_badge_short?: string | null
           hero_late_night_note?: string | null
           hero_starting_price_label?: string | null
           hero_subtitle?: string | null
           hero_title?: string | null
-          is_roushou_visible?: boolean
+          id?: string
+          is_roushou_visible?: boolean | null
           roushou_intro?: string | null
           roushou_section_body?: string | null
           roushou_section_title?: string | null
-          services?: Json
-          stats?: Json
-          store_id?: string
-          studios_shell?: Json
-          therapist_highlights?: Json
+          services?: Json | null
+          stats?: Json | null
+          store_id?: string | null
+          studios_shell?: Json | null
+          therapist_highlights?: Json | null
           therapist_section_body?: string | null
           therapist_section_title?: string | null
           therapist_tags_line?: string | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "store_settings_store_id_fkey"
-            columns: ["store_id"]
-            isOneToOne: true
-            referencedRelation: "stores"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      stores: {
+        Row: {
+          address: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          og_image: string | null
+          owner_email: string | null
+          phone: string | null
+          plan: string | null
+          settings: Json | null
+          seo_description: string | null
+          seo_keywords: string | null
+          seo_title: string | null
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          og_image?: string | null
+          owner_email?: string | null
+          phone?: string | null
+          plan?: string | null
+          settings?: Json | null
+          seo_description?: string | null
+          seo_keywords?: string | null
+          seo_title?: string | null
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          og_image?: string | null
+          owner_email?: string | null
+          phone?: string | null
+          plan?: string | null
+          settings?: Json | null
+          seo_description?: string | null
+          seo_keywords?: string | null
+          seo_title?: string | null
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       system_config: {
         Row: {

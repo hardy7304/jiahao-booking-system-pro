@@ -39,6 +39,9 @@ function buildStoreSettingsUpsertPayload(
     closing_gallery_mode: next.closing_gallery_mode,
     closing_image_url_1: next.closing_image_url_1,
     closing_image_url_2: next.closing_image_url_2,
+    testimonials: next.testimonials as unknown as Json,
+    store_info: next.store_info as unknown as Json,
+    price_disclaimer: next.price_disclaimer,
   };
   const servicesPayload: Json = next.services as unknown as Json;
 

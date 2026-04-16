@@ -5,6 +5,16 @@ export interface LandingServiceTier {
   price: string;
 }
 
+export type ServiceTagColor = "amber" | "emerald" | "blue" | "rose" | "purple";
+
+export const SERVICE_TAG_COLOR_OPTIONS: { value: ServiceTagColor; label: string; preview: string }[] = [
+  { value: "amber", label: "金色（熱門）", preview: "bg-amber-500/90" },
+  { value: "emerald", label: "綠色（推薦）", preview: "bg-emerald-500/90" },
+  { value: "blue", label: "藍色（專業）", preview: "bg-blue-500/90" },
+  { value: "rose", label: "玫紅（招牌）", preview: "bg-rose-500/90" },
+  { value: "purple", label: "紫色（限定）", preview: "bg-purple-500/90" },
+];
+
 export interface LandingServiceItem {
   name: string;
   tagline?: string;
@@ -13,6 +23,10 @@ export interface LandingServiceItem {
   starting_price_label?: string;
   /** 服務卡片主圖（Landing v2 / 後台可上傳或貼網址） */
   image_url?: string;
+  /** 卡片角標文字（如「熱門」「推薦」「專業」，留空不顯示） */
+  tag?: string;
+  /** 角標顏色 */
+  tag_color?: ServiceTagColor;
   tiers: LandingServiceTier[];
 }
 
@@ -26,6 +40,32 @@ export interface LandingStatTargets {
   /** 品牌實績第三卡「調理手法」自訂顯示文案（可含換行） */
   techniques_display: string;
 }
+
+/** 顧客好評：單則評價卡片 */
+export interface LandingTestimonial {
+  name: string;
+  content: string;
+  rating: number;
+}
+
+/** 店面資訊：地址、電話、營業時間、Google Maps 嵌入 */
+export interface LandingStoreInfo {
+  address: string;
+  phone: string;
+  business_hours: string;
+  google_maps_url: string;
+  google_maps_embed_url: string;
+}
+
+export const STORE_INFO_DEFAULTS: LandingStoreInfo = {
+  address: "",
+  phone: "",
+  business_hours: "",
+  google_maps_url: "",
+  google_maps_embed_url: "",
+};
+
+export const TESTIMONIALS_DEFAULTS: LandingTestimonial[] = [];
 
 /** 工作室／雙據點區：套版文字（多租戶可全留白或自訂） */
 export interface StudiosShell {
@@ -129,6 +169,9 @@ export interface LandingContent extends LandingStatTargets {
   closing_image_url_2: string;
   is_roushou_visible: boolean;
   studios_shell: StudiosShell;
+  testimonials: LandingTestimonial[];
+  store_info: LandingStoreInfo;
+  price_disclaimer: string;
 }
 
 export const LANDING_DEFAULTS: Omit<LandingContent, "store_id"> = {
@@ -146,7 +189,74 @@ export const LANDING_DEFAULTS: Omit<LandingContent, "store_id"> = {
   review_percent: 99,
   techniques_count: 72,
   techniques_display: "72 種",
-  services: [],
+  services: [
+    {
+      name: "腳底按摩",
+      tagline: "傳統穴道手法",
+      description: "傳統腳底穴道按摩，促進血液循環，舒緩疲勞。讓雙腳重獲輕盈，從足底開始放鬆全身。",
+      featured: false,
+      tag: "熱門",
+      tag_color: "amber",
+      tiers: [
+        { label: "40 分鐘", price: "NT$800" },
+        { label: "60 分鐘", price: "NT$1,200" },
+        { label: "80 分鐘", price: "NT$1,600" },
+      ],
+    },
+    {
+      name: "全身指壓",
+      tagline: "深層肌肉放鬆",
+      description: "針對全身經絡穴位，深層放鬆肌肉緊繃。結合傳統手法與現代理療，徹底釋放壓力。",
+      featured: false,
+      tag: "推薦",
+      tag_color: "emerald",
+      tiers: [
+        { label: "60 分鐘", price: "NT$1,100" },
+        { label: "90 分鐘", price: "NT$1,650" },
+        { label: "120 分鐘", price: "NT$2,200" },
+      ],
+    },
+    {
+      name: "筋膜刀療程",
+      tagline: "專業筋膜調理",
+      description: "運用專業筋膜刀具，鬆解沾黏組織，改善痠痛。適合長期肩頸不適或運動後修復。",
+      featured: true,
+      tag: "專業",
+      tag_color: "blue",
+      tiers: [
+        { label: "腳底 40 分鐘", price: "NT$1,200" },
+        { label: "腳底 60 分鐘", price: "NT$1,750" },
+        { label: "身體 60 分鐘", price: "NT$1,800" },
+        { label: "身體 90 分鐘", price: "NT$2,600" },
+        { label: "身體 120 分鐘", price: "NT$3,400" },
+      ],
+    },
+    {
+      name: "深層雙拼",
+      tagline: "筋膜刀 + 全身指壓",
+      description: "筋膜刀身體 60 分鐘搭配全身指壓 60 分鐘，雙重深層調理。",
+      featured: true,
+      tag: "招牌",
+      tag_color: "rose",
+      tiers: [
+        { label: "120 分鐘", price: "NT$2,900" },
+      ],
+    },
+    {
+      name: "精選套餐",
+      tagline: "多療程組合",
+      description: "精心搭配的複合式療程，一次體驗多種手法。",
+      featured: false,
+      tag: "超值",
+      tag_color: "purple",
+      tiers: [
+        { label: "延禧｜腳底精油 60 分 + 肩頸 10 分", price: "NT$1,549" },
+        { label: "如懿｜腳底精油 80 分 + 肩頸 10 分", price: "NT$1,949" },
+        { label: "甄環｜指壓 60 分 + 腳底 60 分 + 肩頸 10 分", price: "NT$2,349" },
+        { label: "乾隆｜全身精油 60 分 + 腳底精油 40 分 + 肩頸 10 分", price: "NT$2,699" },
+      ],
+    },
+  ],
   anping_section_title: "不老松安平店",
   anping_section_body: "台南安平在地深耕，每一次療程皆由師傅親自操作。",
   roushou_section_title: "柔手傳統整復推拿",
@@ -171,6 +281,9 @@ export const LANDING_DEFAULTS: Omit<LandingContent, "store_id"> = {
   closing_image_url_2: "",
   is_roushou_visible: true,
   studios_shell: { ...STUDIOS_SHELL_DEFAULTS },
+  testimonials: [...TESTIMONIALS_DEFAULTS],
+  store_info: { ...STORE_INFO_DEFAULTS },
+  price_disclaimer: "實際價格以現場為準",
 };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
@@ -249,6 +362,9 @@ export function parseServicesJson(raw: Json | undefined): LandingServiceItem[] {
       if (label && price) tiers.push({ label, price });
     }
     const imageUrlRaw = typeof item.image_url === "string" ? item.image_url.trim() : "";
+    const tagRaw = typeof item.tag === "string" ? item.tag.trim() : "";
+    const tagColorRaw = typeof item.tag_color === "string" ? item.tag_color.trim() : "";
+    const validColors: ServiceTagColor[] = ["amber", "emerald", "blue", "rose", "purple"];
     out.push({
       name,
       tagline: typeof item.tagline === "string" ? item.tagline : undefined,
@@ -259,10 +375,38 @@ export function parseServicesJson(raw: Json | undefined): LandingServiceItem[] {
           ? item.starting_price_label
           : undefined,
       image_url: imageUrlRaw !== "" ? imageUrlRaw : undefined,
+      tag: tagRaw || undefined,
+      tag_color: validColors.includes(tagColorRaw as ServiceTagColor) ? (tagColorRaw as ServiceTagColor) : undefined,
       tiers,
     });
   }
   return out.length > 0 ? out : LANDING_DEFAULTS.services;
+}
+
+export function parseTestimonialsJson(raw: Json | undefined): LandingTestimonial[] {
+  if (!Array.isArray(raw)) return [...TESTIMONIALS_DEFAULTS];
+  const out: LandingTestimonial[] = [];
+  for (const item of raw) {
+    if (!isRecord(item)) continue;
+    const name = typeof item.name === "string" ? item.name.trim() : "";
+    const content = typeof item.content === "string" ? item.content.trim() : "";
+    if (!name || !content) continue;
+    const rating = typeof item.rating === "number" ? Math.min(5, Math.max(1, Math.round(item.rating))) : 5;
+    out.push({ name, content, rating });
+  }
+  return out;
+}
+
+export function parseStoreInfoJson(raw: Json | undefined): LandingStoreInfo {
+  const d = STORE_INFO_DEFAULTS;
+  if (!isRecord(raw)) return { ...d };
+  return {
+    address: typeof raw.address === "string" ? raw.address : d.address,
+    phone: typeof raw.phone === "string" ? raw.phone : d.phone,
+    business_hours: typeof raw.business_hours === "string" ? raw.business_hours : d.business_hours,
+    google_maps_url: typeof raw.google_maps_url === "string" ? raw.google_maps_url : d.google_maps_url,
+    google_maps_embed_url: typeof raw.google_maps_embed_url === "string" ? raw.google_maps_embed_url : d.google_maps_embed_url,
+  };
 }
 
 export function parseHighlightsJson(raw: Json | undefined): string[] {
@@ -294,6 +438,9 @@ export function normalizeLandingContent(c: LandingContent): LandingContent {
     therapist_highlights: Array.isArray(c.therapist_highlights)
       ? c.therapist_highlights
       : [...LANDING_DEFAULTS.therapist_highlights],
+    testimonials: Array.isArray(c.testimonials) ? c.testimonials : [...TESTIMONIALS_DEFAULTS],
+    store_info: isRecord(c.store_info) ? parseStoreInfoJson(c.store_info as unknown as Json) : { ...STORE_INFO_DEFAULTS },
+    price_disclaimer: typeof c.price_disclaimer === "string" ? c.price_disclaimer : LANDING_DEFAULTS.price_disclaimer,
   };
 }
 
@@ -477,5 +624,8 @@ export function mergeLandingContent(
     ),
     is_roushou_visible: coerceRoushouVisible(row.is_roushou_visible, d.is_roushou_visible),
     studios_shell,
+    testimonials: parseTestimonialsJson((statsRecord.testimonials ?? row.testimonials) as Json),
+    store_info: parseStoreInfoJson((statsRecord.store_info ?? row.store_info) as Json),
+    price_disclaimer: pickEmbeddedString(row, statsRecord, "price_disclaimer", "price_disclaimer", d.price_disclaimer),
   });
 }
