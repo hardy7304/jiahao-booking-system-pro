@@ -55,20 +55,51 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const { action, password, store_id: storeId, ...data } = body;
 
-    // Verify admin password（不得使用任何硬編碼 fallback）
-    let configQuery = supabase.from("system_config").select("value").eq("key", "admin_password");
-    if (storeId) configQuery = configQuery.eq("store_id", storeId);
-    const { data: configRow, error: configErr } = await configQuery.maybeSingle();
-    if (configErr) {
-      return jsonResponse({ error: configErr.message }, 500);
+    // Verify：store.list 僅接受 super_admin_password；store.create 可改用 super_admin 或該店 admin_password
+    let passwordOk = false;
+    if (action === "store.list") {
+      const { data: sapRows, error: sapErr } = await supabase
+        .from("system_config")
+        .select("value")
+        .eq("key", "super_admin_password")
+        .limit(1);
+      if (sapErr) {
+        return jsonResponse({ error: sapErr.message }, 500);
+      }
+      const sp = typeof sapRows?.[0]?.value === "string" ? sapRows[0].value.trim() : "";
+      if (!sp) {
+        return jsonResponse({ error: "尚未設定平台管理密碼" }, 401);
+      }
+      if (password !== sp) {
+        return jsonResponse({ error: "密碼錯誤" }, 401);
+      }
+      passwordOk = true;
+    } else if (action === "store.create" && typeof password === "string") {
+      const { data: sapRows, error: sapErr } = await supabase
+        .from("system_config")
+        .select("value")
+        .eq("key", "super_admin_password")
+        .limit(1);
+      if (!sapErr && sapRows?.length) {
+        const sp = typeof sapRows[0].value === "string" ? sapRows[0].value.trim() : "";
+        if (sp !== "" && password === sp) passwordOk = true;
+      }
     }
-    const raw = configRow?.value;
-    const adminPassword = typeof raw === "string" ? raw.trim() : "";
-    if (!adminPassword) {
-      return jsonResponse({ error: "此店家尚未設定後台密碼" }, 401);
-    }
-    if (password !== adminPassword) {
-      return jsonResponse({ error: "密碼錯誤" }, 401);
+    if (!passwordOk) {
+      let configQuery = supabase.from("system_config").select("value").eq("key", "admin_password");
+      if (storeId) configQuery = configQuery.eq("store_id", storeId);
+      const { data: configRow, error: configErr } = await configQuery.maybeSingle();
+      if (configErr) {
+        return jsonResponse({ error: configErr.message }, 500);
+      }
+      const raw = configRow?.value;
+      const adminPassword = typeof raw === "string" ? raw.trim() : "";
+      if (!adminPassword) {
+        return jsonResponse({ error: "此店家尚未設定後台密碼" }, 401);
+      }
+      if (password !== adminPassword) {
+        return jsonResponse({ error: "密碼錯誤" }, 401);
+      }
     }
 
     let result: any = { success: true };
@@ -396,6 +427,17 @@ Deno.serve(async (req) => {
       case "config.get_calendar_id": {
         const calId = Deno.env.get("GOOGLE_CALENDAR_ID") || "";
         result = { success: true, calendar_id: calId };
+        break;
+      }
+
+      /** 平台管理：列出所有店家（僅 super_admin_password） */
+      case "store.list": {
+        const { data: storeList, error: listErr } = await supabase
+          .from("stores")
+          .select("id, name, slug, is_active, created_at")
+          .order("created_at", { ascending: false });
+        if (listErr) throw listErr;
+        result = { success: true, stores: storeList ?? [] };
         break;
       }
 

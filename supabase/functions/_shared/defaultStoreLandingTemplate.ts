@@ -51,31 +51,61 @@ export function buildDefaultStoreSettingsInsertRow(
 
   const servicesRaw = [
     {
-      name: "[店名] · 經典腳底療程",
-      tagline: "舒緩久站久坐",
-      description:
-        "以專業手法放鬆雙足，促進循環。可依需求調整力道與時間。參考方案：[服務名稱]。",
-      featured: true,
+      name: "腳底按摩",
+      tagline: "傳統穴道手法",
+      description: "傳統腳底穴道按摩，促進血液循環，舒緩疲勞。",
+      featured: false,
       starting_price_label: "NT$800 起",
       tiers: [
-        { label: "60 分鐘", price: "NT$900" },
-        { label: "90 分鐘", price: "NT$1,200" },
+        { label: "40 分鐘", price: "NT$800" },
+        { label: "60 分鐘", price: "NT$1,200" },
+        { label: "80 分鐘", price: "NT$1,600" },
       ],
     },
     {
-      name: "全身深層指壓",
-      tagline: "釋放肩背壓力",
-      description:
-        "針對肩頸與背部深層放鬆，適合工作緊繃族群。可加選 [服務名稱] 加強方案。",
+      name: "全身指壓",
+      tagline: "深層肌肉放鬆",
+      description: "針對全身經絡穴位，深層放鬆肌肉緊繃。",
       featured: false,
-      tiers: [{ label: "90 分鐘", price: "NT$1,400" }],
+      tiers: [
+        { label: "60 分鐘", price: "NT$1,100" },
+        { label: "90 分鐘", price: "NT$1,650" },
+        { label: "120 分鐘", price: "NT$2,200" },
+      ],
     },
     {
-      name: "局部筋膜調理",
-      tagline: "依部位客製",
-      description: "依您的需求調整部位與力道，建議先與師傅溝通再預約。",
+      name: "筋膜刀療程",
+      tagline: "專業筋膜調理",
+      description: "運用專業筋膜刀具，鬆解沾黏組織，改善痠痛。",
+      featured: true,
+      tiers: [
+        { label: "腳底 40 分鐘", price: "NT$1,200" },
+        { label: "腳底 60 分鐘", price: "NT$1,750" },
+        { label: "身體 60 分鐘", price: "NT$1,800" },
+        { label: "身體 90 分鐘", price: "NT$2,600" },
+        { label: "身體 120 分鐘", price: "NT$3,400" },
+      ],
+    },
+    {
+      name: "深層雙拼",
+      tagline: "筋膜刀 + 全身指壓",
+      description: "筋膜刀身體 60 分鐘搭配全身指壓 60 分鐘，雙重深層調理。",
+      featured: true,
+      tiers: [
+        { label: "120 分鐘", price: "NT$2,900" },
+      ],
+    },
+    {
+      name: "精選套餐",
+      tagline: "多療程組合",
+      description: "精心搭配的複合式療程，一次體驗多種手法。",
       featured: false,
-      tiers: [{ label: "60 分鐘", price: "NT$1,000" }],
+      tiers: [
+        { label: "延禧｜腳底精油 60 分 + 肩頸 10 分", price: "NT$1,549" },
+        { label: "如懿｜腳底精油 80 分 + 肩頸 10 分", price: "NT$1,949" },
+        { label: "甄環｜指壓 60 分 + 腳底 60 分 + 肩頸 10 分", price: "NT$2,349" },
+        { label: "乾隆｜全身精油 60 分 + 腳底精油 40 分 + 肩頸 10 分", price: "NT$2,699" },
+      ],
     },
   ];
 

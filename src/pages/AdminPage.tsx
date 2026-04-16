@@ -284,10 +284,15 @@ export default function AdminPage() {
       toast.error("此店家尚未設定後台密碼，請至資料庫或設定頁設定 admin_password");
       return;
     }
-    if (password === adminPasswordFromDb) {
+    const pwd = password.trim();
+    if (!pwd) {
+      toast.error("請輸入密碼");
+      return;
+    }
+    if (pwd === adminPasswordFromDb) {
       setAuthenticated(true);
       sessionStorage.setItem("admin_auth", "true");
-      sessionStorage.setItem("admin_password", password);
+      sessionStorage.setItem("admin_password", pwd);
     } else {
       toast.error("密碼錯誤");
     }

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import { useStore } from "@/contexts/StoreContext";
 import { useStoreSettings, type LandingContent, type LandingServiceItem } from "@/hooks/useStoreSettings";
 import { adminApi } from "@/lib/adminApi";
-import type { ClosingGalleryMode } from "@/lib/landingContent";
+import type { ClosingGalleryMode, LandingTestimonial, LandingStoreInfo, ServiceTagColor } from "@/lib/landingContent";
+import { SERVICE_TAG_COLOR_OPTIONS } from "@/lib/landingContent";
 import { AdminLandingImageField } from "@/components/admin/AdminLandingImageField";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -159,9 +160,14 @@ export default function LandingPageSettings() {
         return;
       }
 
+      const testimonials = draft.testimonials
+        .map((t) => ({ ...t, name: t.name.trim(), content: t.content.trim() }))
+        .filter((t) => t.name && t.content);
+
       const toSave: Partial<LandingContent> = {
         ...draft,
         services,
+        testimonials,
         therapist_highlights: draft.therapist_highlights
           .map((l) => l.trim())
           .filter(Boolean),
@@ -455,6 +461,41 @@ export default function LandingPageSettings() {
                     標示為招牌
                   </label>
                 </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-xs">角標文字（選填，如「熱門」「推薦」）</Label>
+                    <Input
+                      value={svc.tag ?? ""}
+                      onChange={(e) =>
+                        setService(si, { ...svc, tag: e.target.value || undefined })
+                      }
+                      placeholder="例：熱門、推薦、專業"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">角標顏色</Label>
+                    <Select
+                      value={svc.tag_color ?? "amber"}
+                      onValueChange={(v) =>
+                        setService(si, { ...svc, tag_color: v as ServiceTagColor })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SERVICE_TAG_COLOR_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>
+                            <span className="flex items-center gap-2">
+                              <span className={`inline-block h-3 w-3 rounded-full ${opt.preview}`} />
+                              {opt.label}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label className="text-xs">起價說明（選填，無階層時顯示）</Label>
                   <Input
@@ -697,6 +738,198 @@ export default function LandingPageSettings() {
                   />
                 </div>
               ) : null}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+        <AccordionItem value="testimonials" className="border rounded-lg px-4 bg-card">
+          <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+            顧客好評
+          </AccordionTrigger>
+          <AccordionContent className="space-y-6 pb-4">
+            <p className="text-xs text-muted-foreground">
+              新增 1～6 則評價卡片，顯示於 Landing 頁面。名稱與內容皆須填寫才會儲存。
+            </p>
+            {draft.testimonials.map((t, ti) => (
+              <div key={ti} className="rounded-lg border p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm font-medium text-foreground">好評 #{ti + 1}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      updateDraft({
+                        testimonials: draft.testimonials.filter((_, i) => i !== ti),
+                      })
+                    }
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label className="text-xs">顧客名稱</Label>
+                    <Input
+                      value={t.name}
+                      onChange={(e) => {
+                        const next = [...draft.testimonials];
+                        next[ti] = { ...t, name: e.target.value };
+                        updateDraft({ testimonials: next });
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">評分（1–5）</Label>
+                    <Select
+                      value={String(t.rating)}
+                      onValueChange={(v) => {
+                        const next = [...draft.testimonials];
+                        next[ti] = { ...t, rating: Number(v) };
+                        updateDraft({ testimonials: next });
+                      }}
+                    >
+                      <SelectTrigger className="max-w-[100px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[5, 4, 3, 2, 1].map((n) => (
+                          <SelectItem key={n} value={String(n)}>
+                            {"★".repeat(n)}{"☆".repeat(5 - n)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs">評價內容</Label>
+                  <Textarea
+                    rows={2}
+                    value={t.content}
+                    onChange={(e) => {
+                      const next = [...draft.testimonials];
+                      next[ti] = { ...t, content: e.target.value };
+                      updateDraft({ testimonials: next });
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() =>
+                updateDraft({
+                  testimonials: [
+                    ...draft.testimonials,
+                    { name: "", content: "", rating: 5 },
+                  ],
+                })
+              }
+              disabled={draft.testimonials.length >= 6}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              新增好評
+            </Button>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="store-info" className="border rounded-lg px-4 bg-card">
+          <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+            店面資訊（地址／電話／營業時間）
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pb-4">
+            <p className="text-xs text-muted-foreground">
+              填入後會自動顯示於 Landing 頁面的「店面資訊」區塊。留空的欄位不會顯示。
+            </p>
+            <div className="space-y-2">
+              <Label>店面地址</Label>
+              <Input
+                value={draft.store_info.address}
+                onChange={(e) =>
+                  updateDraft({
+                    store_info: { ...draft.store_info, address: e.target.value },
+                  })
+                }
+                placeholder="例：台南市安平區安平路 72 號"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>電話（手機可一鍵撥打）</Label>
+              <Input
+                value={draft.store_info.phone}
+                onChange={(e) =>
+                  updateDraft({
+                    store_info: { ...draft.store_info, phone: e.target.value },
+                  })
+                }
+                placeholder="例：06-1234567 或 0912-345-678"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>營業時間（可換行）</Label>
+              <Textarea
+                rows={3}
+                value={draft.store_info.business_hours}
+                onChange={(e) =>
+                  updateDraft({
+                    store_info: {
+                      ...draft.store_info,
+                      business_hours: e.target.value,
+                    },
+                  })
+                }
+                placeholder={"週一至週五 14:00–02:00\n週六日 12:00–02:00"}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Google Maps 連結（點擊導航用）</Label>
+              <Input
+                value={draft.store_info.google_maps_url}
+                onChange={(e) =>
+                  updateDraft({
+                    store_info: {
+                      ...draft.store_info,
+                      google_maps_url: e.target.value,
+                    },
+                  })
+                }
+                placeholder="https://maps.google.com/..."
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Google Maps 嵌入網址（iframe src）</Label>
+              <Input
+                value={draft.store_info.google_maps_embed_url}
+                onChange={(e) =>
+                  updateDraft({
+                    store_info: {
+                      ...draft.store_info,
+                      google_maps_embed_url: e.target.value,
+                    },
+                  })
+                }
+                placeholder="https://www.google.com/maps/embed?pb=..."
+              />
+              <p className="text-xs text-muted-foreground">
+                在 Google Maps 找到地點 → 分享 → 嵌入地圖 → 複製 iframe 的 src 網址貼上即可。
+              </p>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="price-disclaimer" className="border rounded-lg px-4 bg-card">
+          <AccordionTrigger className="text-sm font-semibold hover:no-underline">
+            價格備註
+          </AccordionTrigger>
+          <AccordionContent className="space-y-4 pb-4">
+            <div className="space-y-2">
+              <Label>備註文字（顯示於服務項目區塊下方）</Label>
+              <Input
+                value={draft.price_disclaimer}
+                onChange={(e) => updateDraft({ price_disclaimer: e.target.value })}
+                placeholder="實際價格以現場為準"
+              />
             </div>
           </AccordionContent>
         </AccordionItem>

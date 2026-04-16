@@ -77,7 +77,7 @@ export default function BookingPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const isLineCalendarEntry = /^\/mylinecalendar$/i.test(location.pathname);
-  const { storeId, currentStore } = useStore();
+  const { storeId, currentStore, buildStorePath, remapLegacyAppPath } = useStore();
   const effectiveStoreId =
     typeof storeId === "string" && storeId.trim() !== "" ? storeId.trim() : FALLBACK_STORE_ID;
   const { notes: calendarNotes } = useCalendarNotes();
@@ -658,7 +658,7 @@ export default function BookingPage() {
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
         <div className="mb-4 w-full max-w-md">
           <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground hover:text-foreground" asChild>
-            <Link to="/">
+            <Link to={buildStorePath("")}>
               <ArrowLeft className="h-4 w-4" />
               回首頁
             </Link>
@@ -713,7 +713,7 @@ export default function BookingPage() {
               再次預約
             </Button>
             <Button variant="outline" className="w-full" asChild>
-              <Link to="/">返回首頁</Link>
+              <Link to={buildStorePath("")}>返回首頁</Link>
             </Button>
           </div>
         </div>
@@ -726,7 +726,7 @@ export default function BookingPage() {
       <div className="max-w-lg mx-auto px-4 py-6">
         <div className="mb-4">
           <Button variant="ghost" size="sm" className="gap-1.5 -ml-2 text-muted-foreground hover:text-foreground" asChild>
-            <Link to="/">
+            <Link to={buildStorePath("")}>
               <ArrowLeft className="h-4 w-4" />
               回首頁
             </Link>
@@ -1111,7 +1111,11 @@ export default function BookingPage() {
 
         <div className="text-center mt-6 space-y-2">
           <button
-            onClick={() => navigate(isLineCalendarEntry ? "/mylinebookings" : "/my-bookings")}
+            onClick={() =>
+              navigate(
+                remapLegacyAppPath(isLineCalendarEntry ? "/mylinebookings" : "/my-bookings"),
+              )
+            }
             className="text-sm text-primary underline underline-offset-4 hover:text-primary/80"
           >
             查詢 / 取消我的預約
