@@ -25,13 +25,13 @@ export interface SEOOutput {
 export function buildSEO(store: StoreSEOInput | null): SEOOutput {
   const name = store?.name?.trim() || "線上預約";
   const title =
-    store?.seo_title?.trim() || `${name} 線上預約 | 台南按摩推拿服務`;
+    store?.seo_title?.trim() || `${name} 線上預約 | 台南傳統整復推拿服務`;
   const description =
     store?.seo_description?.trim() ||
-    `${name}，台南專業按摩推拿服務，線上即時預約，快速確認。`;
+    `${name}，台南專業傳統整復推拿服務，線上即時預約，快速確認。`;
   const keywords =
     store?.seo_keywords?.trim() ||
-    `台南按摩,${name},推拿預約,到府按摩`;
+    `台南按摩,${name},傳統整復推拿預約,到府按摩`;
   const ogImage = store?.og_image?.trim() || DEFAULT_OG_IMAGE;
   return { title, description, keywords, ogImage };
 }
