@@ -1,0 +1,39 @@
+# 定期以 anon key 呼叫 PostgREST，避免 Supabase 免費專案長期無流量進入休眠。
+# 需先在資料庫套用 health_check migration，並設定 Repository secrets。
+name: Supabase keepalive
+
+on:
+  schedule:
+    # 每日 12:00 UTC（可依需求調整；建議至少每週數次）
+    - cron: "0 12 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping-rest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health_check (PostgREST)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "::error::Missing SUPABASE_URL or SUPABASE_ANON_KEY secrets"
+            exit 1
+          fi
+          BASE_URL="${SUPABASE_URL%/}"
+          REQ_URL="${BASE_URL}/rest/v1/health_check?select=id&limit=1"
+          echo "GET ${BASE_URL}/rest/v1/health_check?select=id&limit=1"
+          HTTP_CODE="$(curl -sS -o /tmp/keepalive_body -w "%{http_code}" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${REQ_URL}")"
+          echo "HTTP status: ${HTTP_CODE}"
+          echo "Response body:"
+          cat /tmp/keepalive_body
+          echo
+          if [ "${HTTP_CODE}" != "200" ]; then
+            echo "::error::Expected HTTP 200, got ${HTTP_CODE}"
+            exit 1
+          fi

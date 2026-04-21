@@ -480,6 +480,18 @@ export type Database = {
           },
         ]
       }
+      health_check: {
+        Row: {
+          id: number
+        }
+        Insert: {
+          id: number
+        }
+        Update: {
+          id?: number
+        }
+        Relationships: []
+      }
       holidays: {
         Row: {
           created_at: string

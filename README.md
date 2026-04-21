@@ -7,6 +7,43 @@
 - 多租戶遷移計畫：[`docs/MULTI_TENANT_MIGRATION_PLAN.md`](./docs/MULTI_TENANT_MIGRATION_PLAN.md)
 - **後台設定／LINE 與進階串接**（是否已有舊資料、可否暫時不填）：[`docs/ADMIN_SETTINGS.md`](./docs/ADMIN_SETTINGS.md)
 
+## Supabase 免費版與 keepalive（GitHub Actions）
+
+Supabase **免費專案**若長期沒有任何 API 流量，可能被標示為閒置並進入**休眠**；喚醒後通常可恢復，但會影響預約站與後台可用性。
+
+本 repo 提供 **GitHub Actions** workflow（**不使用** Vercel cron、Next.js API routes）：定期以 **anon key** 呼叫 PostgREST，對專案發出最小讀取請求，作為 keepalive：
+
+- Workflow 檔： [`.github/workflows/supabase-keepalive.yml`](./.github/workflows/supabase-keepalive.yml)
+- 請求範例： `GET {SUPABASE_URL}/rest/v1/health_check?select=id&limit=1`
+- Header：`apikey`、`Authorization: Bearer` 皆為 **同一個** anon key（與前端 `VITE_SUPABASE_ANON_KEY` 相同層級，僅能執行你已開放的 RLS／GRANT）。
+
+### 1. 先建立 `health_check` 表
+
+請在 Supabase 套用 migration（本機或 CI 依你慣例）：
+
+- 檔案： [`supabase/migrations/20260416140000_health_check_keepalive.sql`](./supabase/migrations/20260416140000_health_check_keepalive.sql)
+
+內容包含：`health_check` 表一筆資料、**RLS 啟用**、僅允許 **anon / authenticated 的 SELECT**（與 workflow 需求一致）。
+
+### 2. 若你調整過 RLS
+
+請維持 **anon 可對 `health_check` 做 SELECT**（migration 內 policy 名稱：`health_check_select_anon`）。若你自行重建 policy，請確認與 `GRANT SELECT` 一致，否則 workflow 會收到非 200。
+
+### 3. GitHub Repository secrets
+
+在 GitHub：**Settings → Secrets and variables → Actions → New repository secret**
+
+| Secret 名稱 | 說明 |
+|-------------|------|
+| `SUPABASE_URL` | 專案 URL，例如 `https://xxxx.supabase.co`（**不要**尾隨斜線亦可；workflow 會去掉尾隨 `/`） |
+| `SUPABASE_ANON_KEY` | Project **anon** `public` key（與 Dashboard → Settings → API 的 `anon` 一致） |
+
+### 4. 手動測試 workflow
+
+1. 推上含 workflow 的 branch 並合併到預設分支（若你只在預設分支跑 Actions）。
+2. GitHub：**Actions** → **Supabase keepalive** → **Run workflow**（`workflow_dispatch`）。
+3. 點進本次 run，展開 **Ping health_check (PostgREST)** 步驟，應看到 **`HTTP status: 200`** 與 JSON body；若非 200，該 job 會失敗。
+
 ## Project info
 
 **URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
